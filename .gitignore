@@ -1,0 +1,28 @@
+# Entornos
+.env
+venv/
+node_modules/
+
+# Datos (NUNCA subir datos de salud)
+data/raw/
+data/processed/
+*.csv
+*.xlsx
+*.xls
+
+# Modelos entrenados
+ml/models/*.pkl
+ml/models/*.h5
+ml/models/*.joblib
+
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
