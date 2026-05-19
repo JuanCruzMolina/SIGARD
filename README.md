@@ -1,4 +1,4 @@
-cat > README.md << 'READMEEOF'
+
 # SIGARD
 
 **Sistema Informático para la Geolocalización y Alerta de Zonas de Riesgo por Dengue — La Rioja Capital**
