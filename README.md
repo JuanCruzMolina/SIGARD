@@ -41,4 +41,3 @@ docker-compose up --build
     ├── ml/          Modelos predictivos y experimentos
     ├── data/        Datos epidemiológicos (no versionados)
     └── docs/        Documentación técnica
-READMEEOF
