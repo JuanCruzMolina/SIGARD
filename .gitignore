@@ -28,3 +28,12 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Python packaging and test artifacts
+ml/src/*.egg-info/
+ml/.cache/
+ml/.tmp/
+ml/.pytest_cache/
+ml/__pycache__/
+**/__pycache__/
+*.py[cod]
