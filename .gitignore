@@ -3,9 +3,11 @@
 venv/
 node_modules/
 
-# Datos (NUNCA subir datos de salud)
-data/raw/
-data/processed/
+# Datos locales (no versionar fuentes ni artefactos generados)
+data/**
+!data/README.md
+!data/**/
+!data/**/.gitkeep
 *.csv
 *.xlsx
 *.xls
