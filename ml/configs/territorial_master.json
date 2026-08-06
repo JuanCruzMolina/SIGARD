@@ -1,0 +1,64 @@
+{
+  "area": {
+    "province_code": "46",
+    "province_name": "LA RIOJA",
+    "department_code": "014",
+    "department_name": "Capital"
+  },
+  "crs": {
+    "source": "EPSG:4326",
+    "metric": "EPSG:32719",
+    "output": "EPSG:4326"
+  },
+  "sources": {
+    "cartography": {
+      "path": "data/radios-censales/RADIOS_2022_v1_0/radios2022_v1.0.shp",
+      "encoding": "UTF-8",
+      "columns": {
+        "province_name": "NOMPROV",
+        "province_code": "PROV",
+        "department_name": "NOMDEPTO",
+        "department_code": "DEPTO",
+        "fraction": "FRAC",
+        "radio": "RADIO",
+        "radio_id": "LINK"
+      }
+    },
+    "population": {
+      "path": "data/46-la-rioja-2022/46-la-rioja-2022-persona.csv",
+      "encoding": "utf-8-sig",
+      "variable": "PERSONA_P02",
+      "output_column": "poblacion"
+    },
+    "households": {
+      "path": "data/46-la-rioja-2022/46-la-rioja-2022-hogar.csv",
+      "encoding": "utf-8-sig",
+      "variable": "HOGAR_TIPHOGAR",
+      "output_column": "hogares"
+    },
+    "dwellings": {
+      "path": "data/46-la-rioja-2022/46-la-rioja-2022-vivienda.csv",
+      "encoding": "utf-8-sig",
+      "variable": "VIVIENDA_TIPOVIVG",
+      "output_column": "viviendas"
+    }
+  },
+  "census_columns": {
+    "radio_id": "codigo",
+    "province_code": "cod_prov",
+    "province_name": "provincia",
+    "department_code": "cod_dep",
+    "department_value": "departamento",
+    "fraction": "fraccion",
+    "radio": "radio",
+    "variable": "cod_variable",
+    "category_code": "cod_categoria",
+    "category": "categoria",
+    "count": "cantidad"
+  },
+  "outputs": {
+    "parquet": "data/processed/territorial_master.parquet",
+    "geojson": "data/processed/territorial_master.geojson",
+    "quality_report": "data/processed/territorial_quality_report.json"
+  }
+}
