@@ -23,8 +23,17 @@ La asignación debe cumplir:
 - universo de radios y fuentes de ponderación identificados;
 - etiqueta inequívoca `sintético` en almacenamiento, API y visualización.
 
-El método concreto de ponderación se definirá al implementar el pipeline. No se
-debe elegir silenciosamente ni presentar sus supuestos como observaciones.
+La etapa 3 implementa dos escenarios explícitos y separados:
+
+- `population_proportional`: sorteo multinomial ponderado por población;
+- `spatial_clusters`: sorteo multinomial ponderado por población, focos
+  reproducibles, vecindad censal, persistencia parcial y ruido configurable.
+
+La configuración versionada `ml/configs/synthetic_allocation.json` registra las
+columnas efectivas, variables, semilla y parámetros. Ningún escenario usa clima
+ni coordenadas para distribuir casos. Las salidas denominan al total real
+`department_cases_observed` y al conteo por radio
+`synthetic_cases_assigned`, evitando describir este último como observado.
 
 ### Coordenadas puntuales
 

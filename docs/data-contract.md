@@ -56,6 +56,14 @@ disponible al momento de emitirla.
 | `semilla` | Semilla determinista usada |
 | `es_sintetico` | Siempre `true` |
 
+La implementación de la etapa 3 usa los nombres físicos
+`epidemiological_year`, `epidemiological_week`, `week_start_date`,
+`week_end_date`, `radio_id`, `department_cases_observed`,
+`synthetic_cases_assigned`, `synthetic_allocation_weight`,
+`simulation_scenario`, `simulation_version` y `simulation_seed`. El total
+departamental conserva su naturaleza observada; el conteo por radio es siempre
+una asignación sintética y no una observación espacial.
+
 Para cada año-semana debe cumplirse:
 
 ```text

@@ -72,3 +72,29 @@ La correspondencia de fechas se valida contra los calendarios y boletines del
 [Ministerio de Salud](https://www.argentina.gob.ar/salud/epidemiologia/herramientas):
 en 2024 la SE1 abarcó 2023-12-31 a 2024-01-06 y la SE52, 2024-12-22 a
 2024-12-28, según el [índice oficial de boletines 2024](https://www.argentina.gob.ar/salud/boletin-epidemiologico-nacional/boletines-2024).
+
+## Etapa 3: asignación espacial sintética
+
+Desde la raíz del repositorio:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.simulation.pipeline `
+  --config ml/configs/synthetic_allocation.json
+```
+
+Distribuye cada total semanal real y agregado de Capital entre los 263 radios
+mediante dos escenarios separados: multinomial proporcional a `poblacion`, y
+clusters reproducibles basados en población y `neighbor_ids`. La configuración
+registra semilla, versión, variables y parámetros. No usa clima ni genera
+coordenadas puntuales. Los resultados son asignaciones sintéticas, no
+observaciones ni ubicaciones reales de casos.
+
+Produce, sin sobrescribirlos por defecto:
+
+- `data/processed/synthetic_radio_week_population.parquet`
+- `data/processed/synthetic_radio_week_clusters.parquet`
+- `data/processed/synthetic_allocation_quality_report.json`
+
+El reporte controla conservación semanal exacta, 263 radios por semana,
+duplicados, nulos, negativos, ceros, concentración y radios con mayor
+asignación. Reemplazar deliberadamente esas rutas requiere `--overwrite`.

@@ -19,6 +19,7 @@ test = ["pytest>=8"]
 [project.scripts]
 sigard-build-territorial = "sigard_ml.ingestion.territorial:main"
 sigard-build-temporal = "sigard_ml.ingestion.temporal:main"
+sigard-build-synthetic = "sigard_ml.simulation.pipeline:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
