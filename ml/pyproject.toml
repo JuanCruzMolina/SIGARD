@@ -21,6 +21,7 @@ sigard-build-territorial = "sigard_ml.ingestion.territorial:main"
 sigard-build-temporal = "sigard_ml.ingestion.temporal:main"
 sigard-build-synthetic = "sigard_ml.simulation.pipeline:main"
 sigard-build-modeling-panel = "sigard_ml.features.pipeline:main"
+sigard-evaluate-baseline = "sigard_ml.evaluation.pipeline:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

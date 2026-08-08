@@ -1,5 +1,32 @@
 # Pipelines reproducibles de SIGARD
 
+## Etapa 5: evaluación temporal del baseline
+
+Sin entrenar Random Forest, la referencia de persistencia se ejecuta desde la
+raíz con:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.evaluation.pipeline `
+  --config ml/configs/baseline_evaluation.json
+```
+
+El corte usa semanas completas: reserva las últimas cuatro semanas consecutivas
+del bloque temporal final como test y considera las anteriores como
+desarrollo/train. No completa el salto entre bloques. `PersistenceBaseline`
+predice los casos sintéticos asignados de `t+1` copiando exclusivamente los
+casos disponibles en `t`; el target nunca se entrega al modelo.
+
+Produce, sin sobrescribirlos por defecto:
+
+- `data/processed/evaluation_split.parquet`
+- `data/processed/baseline_predictions.parquet`
+- `data/processed/baseline_metrics.json`
+
+El JSON informa MAE, RMSE, mediana del error absoluto, MAE para targets
+positivos, bias, porcentajes de ceros y errores de totales semanales. Los
+targets por radio siguen siendo sintéticos y las predicciones no constituyen
+evidencia epidemiológica ni ubicaciones reales.
+
 Esta etapa construye el maestro territorial de Capital, La Rioja, sin modificar
 las fuentes locales. Requiere Python 3.11 o posterior.
 
