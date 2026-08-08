@@ -95,6 +95,25 @@ Produce, sin sobrescribirlos por defecto:
 - `data/processed/synthetic_radio_week_clusters.parquet`
 - `data/processed/synthetic_allocation_quality_report.json`
 
+## Etapa 4: panel radio-semana para modelado
+
+Sin entrenar modelos ni dividir datos, se ejecuta desde la raíz con:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.features.pipeline `
+  --config ml/configs/modeling_panel.json
+```
+
+Produce `radio_week_panel.parquet` con las 263 filas de cada semana disponible,
+`modeling_panel.parquet` sólo con filas que poseen tres semanas consecutivas de
+historia y target consecutivo, y `modeling_panel_quality_report.json`. Los lags
+se buscan por fecha exacta, sin imputación; la media vecinal usa exclusivamente
+`neighbor_ids` y casos de semanas anteriores. El target sigue siendo una
+asignación sintética espacial en `t+1`, no evidencia epidemiológica por radio.
+
+Las salidas no se sobrescriben salvo que se indique deliberadamente
+`--overwrite`, que sólo alcanza los tres productos configurados de esta etapa.
+
 El reporte controla conservación semanal exacta, 263 radios por semana,
 duplicados, nulos, negativos, ceros, concentración y radios con mayor
 asignación. Reemplazar deliberadamente esas rutas requiere `--overwrite`.

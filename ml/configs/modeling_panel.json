@@ -1,0 +1,46 @@
+{
+  "pipeline": {"name": "radio_week_modeling_panel", "version": "0.1.0"},
+  "inputs": {
+    "territorial": "data/processed/territorial_master.parquet",
+    "weekly": "data/processed/modeling_weekly.parquet",
+    "synthetic": "data/processed/synthetic_radio_week_clusters.parquet"
+  },
+  "columns": {
+    "radio_id": "radio_id",
+    "population": "poblacion",
+    "households": "hogares",
+    "dwellings": "viviendas",
+    "area_km2": "superficie_km2",
+    "population_density": "densidad_poblacional",
+    "neighbors": "neighbor_ids",
+    "year": "epidemiological_year",
+    "week": "epidemiological_week",
+    "week_start": "week_start_date",
+    "week_end": "week_end_date",
+    "cases": "synthetic_cases_assigned"
+  },
+  "climate_columns": [
+    "temperature_min_mean", "temperature_max_mean", "temperature_mean",
+    "relative_humidity_mean", "precipitation_sum"
+  ],
+  "features": {
+    "case_lags": [1, 2, 3],
+    "rolling_windows": [2, 3],
+    "neighbor_lags": [1, 2],
+    "neighbor_aggregation": "mean",
+    "target_horizon_weeks": 1
+  },
+  "training_requirements": {
+    "required_columns": [
+      "cases_lag_1", "cases_lag_2", "cases_lag_3",
+      "cases_rolling_mean_2", "cases_rolling_mean_3",
+      "neighbor_cases_lag_1", "neighbor_cases_lag_2", "target_cases_next_week"
+    ]
+  },
+  "universe": {"expected_radio_count": 263},
+  "outputs": {
+    "full_panel": "data/processed/radio_week_panel.parquet",
+    "modeling_panel": "data/processed/modeling_panel.parquet",
+    "quality_report": "data/processed/modeling_panel_quality_report.json"
+  }
+}

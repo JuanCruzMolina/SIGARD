@@ -121,6 +121,13 @@ Cada dataset derivado debe registrar como mínimo:
 - condición observada, sintética o predicha;
 - reglas de calidad aplicadas.
 
+La etapa 4 materializa los nombres físicos `radio_week_panel.parquet` (todas
+las semanas disponibles) y `modeling_panel.parquet` (sólo historia mínima y
+target consecutivo disponibles). Los rezagos se resuelven por diferencias
+exactas de siete días y no por posición de fila. `neighbor_cases_lag_1` y
+`neighbor_cases_lag_2` son la media de asignaciones pasadas de los radios
+declarados en `neighbor_ids`; no incorporan casos contemporáneos ni futuros.
+
 ## Zonas de almacenamiento
 
 - `data/raw/`: copias originales e inmutables de las fuentes.
