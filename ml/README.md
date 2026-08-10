@@ -1,5 +1,30 @@
 # Pipelines reproducibles de SIGARD
 
+## Etapa 7: artefactos estáticos del MVP
+
+Esta etapa no entrena ni carga el modelo: filtra las predicciones ya generadas
+de la variante seleccionada `rf_reduced_features`, conserva las cuatro semanas
+de test y publica una vista territorial de la última semana objetivo. Ejecutar:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.presentation.mvp_export `
+  --config ml/configs/mvp_export.json
+```
+
+Produce `mvp_prediction.geojson`, `mvp_prediction_summary.json`,
+`mvp_backtest.json` y el histórico opcional
+`mvp_backtest_predictions.geojson` en `data/processed/`. Los tres primeros se
+copian a `frontend/public/data/` como artefactos pequeños versionables de demo.
+Una ejecución posterior requiere `--overwrite`, que sólo reemplaza estas
+salidas de etapa 7.
+
+`risk_level` usa cuantiles 25/50/75 de `predicted_cases` dentro de cada semana.
+Es una categoría visual relativa, no un umbral sanitario oficial. El corte es
+el sábado anterior a la semana objetivo y el backtest sólo usa las cuatro
+semanas del test existente. El total oficial se obtiene sumando
+`target_cases_next_week`, que conserva el total departamental, pero los targets
+por radio son asignaciones sintéticas: no existe validación espacial real.
+
 ## Etapa 6.1: ajuste controlado del Random Forest
 
 Esta etapa conserva literalmente el `evaluation_split.parquet` de etapa 5 y

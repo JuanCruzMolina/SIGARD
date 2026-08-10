@@ -8,6 +8,10 @@ data/**
 !data/README.md
 !data/**/
 !data/**/.gitkeep
+!frontend/public/data/
+!frontend/public/data/mvp_prediction.geojson
+!frontend/public/data/mvp_prediction_summary.json
+!frontend/public/data/mvp_backtest.json
 *.csv
 *.xlsx
 *.xls

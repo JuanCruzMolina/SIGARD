@@ -134,5 +134,27 @@ declarados en `neighbor_ids`; no incorporan casos contemporáneos ni futuros.
 - `data/interim/`: salidas parciales y reemplazables de transformación.
 - `data/processed/`: datasets validados y listos para consumo.
 
+## Artefactos estáticos de presentación del MVP
+
+La etapa 7 publica una FeatureCollection por semana con exactamente 263 radios
+en EPSG:4326. `mvp_prediction.geojson` contiene geometría censal real y las
+propiedades `radio_id`, `population`, `population_density`,
+`prediction_week_start`, `prediction_week_end`, `predicted_cases`,
+`predicted_cases_rounded`, `risk_level`, `simulation_scenario`, `model_name`,
+`model_version` y `data_scope`. `predicted_cases` es una salida continua del
+modelo; su versión redondeada se usa sólo para presentación.
+
+`risk_level` (`very_low`, `low`, `medium`, `high`) se calcula con los cuantiles
+25, 50 y 75 de la predicción dentro de cada semana. Es una clasificación visual
+relativa y no un umbral sanitario oficial.
+
+`mvp_prediction_summary.json` documenta semana, corte, modelo, variante, total,
+top de radios, métricas, configuración y advertencia. `mvp_backtest.json`
+contiene exclusivamente las cuatro semanas del test temporal, compara la suma
+predicha por radio con el total oficial departamental conservado por el target
+y no declara validación espacial. `mvp_backtest_predictions.geojson` reúne las
+cuatro capas históricas opcionales. Los tres artefactos principales se copian a
+`frontend/public/data/`; no contienen fuentes raw, secretos ni datos personales.
+
 Los archivos de estas zonas no se versionan. Tampoco se versionan modelos
 entrenados, secretos, credenciales ni archivos `.env`.

@@ -1,0 +1,29 @@
+{
+  "pipeline": {"name": "mvp_static_presentation_export", "version": "0.1.0"},
+  "inputs": {
+    "territorial": "data/processed/territorial_master.parquet",
+    "panel": "data/processed/modeling_panel.parquet",
+    "predictions": "data/processed/random_forest_variants_predictions.parquet",
+    "comparison": "data/processed/random_forest_mvp_comparison.json",
+    "model_config": "ml/configs/random_forest_mvp.json"
+  },
+  "outputs": {
+    "prediction": "data/processed/mvp_prediction.geojson",
+    "summary": "data/processed/mvp_prediction_summary.json",
+    "backtest": "data/processed/mvp_backtest.json",
+    "backtest_predictions": "data/processed/mvp_backtest_predictions.geojson"
+  },
+  "frontend_copies": {
+    "prediction": "frontend/public/data/mvp_prediction.geojson",
+    "summary": "frontend/public/data/mvp_prediction_summary.json",
+    "backtest": "frontend/public/data/mvp_backtest.json"
+  },
+  "target_week_start": "latest",
+  "expected_radio_count": 263,
+  "expected_test_week_count": 4,
+  "summary_top_radio_count": 10,
+  "simulation_scenario": "spatial_clusters",
+  "data_scope": "Predicción por radio entrenada con distribución espacial sintética de totales oficiales agregados de Capital; no representa casos observados por radio ni ubicaciones reales.",
+  "methodological_warning": "El backtest valida únicamente el total temporal departamental contra el target oficial agregado. La asignación usada como target por radio es sintética y no constituye validación epidemiológica espacial.",
+  "risk": {"method": "within_week_quantiles", "quantiles": [0.25, 0.5, 0.75], "labels": ["very_low", "low", "medium", "high"]}
+}

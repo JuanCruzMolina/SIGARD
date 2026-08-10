@@ -25,6 +25,7 @@ sigard-build-modeling-panel = "sigard_ml.features.pipeline:main"
 sigard-evaluate-baseline = "sigard_ml.evaluation.pipeline:main"
 sigard-train-random-forest = "sigard_ml.evaluation.random_forest_pipeline:main"
 sigard-adjust-random-forest = "sigard_ml.evaluation.random_forest_variants_pipeline:main"
+sigard-export-mvp = "sigard_ml.presentation.mvp_export:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
