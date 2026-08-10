@@ -1,0 +1,38 @@
+{
+  "pipeline": {"name": "random_forest_controlled_adjustment", "version": "0.1.0"},
+  "inputs": {
+    "panel": "data/processed/modeling_panel.parquet",
+    "split": "data/processed/evaluation_split.parquet",
+    "baseline_predictions": "data/processed/baseline_predictions.parquet",
+    "baseline_metrics": "data/processed/baseline_metrics.json",
+    "original_metrics": "data/processed/random_forest_metrics.json"
+  },
+  "data_version": "modeling_panel_v0.1.0",
+  "columns": {"radio_id": "radio_id", "year": "epidemiological_year", "week": "epidemiological_week", "week_start": "week_start_date", "target": "target_cases_next_week"},
+  "full_features": [
+    "population", "households", "dwellings", "area_km2", "population_density",
+    "temperature_min_mean", "temperature_max_mean", "temperature_mean",
+    "relative_humidity_mean", "precipitation_sum", "synthetic_cases_assigned",
+    "cases_lag_1", "cases_lag_2", "cases_lag_3", "cases_rolling_mean_2",
+    "cases_rolling_mean_3", "neighbor_cases_lag_1", "neighbor_cases_lag_2"
+  ],
+  "reduced_features": [
+    "synthetic_cases_assigned", "cases_lag_1", "cases_lag_2", "cases_lag_3",
+    "cases_rolling_mean_2", "cases_rolling_mean_3", "neighbor_cases_lag_1",
+    "neighbor_cases_lag_2", "temperature_mean", "relative_humidity_mean",
+    "precipitation_sum"
+  ],
+  "variants": {
+    "rf_regularized": {"feature_set": "full", "target_transform": "identity", "parameters": {"n_estimators": 300, "max_depth": 5, "min_samples_split": 32, "min_samples_leaf": 16, "max_features": "sqrt", "random_state": 20260807, "n_jobs": 1}},
+    "rf_log_target": {"feature_set": "full", "target_transform": "log1p", "parameters": {"n_estimators": 300, "max_depth": 8, "min_samples_split": 16, "min_samples_leaf": 8, "max_features": "sqrt", "random_state": 20260807, "n_jobs": 1}},
+    "rf_reduced_features": {"feature_set": "reduced", "target_transform": "identity", "parameters": {"n_estimators": 300, "max_depth": 8, "min_samples_split": 16, "min_samples_leaf": 8, "max_features": "sqrt", "random_state": 20260807, "n_jobs": 1}}
+  },
+  "evaluation": {"near_zero_threshold": 0.5, "expected_test_rows": 1052, "global_metric_max_relative_deterioration": 0.10, "positive_mae_max_relative_deterioration": 0.05},
+  "outputs": {
+    "metrics": "data/processed/random_forest_variants_metrics.json",
+    "predictions": "data/processed/random_forest_variants_predictions.parquet",
+    "comparison": "data/processed/random_forest_mvp_comparison.json",
+    "artifact": "ml/artifacts/random_forest_mvp.joblib",
+    "mvp_config": "ml/configs/random_forest_mvp.json"
+  }
+}

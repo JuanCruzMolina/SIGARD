@@ -3,14 +3,21 @@
 venv/
 node_modules/
 
-# Datos (NUNCA subir datos de salud)
-data/raw/
-data/processed/
+# Datos locales (no versionar fuentes ni artefactos generados)
+data/**
+!data/README.md
+!data/**/
+!data/**/.gitkeep
+!frontend/public/data/
+!frontend/public/data/mvp_prediction.geojson
+!frontend/public/data/mvp_prediction_summary.json
+!frontend/public/data/mvp_backtest.json
 *.csv
 *.xlsx
 *.xls
 
 # Modelos entrenados
+ml/artifacts/
 ml/models/*.pkl
 ml/models/*.h5
 ml/models/*.joblib
@@ -26,3 +33,12 @@ __pycache__/
 # OS
 .DS_Store
 Thumbs.db
+
+# Python packaging and test artifacts
+ml/src/*.egg-info/
+ml/.cache/
+ml/.tmp/
+ml/.pytest_cache/
+ml/__pycache__/
+**/__pycache__/
+*.py[cod]

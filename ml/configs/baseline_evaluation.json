@@ -1,0 +1,10 @@
+{
+  "pipeline": {"name": "persistence_baseline_evaluation", "version": "0.1.0"},
+  "input": "data/processed/modeling_panel.parquet",
+  "data_version": "modeling_panel_v0.1.0",
+  "seed": 20260807,
+  "columns": {"radio_id": "radio_id", "year": "epidemiological_year", "week": "epidemiological_week", "week_start": "week_start_date", "current_cases": "synthetic_cases_assigned", "target": "target_cases_next_week"},
+  "expected_radio_count": 263,
+  "split": {"test_weeks": 4},
+  "outputs": {"split": "data/processed/evaluation_split.parquet", "predictions": "data/processed/baseline_predictions.parquet", "metrics": "data/processed/baseline_metrics.json"}
+}

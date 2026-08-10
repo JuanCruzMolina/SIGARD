@@ -1,0 +1,31 @@
+{
+  "pipeline": {"name": "temporal_weekly", "version": "0.1.0"},
+  "area": {"province": "La Rioja", "department": "Capital"},
+  "epidemiological_calendar": {
+    "convention": "ARGENTINA_SNVS_SUNDAY_SATURDAY",
+    "week_starts_on": "Sunday",
+    "description": "Calendario epidemiológico del Ministerio de Salud: domingo a sábado; la SE 1 es la que contiene al menos cuatro días del nuevo año. Equivale a desplazar la fecha un día y aplicar numeración ISO, pero no es una semana ISO.",
+    "documentation_urls": [
+      "https://www.argentina.gob.ar/salud/epidemiologia/herramientas",
+      "https://www.argentina.gob.ar/salud/boletin-epidemiologico-nacional/boletines-2024"
+    ]
+  },
+  "sources": {
+    "dengue": [
+      {"path": "data/casos_dengue_confirmados/informacion-publica-dengue-zika-nacional-se-1-a-52-de-2023-2024-06-10.csv", "encoding": "utf-8-sig", "delimiter": ";", "snapshot": "2024-06-10", "coverage": {"epidemiological_year": 2023, "week_min": 1, "week_max": 52}},
+      {"path": "data/casos_dengue_confirmados/informacion-publica-dengue-zika-nacional-se-1-a-52-de-2024-2025-05-05.csv", "encoding": "cp1252", "delimiter": ";", "snapshot": "2025-05-05", "coverage": {"epidemiological_year": 2024, "week_min": 1, "week_max": 52}}
+    ],
+    "climate": {"path": "data/open-meteo/open-meteo-29.42S66.82W507m.csv", "encoding": "utf-8-sig", "delimiter": ",", "skiprows": 2}
+  },
+  "columns": {
+    "dengue": {"province": "provincia_residencia", "department": "departamento_residencia", "year": "anio_min", "week": "sepi_min", "cases": "cantidad", "event": "evento"},
+    "climate": {"date": "time", "temperature_max": "temperature_2m_max (°C)", "temperature_min": "temperature_2m_min (°C)", "temperature_mean": "temperature_2m_mean (°C)", "relative_humidity": "relative_humidity_2m_mean (%)", "precipitation": "precipitation_sum (mm)"}
+  },
+  "outputs": {
+    "dengue": "data/processed/dengue_weekly.parquet",
+    "climate": "data/processed/climate_weekly.parquet",
+    "integrated": "data/processed/department_weekly.parquet",
+    "modeling": "data/processed/modeling_weekly.parquet",
+    "quality_report": "data/processed/temporal_quality_report.json"
+  }
+}

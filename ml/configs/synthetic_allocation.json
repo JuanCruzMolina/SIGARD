@@ -1,0 +1,26 @@
+{
+  "pipeline": {"name": "synthetic_radio_week_allocation", "version": "0.1.0"},
+  "simulation": {"version": "sigard-synthetic-allocation-v0.1.0", "seed": 20260806, "seed_derivation": "Una instancia numpy.random.Generator(PCG64) por escenario; radios y semanas ordenados antes de consumir la secuencia."},
+  "inputs": {
+    "territorial": "data/processed/territorial_master.parquet",
+    "weekly": "data/processed/modeling_weekly.parquet"
+  },
+  "columns": {
+    "radio_id": "radio_id", "population": "poblacion", "neighbors": "neighbor_ids",
+    "year": "epidemiological_year", "week": "epidemiological_week",
+    "week_start": "week_start_date", "week_end": "week_end_date",
+    "observed_cases": "dengue_cases_observed", "status": "epidemiological_status"
+  },
+  "universe": {"expected_radio_count": 263},
+  "weekly_filter": {"allowed_statuses": ["observed", "explicit_zero"], "forbidden_statuses": ["missing_record", "outside_source_coverage"]},
+  "scenarios": {
+    "population_proportional": {"method": "multinomial", "parameters": {"weight_variable": "poblacion"}},
+    "spatial_clusters": {"method": "population_weighted_multinomial_with_persistent_neighbor_clusters", "parameters": {"focus_count": 5, "focus_intensity": 6.0, "neighbor_intensity": 2.5, "persistence_probability": 0.7, "noise_sigma": 0.15}}
+  },
+  "quality_report": {"top_radio_count": 10, "concentration_metric": "Herfindahl-Hirschman index of weekly assigned-case shares"},
+  "outputs": {
+    "population_proportional": "data/processed/synthetic_radio_week_population.parquet",
+    "spatial_clusters": "data/processed/synthetic_radio_week_clusters.parquet",
+    "quality_report": "data/processed/synthetic_allocation_quality_report.json"
+  }
+}
