@@ -1,0 +1,41 @@
+{
+  "pipeline": {"name": "random_forest_evaluation", "version": "0.1.0"},
+  "inputs": {
+    "panel": "data/processed/modeling_panel.parquet",
+    "split": "data/processed/evaluation_split.parquet",
+    "baseline_predictions": "data/processed/baseline_predictions.parquet",
+    "baseline_metrics": "data/processed/baseline_metrics.json"
+  },
+  "data_version": "modeling_panel_v0.1.0",
+  "columns": {
+    "radio_id": "radio_id",
+    "year": "epidemiological_year",
+    "week": "epidemiological_week",
+    "week_start": "week_start_date",
+    "target": "target_cases_next_week"
+  },
+  "features": [
+    "population", "households", "dwellings", "area_km2", "population_density",
+    "temperature_min_mean", "temperature_max_mean", "temperature_mean",
+    "relative_humidity_mean", "precipitation_sum", "synthetic_cases_assigned",
+    "cases_lag_1", "cases_lag_2", "cases_lag_3", "cases_rolling_mean_2",
+    "cases_rolling_mean_3", "neighbor_cases_lag_1", "neighbor_cases_lag_2"
+  ],
+  "model": {
+    "n_estimators": 300,
+    "max_depth": 12,
+    "min_samples_split": 4,
+    "min_samples_leaf": 2,
+    "max_features": "sqrt",
+    "random_state": 20260807,
+    "n_jobs": 1
+  },
+  "evaluation": {"near_zero_threshold": 0.5, "expected_test_rows": 1052},
+  "outputs": {
+    "predictions": "data/processed/random_forest_predictions.parquet",
+    "metrics": "data/processed/random_forest_metrics.json",
+    "comparison": "data/processed/model_comparison.json",
+    "feature_importance": "data/processed/random_forest_feature_importance.parquet",
+    "artifact": "ml/artifacts/random_forest.joblib"
+  }
+}

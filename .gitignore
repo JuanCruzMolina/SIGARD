@@ -13,6 +13,7 @@ data/**
 *.xls
 
 # Modelos entrenados
+ml/artifacts/
 ml/models/*.pkl
 ml/models/*.h5
 ml/models/*.joblib

@@ -1,5 +1,65 @@
 # Pipelines reproducibles de SIGARD
 
+## Etapa 6.1: ajuste controlado del Random Forest
+
+Esta etapa conserva literalmente el `evaluation_split.parquet` de etapa 5 y
+evalúa las mismas 1.052 filas de test. Se ejecuta con:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.evaluation.random_forest_variants_pipeline `
+  --config ml/configs/random_forest_variants.json
+```
+
+El modelo original usa 300 árboles, profundidad máxima 12, hoja mínima 2 y las
+18 features declaradas en `random_forest.json`. Las tres únicas alternativas
+son `rf_regularized` (menor profundidad y hojas mayores), `rf_log_target`
+(`log1p` al entrenar y `expm1` al predecir) y `rf_reduced_features` (11 señales
+temporales, vecinales y meteorológicas, sin `population`, `households` ni
+`dwellings`). Todas son `RandomForestRegressor`, usan semilla 20260807 y generan
+predicciones continuas recortadas a cero.
+
+La selección no minimiza ciegamente el MAE global. Primero exige guardas de
+MAE/RMSE global y MAE sobre targets positivos; entre candidatas prioriza el
+error absoluto semanal medio, luego el bias absoluto, el MAE en positivos y el
+MAE global. Se comparan siempre PersistenceBaseline y el Random Forest original.
+
+Las salidas nuevas son `random_forest_variants_metrics.json`,
+`random_forest_variants_predictions.parquet`,
+`random_forest_mvp_comparison.json`, `random_forest_mvp.joblib` y
+`random_forest_mvp.json`. El target espacial por radio continúa siendo una
+asignación sintética: los resultados no son evidencia epidemiológica, precisión
+espacial real ni ubicaciones observadas de casos.
+
+## Etapa 6: Random Forest de regresión
+
+Con las salidas inmutables de la etapa 5 ya disponibles, ejecutar desde la raíz:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.evaluation.random_forest_pipeline `
+  --config ml/configs/random_forest.json
+```
+
+El proceso usa directamente `evaluation_split.parquet`: entrena con sus semanas
+`train` y evalúa sólo las cuatro semanas `test` (1.052 filas), sin crear otra
+partición. Las 18 features permitidas están enumeradas en la configuración; no
+incluyen identificadores, fechas, coordenadas ni el target. No se imputan ni se
+escalan variables, y los nulos o infinitos detienen la ejecución.
+
+Produce, sin sobrescribirlos por defecto:
+
+- `data/processed/random_forest_predictions.parquet`
+- `data/processed/random_forest_metrics.json`
+- `data/processed/model_comparison.json`
+- `data/processed/random_forest_feature_importance.parquet`
+- `ml/artifacts/random_forest.joblib`
+
+Las predicciones continuas no negativas se usan sin redondear para las métricas;
+la columna redondeada es sólo auxiliar para visualización futura. El baseline de
+persistencia se informa únicamente como referencia de control. Tanto el target
+por radio como las importancias corresponden a un escenario espacial sintético:
+no son evidencia epidemiológica, localizaciones reales ni evidencia causal. En
+esta etapa no se realiza tuning exhaustivo ni se utiliza SHAP.
+
 ## Etapa 5: evaluación temporal del baseline
 
 Sin entrenar Random Forest, la referencia de persistencia se ejecuta desde la

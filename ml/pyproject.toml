@@ -11,6 +11,7 @@ dependencies = [
   "geopandas>=1.0",
   "pandas>=2.2",
   "pyarrow>=15",
+  "scikit-learn>=1.5,<2",
 ]
 
 [project.optional-dependencies]
@@ -22,6 +23,8 @@ sigard-build-temporal = "sigard_ml.ingestion.temporal:main"
 sigard-build-synthetic = "sigard_ml.simulation.pipeline:main"
 sigard-build-modeling-panel = "sigard_ml.features.pipeline:main"
 sigard-evaluate-baseline = "sigard_ml.evaluation.pipeline:main"
+sigard-train-random-forest = "sigard_ml.evaluation.random_forest_pipeline:main"
+sigard-adjust-random-forest = "sigard_ml.evaluation.random_forest_variants_pipeline:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
