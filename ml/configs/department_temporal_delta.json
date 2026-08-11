@@ -1,0 +1,33 @@
+{
+  "pipeline": {"name": "department_temporal_delta", "version": "0.2.2"},
+  "input_dataset": "data/processed/department_temporal_modeling.parquet",
+  "previous_variants_config": "ml/configs/department_temporal_variants.json",
+  "expected_hashes": {
+    "development": "0288f16b6a7a948370eb2c5a2dc9cd3414500c0571c089da4caed48d99c0cd00",
+    "holdout": "6faaa71b6cb338ba30a773d6162c5c98ed2ac6c2c074857944168fda1d4c315f"
+  },
+  "minimal_features": [
+    "cases_current_week", "cases_lag_1", "cases_rolling_mean_2",
+    "cases_trend_1", "log_cases_current", "growth_ratio", "log_growth",
+    "week_sin", "week_cos"
+  ],
+  "minimal_climate_features": [
+    "cases_current_week", "cases_lag_1", "cases_rolling_mean_2",
+    "cases_trend_1", "log_cases_current", "growth_ratio", "log_growth",
+    "week_sin", "week_cos", "temperature_mean", "relative_humidity_mean",
+    "precipitation_sum"
+  ],
+  "evaluation": {"minimum_training_weeks": 10, "holdout_weeks": 6},
+  "search": [
+    {"n_estimators": 300, "max_depth": 2, "min_samples_leaf": 4, "max_features": "sqrt"},
+    {"n_estimators": 500, "max_depth": 2, "min_samples_leaf": 3, "max_features": 0.7},
+    {"n_estimators": 300, "max_depth": 3, "min_samples_leaf": 3, "max_features": "sqrt"},
+    {"n_estimators": 500, "max_depth": 3, "min_samples_leaf": 2, "max_features": 0.7},
+    {"n_estimators": 300, "max_depth": 3, "min_samples_leaf": 4, "max_features": 1.0},
+    {"n_estimators": 500, "max_depth": 4, "min_samples_leaf": 3, "max_features": "sqrt"},
+    {"n_estimators": 300, "max_depth": 4, "min_samples_leaf": 2, "max_features": 0.7},
+    {"n_estimators": 500, "max_depth": 4, "min_samples_leaf": 4, "max_features": 1.0}
+  ],
+  "model_defaults": {"min_samples_split": 2, "random_state": 20260810, "n_jobs": 1},
+  "output": "data/processed/department_temporal_delta_report.json"
+}

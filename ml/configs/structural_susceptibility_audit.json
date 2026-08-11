@@ -1,0 +1,6 @@
+{
+  "pipeline": {"name": "structural_susceptibility_audit", "version": "0.3.1"},
+  "input": "data/processed/structural_susceptibility.parquet",
+  "features": ["population", "population_density", "households", "dwellings", "area_km2"],
+  "output": "data/processed/structural_susceptibility_audit.json"
+}

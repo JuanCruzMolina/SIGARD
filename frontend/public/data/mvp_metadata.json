@@ -1,0 +1,26 @@
+{
+  "disclaimers": {
+    "experimental_spatial": "Representa una distribución territorial sintética utilizada para demostrar el comportamiento espacial del prototipo.",
+    "spatial_validation": "La validación espacial real permanece pendiente hasta disponer de casos epidemiológicos territorialmente referenciados.",
+    "territorial_context": "Resume contexto territorial relativo y no constituye una estimación epidemiológica de riesgo."
+  },
+  "experimental_spatial": {
+    "data_type": "synthetic",
+    "dynamic": true,
+    "label": "Simulación espacial experimental",
+    "scenario": "spatial_clusters"
+  },
+  "project": "SIGARD",
+  "prototype_status": "academic_mvp",
+  "temporal_model": {
+    "name": "RandomForestRegressor",
+    "validation": "exploratory",
+    "variant": "rf_minimal_climate_log_delta"
+  },
+  "territorial_context": {
+    "data_type": "real",
+    "dynamic": false,
+    "label": "Contexto territorial relativo"
+  },
+  "territory": "Departamento Capital, La Rioja"
+}

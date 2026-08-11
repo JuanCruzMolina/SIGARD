@@ -26,6 +26,12 @@ sigard-evaluate-baseline = "sigard_ml.evaluation.pipeline:main"
 sigard-train-random-forest = "sigard_ml.evaluation.random_forest_pipeline:main"
 sigard-adjust-random-forest = "sigard_ml.evaluation.random_forest_variants_pipeline:main"
 sigard-export-mvp = "sigard_ml.presentation.mvp_export:main"
+sigard-train-department-temporal = "sigard_ml.evaluation.department_temporal_pipeline:main"
+sigard-compare-department-temporal = "sigard_ml.evaluation.department_temporal_variants:main"
+sigard-evaluate-department-delta = "sigard_ml.evaluation.department_temporal_delta:main"
+sigard-build-territorial-analysis = "sigard_ml.territorial.analysis:main"
+sigard-audit-structural-index = "sigard_ml.territorial.audit:main"
+sigard-export-frontend-mvp = "sigard_ml.export.frontend_mvp:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

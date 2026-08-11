@@ -1,0 +1,31 @@
+{
+  "pipeline": {"name": "department_temporal_random_forest", "version": "0.2.0"},
+  "input": "data/processed/department_weekly.parquet",
+  "data_version": "department_weekly_v0.1.0",
+  "features": [
+    "cases_current_week", "cases_lag_1", "cases_lag_2", "cases_lag_3",
+    "cases_rolling_mean_2", "cases_rolling_mean_3", "cases_rolling_mean_4",
+    "cases_trend_1", "cases_trend_2", "temperature_min_mean",
+    "temperature_max_mean", "temperature_mean", "relative_humidity_mean",
+    "precipitation_sum", "temperature_mean_lag_1", "relative_humidity_lag_1",
+    "precipitation_lag_1", "precipitation_rolling_sum_2",
+    "precipitation_rolling_sum_3", "epidemiological_week", "week_sin", "week_cos"
+  ],
+  "evaluation": {"minimum_training_weeks": 10, "final_holdout_weeks": 6},
+  "search": [
+    {"n_estimators": 200, "max_depth": 3, "min_samples_leaf": 3, "max_features": "sqrt"},
+    {"n_estimators": 500, "max_depth": 3, "min_samples_leaf": 2, "max_features": 0.7},
+    {"n_estimators": 500, "max_depth": 5, "min_samples_leaf": 3, "max_features": "sqrt"},
+    {"n_estimators": 200, "max_depth": 5, "min_samples_leaf": 2, "max_features": 0.7},
+    {"n_estimators": 500, "max_depth": 8, "min_samples_leaf": 3, "max_features": 1.0},
+    {"n_estimators": 200, "max_depth": null, "min_samples_leaf": 3, "max_features": "sqrt"}
+  ],
+  "model_defaults": {"min_samples_split": 2, "random_state": 20260810, "n_jobs": 1},
+  "outputs": {
+    "dataset": "data/processed/department_temporal_modeling.parquet",
+    "quality_report": "data/processed/department_temporal_modeling_quality_report.json",
+    "backtest": "data/processed/department_temporal_backtest.json",
+    "summary": "data/processed/department_temporal_model_summary.json",
+    "artifact": "ml/artifacts/department_temporal_random_forest.joblib"
+  }
+}

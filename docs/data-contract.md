@@ -1,5 +1,36 @@
 # Contrato conceptual de datos de SIGARD v0.1
 
+## Contrato frontend de Iteración 10
+
+- `temporal_predictions.json`: predicciones departamentales publicables sólo
+  para semanas alineadas con la simulación espacial.
+- `available_weeks.json`: única fuente futura del selector temporal.
+- `territorial_context.geojson`: contexto territorial real, estable y no
+  epidemiológico.
+- `experimental_spatial_history.geojson`: simulación sintética dinámica.
+- `model_evaluation.json`: métricas y seis semanas completas del holdout.
+- `mvp_metadata.json`: identidad metodológica y advertencias del MVP.
+
+La alineación exige coincidencia exacta de cutoff, inicio y fin de semana, y 263
+radios experimentales. Los artefactos legacy actuales se preservan hasta que
+React migre al nuevo contrato.
+
+## Productos territoriales de Iteración 9
+
+`territorial_context` contiene una fila por radio y geometría censal real. Su
+score combina en partes iguales el promedio de ranks de población, hogares y
+viviendas, y el rank de densidad. Superficie queda como atributo descriptivo y
+no participa del score. No contiene casos ni predicciones epidemiológicas.
+
+`experimental_spatial_history` contiene una fila por radio y semana objetivo.
+Su score reutiliza una predicción del escenario sintético `spatial_clusters`,
+con percentil recalculado dentro de cada semana. Su condición es experimental y
+sintética; nunca debe denominarse observación o caso real predicho por radio.
+
+Los dos productos son independientes y sus scores no se suman. El Random Forest
+temporal departamental responde cuántos casos se esperan en Capital, mientras
+las capas territoriales sólo expresan posiciones relativas entre radios.
+
 ## Unidad analítica
 
 La fila principal del dataset de modelado representa un único **radio censal en
@@ -106,6 +137,16 @@ pueden usarse como features, labels observados ni evidencia de domicilios.
 sintéticas.
 
 ## Dataset de modelado
+
+### Dataset temporal departamental v0.2
+
+`department_temporal_modeling.parquet` tiene unidad **departamento Capital -
+semana epidemiológica**. Cada fila usa `cutoff_week`, features disponibles hasta
+ese corte y el total oficial `target_cases_next_week` de la semana exactamente
+siguiente. Excluye `missing_record`, `outside_source_coverage`, identificadores y
+targets espaciales, geometrías y asignaciones sintéticas. Los lags y rolling no
+atraviesan discontinuidades. Esta predicción temporal agregada no valida ninguna
+distribución territorial.
 
 La variable objetivo para una fila del radio en la semana `t` es
 `casos_asignados_sinteticos` del mismo radio en `t + 1`. Las features sólo

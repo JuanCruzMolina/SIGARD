@@ -1,5 +1,67 @@
 # Pipelines reproducibles de SIGARD
 
+## Iteración 10: contrato frontend
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.export.frontend_mvp `
+  --config ml/configs/frontend_mvp_export.json
+```
+
+El export sólo lee artefactos aprobados, valida la intersección temporal y copia
+capas GeoJSON sin recalcular scores ni entrenar modelos. Los tres exports legacy
+se conservan para que el frontend actual siga funcionando hasta Iteración 11.
+
+## Iteración 9: análisis territorial
+
+La auditoría 9.1 evalúa correlaciones, redundancia, contribución y sensibilidad
+leave-one-out del índice estructural sin utilizar epidemiología. Produce
+`structural_susceptibility_audit.json`; sus alternativas A/B/C/D son diagnósticas
+y no reemplazan automáticamente la fórmula vigente.
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.territorial.analysis `
+  --config ml/configs/territorial_analysis.json
+```
+
+Genera dos familias separadas: contexto territorial relativo con atributos
+censales reales y una historia espacial experimental que reutiliza, sin
+reentrenamiento, el escenario sintético existente. Ambas calculan ranks
+deterministas independientes; no se combinan con el total temporal ni se
+interpretan como probabilidad, incidencia o localización real de casos.
+
+Desde Iteración 9.2 el artefacto vigente es `territorial_context.*`. Su score
+pondera 50% magnitud demográfico-residencial y 50% densidad. Los artefactos
+`structural_susceptibility.*` quedan congelados sólo como referencia histórica
+de la auditoría 9.1 y ya no son sobrescritos por el pipeline.
+
+## Iteración temporal departamental v0.2
+
+La Iteración 8.1 compara sobre el mismo holdout congelado persistencia, RF con
+22 features, RF reducido y RF reducido con target `log1p`. La selección de
+hiperparámetros ocurre únicamente mediante walk-forward de development y se
+publica en `department_temporal_variants_report.json`. La auditoría de los CSV
+originales no permite interpretar registros ausentes como ceros: son tablas de
+estratos positivos y no enumeran todas las jurisdicciones por semana.
+
+La Iteración 8.2 añade dos Random Forest que predicen el cambio
+`log1p(t+1)-log1p(t)`, usando sets minimal y minimal con clima. La reconstrucción
+se realiza con `expm1` sin calibración ni clipping, y conserva exactamente los
+hashes de development y holdout de 8.1.
+
+La etapa independiente `department_temporal_random_forest` predice el total
+oficial de Capital de la semana siguiente, sin usar radios ni simulación espacial:
+
+```powershell
+ml\venv\Scripts\python -m sigard_ml.evaluation.department_temporal_pipeline `
+  --config ml/configs/department_temporal_random_forest.json
+```
+
+Usa walk-forward expansivo, selecciona una variante regularizada sólo en
+development y conserva seis semanas finales como holdout. Debido a la cantidad
+limitada y las discontinuidades de semanas oficiales, la evaluación se considera
+exploratoria. Los ausentes nunca se rellenan con cero y el clima de la semana
+objetivo no se utiliza.
+
 ## Etapa 7: artefactos estáticos del MVP
 
 Esta etapa no entrena ni carga el modelo: filtra las predicciones ya generadas

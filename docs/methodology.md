@@ -1,5 +1,30 @@
 # Metodología de SIGARD v0.1
 
+## Arquitectura vigente
+
+El contrato estático para frontend publica sólo la intersección entre semanas
+con predicción temporal departamental y semanas con simulación espacial
+experimental. El contexto territorial, por ser estable, no restringe el
+selector. La validación temporal conserva todo el holdout aunque algunas semanas
+no sean seleccionables territorialmente.
+
+SIGARD separa tres preguntas que no deben fusionarse en un único score:
+
+1. La predicción temporal departamental usa Random Forest para estimar el total
+   oficial de Capital de la semana siguiente. No predice ubicaciones.
+2. El **contexto territorial relativo** ordena los 263 radios mediante dos
+   componentes: magnitud demográfico-residencial y densidad poblacional, con
+   peso 50/50. Superficie queda sólo como atributo descriptivo. No representa
+   incidencia, probabilidad de dengue ni riesgo sanitario oficial.
+3. La **simulación espacial experimental** reutiliza predicciones del escenario
+   sintético `spatial_clusters` como demostración semanal. No son observaciones,
+   casos reales por radio ni validación epidemiológica espacial.
+
+Ambas capas territoriales asignan percentiles con orden total determinista por
+`score, radio_id`; sus cuatro niveles son posiciones relativas y no umbrales
+sanitarios. La validación espacial con epidemiología georreferenciada real queda
+pendiente.
+
 ## Pregunta técnica
 
 Para cada radio censal y semana epidemiológica `t`, SIGARD busca estimar la

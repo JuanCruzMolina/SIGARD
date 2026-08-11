@@ -1,0 +1,128 @@
+{
+  "backtest": [
+    {
+      "cutoff_date": "2024-05-18",
+      "official_cases": 57.0,
+      "persistence_baseline_absolute_error": 96.0,
+      "persistence_baseline_prediction": 153.0,
+      "rf_minimal_climate_log_delta_absolute_error": 52.56663430185283,
+      "rf_minimal_climate_log_delta_prediction": 109.56663430185283,
+      "rf_minimal_log_delta_absolute_error": 51.40581994957704,
+      "rf_minimal_log_delta_prediction": 108.40581994957704,
+      "rf_reduced_absolute_error": 218.69503407834014,
+      "rf_reduced_log_target_absolute_error": 166.67732022490844,
+      "rf_reduced_log_target_prediction": 223.67732022490844,
+      "rf_reduced_prediction": 275.69503407834014,
+      "target_week_end": "2024-05-25",
+      "target_week_start": "2024-05-19"
+    },
+    {
+      "cutoff_date": "2024-05-25",
+      "official_cases": 20.0,
+      "persistence_baseline_absolute_error": 37.0,
+      "persistence_baseline_prediction": 57.0,
+      "rf_minimal_climate_log_delta_absolute_error": 16.701255978750687,
+      "rf_minimal_climate_log_delta_prediction": 36.70125597875069,
+      "rf_minimal_log_delta_absolute_error": 17.96747383564861,
+      "rf_minimal_log_delta_prediction": 37.96747383564861,
+      "rf_reduced_absolute_error": 93.79839562154388,
+      "rf_reduced_log_target_absolute_error": 26.479067734758104,
+      "rf_reduced_log_target_prediction": 46.479067734758104,
+      "rf_reduced_prediction": 113.79839562154388,
+      "target_week_end": "2024-06-01",
+      "target_week_start": "2024-05-26"
+    },
+    {
+      "cutoff_date": "2024-06-01",
+      "official_cases": 8.0,
+      "persistence_baseline_absolute_error": 12.0,
+      "persistence_baseline_prediction": 20.0,
+      "rf_minimal_climate_log_delta_absolute_error": 4.102150356951947,
+      "rf_minimal_climate_log_delta_prediction": 12.102150356951947,
+      "rf_minimal_log_delta_absolute_error": 6.769557745311463,
+      "rf_minimal_log_delta_prediction": 14.769557745311463,
+      "rf_reduced_absolute_error": 18.454549202663504,
+      "rf_reduced_log_target_absolute_error": 6.573689743750558,
+      "rf_reduced_log_target_prediction": 14.573689743750558,
+      "rf_reduced_prediction": 26.454549202663504,
+      "target_week_end": "2024-06-08",
+      "target_week_start": "2024-06-02"
+    },
+    {
+      "cutoff_date": "2024-06-08",
+      "official_cases": 1.0,
+      "persistence_baseline_absolute_error": 7.0,
+      "persistence_baseline_prediction": 8.0,
+      "rf_minimal_climate_log_delta_absolute_error": 3.0720465997616655,
+      "rf_minimal_climate_log_delta_prediction": 4.0720465997616655,
+      "rf_minimal_log_delta_absolute_error": 4.673679788811156,
+      "rf_minimal_log_delta_prediction": 5.673679788811156,
+      "rf_reduced_absolute_error": 29.691387025478825,
+      "rf_reduced_log_target_absolute_error": 8.699018174739154,
+      "rf_reduced_log_target_prediction": 9.699018174739154,
+      "rf_reduced_prediction": 30.691387025478825,
+      "target_week_end": "2024-06-15",
+      "target_week_start": "2024-06-09"
+    },
+    {
+      "cutoff_date": "2024-06-15",
+      "official_cases": 1.0,
+      "persistence_baseline_absolute_error": 0.0,
+      "persistence_baseline_prediction": 1.0,
+      "rf_minimal_climate_log_delta_absolute_error": 0.3494243137987483,
+      "rf_minimal_climate_log_delta_prediction": 0.6505756862012517,
+      "rf_minimal_log_delta_absolute_error": 0.7705609468782696,
+      "rf_minimal_log_delta_prediction": 0.22943905312173044,
+      "rf_reduced_absolute_error": 23.285473627215584,
+      "rf_reduced_log_target_absolute_error": 5.729463097078423,
+      "rf_reduced_log_target_prediction": 6.729463097078423,
+      "rf_reduced_prediction": 24.285473627215584,
+      "target_week_end": "2024-06-22",
+      "target_week_start": "2024-06-16"
+    },
+    {
+      "cutoff_date": "2024-06-22",
+      "official_cases": 1.0,
+      "persistence_baseline_absolute_error": 0.0,
+      "persistence_baseline_prediction": 1.0,
+      "rf_minimal_climate_log_delta_absolute_error": 1.0,
+      "rf_minimal_climate_log_delta_prediction": 0.0,
+      "rf_minimal_log_delta_absolute_error": 0.6354450952470457,
+      "rf_minimal_log_delta_prediction": 0.36455490475295427,
+      "rf_reduced_absolute_error": 16.985810196224563,
+      "rf_reduced_log_target_absolute_error": 2.8462627002406427,
+      "rf_reduced_log_target_prediction": 3.8462627002406427,
+      "rf_reduced_prediction": 17.985810196224563,
+      "target_week_end": "2024-06-29",
+      "target_week_start": "2024-06-23"
+    }
+  ],
+  "dataset": {
+    "development_predictions": 16,
+    "holdout_predictions": 6,
+    "modelable_rows": 32,
+    "official_weeks": 41
+  },
+  "metrics": {
+    "mae_reduction_vs_baseline_pct": 48.82137397952902,
+    "persistence_baseline": {
+      "bias": 25.333333333333332,
+      "direction_accuracy": 0.3333333333333333,
+      "mae": 25.333333333333332,
+      "medae": 9.5,
+      "rmse": 42.38317276152569
+    },
+    "random_forest": {
+      "bias": 12.515443820586398,
+      "direction_accuracy": 0.6666666666666666,
+      "mae": 12.965251925185981,
+      "medae": 3.5870984783568063,
+      "rmse": 22.618466637925554
+    }
+  },
+  "model": {
+    "evaluation_status": "exploratory",
+    "name": "RandomForestRegressor",
+    "variant": "rf_minimal_climate_log_delta"
+  }
+}

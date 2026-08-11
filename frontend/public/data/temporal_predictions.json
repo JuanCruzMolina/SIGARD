@@ -1,0 +1,53 @@
+{
+  "model": {
+    "evaluation_status": "exploratory",
+    "name": "RandomForestRegressor",
+    "variant": "rf_minimal_climate_log_delta"
+  },
+  "predictions": [
+    {
+      "absolute_error": 4.102150356951947,
+      "cutoff_date": "2024-06-01",
+      "official_cases": 8.0,
+      "persistence_absolute_error": 12.0,
+      "persistence_prediction": 20.0,
+      "predicted_cases": 12.102150356951947,
+      "predicted_cases_rounded": 12,
+      "target_week_end": "2024-06-08",
+      "target_week_start": "2024-06-02"
+    },
+    {
+      "absolute_error": 3.0720465997616655,
+      "cutoff_date": "2024-06-08",
+      "official_cases": 1.0,
+      "persistence_absolute_error": 7.0,
+      "persistence_prediction": 8.0,
+      "predicted_cases": 4.0720465997616655,
+      "predicted_cases_rounded": 4,
+      "target_week_end": "2024-06-15",
+      "target_week_start": "2024-06-09"
+    },
+    {
+      "absolute_error": 0.3494243137987483,
+      "cutoff_date": "2024-06-15",
+      "official_cases": 1.0,
+      "persistence_absolute_error": 0.0,
+      "persistence_prediction": 1.0,
+      "predicted_cases": 0.6505756862012517,
+      "predicted_cases_rounded": 1,
+      "target_week_end": "2024-06-22",
+      "target_week_start": "2024-06-16"
+    },
+    {
+      "absolute_error": 1.0,
+      "cutoff_date": "2024-06-22",
+      "official_cases": 1.0,
+      "persistence_absolute_error": 0.0,
+      "persistence_prediction": 1.0,
+      "predicted_cases": 0.0,
+      "predicted_cases_rounded": 0,
+      "target_week_end": "2024-06-29",
+      "target_week_start": "2024-06-23"
+    }
+  ]
+}

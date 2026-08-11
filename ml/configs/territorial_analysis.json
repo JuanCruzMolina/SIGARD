@@ -1,0 +1,22 @@
+{
+  "pipeline": {"name": "territorial_analysis", "version": "0.3.2"},
+  "inputs": {
+    "territorial": "data/processed/territorial_master.parquet",
+    "experimental_predictions": "data/processed/random_forest_variants_predictions.parquet"
+  },
+  "expected_radios": 263,
+  "structural_features": {
+    "population": "poblacion",
+    "population_density": "densidad_poblacional",
+    "households": "hogares",
+    "dwellings": "viviendas",
+    "area_km2": "superficie_km2"
+  },
+  "skewness_log1p_threshold": 1.0,
+  "experimental_variant": "rf_reduced_features",
+  "outputs": {
+    "context_parquet": "data/processed/territorial_context.parquet",
+    "context_geojson": "data/processed/territorial_context.geojson",
+    "context_report": "data/processed/territorial_context_report.json"
+  }
+}

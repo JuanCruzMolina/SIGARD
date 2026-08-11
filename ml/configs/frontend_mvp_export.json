@@ -1,0 +1,27 @@
+{
+  "pipeline": {"name": "frontend_mvp_export", "version": "1.0.0"},
+  "inputs": {
+    "temporal_delta_report": "data/processed/department_temporal_delta_report.json",
+    "temporal_backtest": "data/processed/department_temporal_backtest.json",
+    "temporal_summary": "data/processed/department_temporal_model_summary.json",
+    "territorial_context": "data/processed/territorial_context.geojson",
+    "territorial_context_report": "data/processed/territorial_context_report.json",
+    "experimental_history": "data/processed/experimental_spatial_history.geojson",
+    "experimental_report": "data/processed/experimental_spatial_report.json"
+  },
+  "expected": {"radios": 263, "experimental_weeks": 4, "holdout_predictions": 6, "temporal_variant": "rf_minimal_climate_log_delta", "scenario": "spatial_clusters"},
+  "frontend_outputs": {
+    "temporal_predictions": "frontend/public/data/temporal_predictions.json",
+    "available_weeks": "frontend/public/data/available_weeks.json",
+    "territorial_context": "frontend/public/data/territorial_context.geojson",
+    "experimental_history": "frontend/public/data/experimental_spatial_history.geojson",
+    "model_evaluation": "frontend/public/data/model_evaluation.json",
+    "metadata": "frontend/public/data/mvp_metadata.json"
+  },
+  "quality_report": "data/processed/frontend_mvp_export_report.json",
+  "legacy_frontend_files": [
+    "frontend/public/data/mvp_prediction.geojson",
+    "frontend/public/data/mvp_prediction_summary.json",
+    "frontend/public/data/mvp_backtest.json"
+  ]
+}
