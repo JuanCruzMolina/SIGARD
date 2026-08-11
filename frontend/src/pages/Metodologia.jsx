@@ -1,3 +1,125 @@
 import { MethodNotice, PageIntro } from '../components/SigardComponents'
-export default function Metodologia({ data }) { const config = data.summary.configuration; return <div className="content-wrap narrow"><PageIntro eyebrow="Transparencia del modelo" title="Metodología"><p>Cómo se construye la predicción semanal y qué alcance tiene la información presentada.</p></PageIntro><MethodNotice>{data.summary.methodological_warning}</MethodNotice><div className="method-flow"><article><span>01</span><div><h2>Datos temporales oficiales</h2><p>El modelo utiliza totales oficiales agregados por semana para construir el panel temporal de entrenamiento y validación.</p><b className="source-real">Dato real</b></div></article><article><span>02</span><div><h2>Variables de contexto</h2><p>Se incorporan rezagos de casos, promedios móviles, vecinos y variables meteorológicas como temperatura, humedad y precipitación.</p><b className="source-derived">Variable del modelo</b></div></article><article><span>03</span><div><h2>Distribución espacial</h2><p>Los totales departamentales se asignan espacialmente a radios mediante un escenario sintético de clusters para habilitar la visualización territorial.</p><b className="source-synthetic">Asignación sintética</b></div></article><article><span>04</span><div><h2>Clasificación relativa</h2><p>Los niveles de riesgo dividen la predicción de la semana en cuantiles. Son categorías visuales relativas, no umbrales sanitarios oficiales.</p><b className="source-relative">Categoría relativa</b></div></article></div><section className="panel config-panel"><span className="eyebrow">Configuración publicada</span><h2>{data.summary.model.name}</h2><dl><div><dt>Versión de datos</dt><dd>{config.data_version}</dd></div><div><dt>Escenario espacial</dt><dd>{config.simulation_scenario}</dd></div><div><dt>Radios modelados</dt><dd>{data.summary.number_of_radios}</dd></div><div><dt>Etiquetas de riesgo</dt><dd>{config.risk.labels.join(', ')}</dd></div></dl></section><section className="panel scope-panel"><span className="eyebrow">Alcance de los datos</span><h2>Datos reales y sintéticos</h2><div className="scope-grid"><div className="scope-col real"><h3>Datos reales</h3><ul><li>Radios censales de La Rioja Capital</li><li>Población</li><li>Hogares</li><li>Viviendas</li><li>Clima (temperatura, humedad, precipitación)</li><li>Casos departamentales oficiales</li></ul></div><div className="scope-col synthetic"><h3>Datos sintéticos</h3><ul><li>Distribución territorial de los casos entre los radios</li></ul></div></div></section><section className="panel scope-panel"><span className="eyebrow">Próximos pasos</span><h2>¿Qué cambiaría con datos reales?</h2><ul className="scope-steps"><li>Se reemplaza la asignación sintética por casos territorialmente referenciados.</li><li>Se incorporan casos con ubicación real a nivel de radio.</li><li>Se reentrena el modelo con esa distribución observada.</li><li>Se realiza una validación espacial real, hoy pendiente.</li></ul></section></div> }
 
+const FlowArrow = () => <span className="flow-arrow" aria-hidden="true">↓</span>
+
+function DataCard({ className, title, subtitle, items, footer }) {
+  return <article className={`source-card ${className}`}>
+    <h3>{title}</h3>
+    <strong>{subtitle}</strong>
+    <ul>{items.map((item) => <li key={item}>{item}</li>)}</ul>
+    <p>{footer}</p>
+  </article>
+}
+
+export default function Metodologia() {
+  return <div className="content-wrap narrow methodology-page">
+    <PageIntro eyebrow="Transparencia del prototipo" title="Metodología">
+      <p>SIGARD combina una predicción temporal de casos con información territorial real y una simulación espacial experimental.</p>
+    </PageIntro>
+
+    <MethodNotice title="Alcance del prototipo">
+      La predicción temporal utiliza registros históricos reales para estimar los casos esperados en el departamento Capital durante la semana siguiente. El análisis territorial combina información censal y cartográfica real con una simulación espacial experimental, utilizada porque todavía no se dispone de la ubicación territorial de los casos observados.
+    </MethodNotice>
+
+    <section className="architecture" aria-labelledby="architecture-title">
+      <div className="architecture-root" id="architecture-title">SIGARD</div>
+      <div className="architecture-branches">
+        <article className="architecture-branch temporal-branch">
+          <header>Predicción temporal</header>
+          <div className="flow-step">
+            <strong>Datos históricos observados</strong>
+            <ul>
+              <li>Casos oficiales de dengue</li>
+              <li>Información climática</li>
+              <li>Evolución entre semanas</li>
+            </ul>
+          </div>
+          <FlowArrow />
+          <div className="flow-step compact"><strong>Random Forest</strong></div>
+          <FlowArrow />
+          <div className="flow-result">Casos esperados para la próxima semana en Capital</div>
+        </article>
+
+        <article className="architecture-branch territorial-branch">
+          <header>Análisis territorial</header>
+          <div className="territorial-components">
+            <div className="territorial-component">
+              <span>Contexto territorial</span>
+              <strong>Datos censales y cartográficos</strong>
+              <FlowArrow />
+              <b>Contexto territorial relativo</b>
+              <p>Describe características del territorio a partir de información real.</p>
+            </div>
+            <div className="territorial-component synthetic">
+              <span>Simulación espacial</span>
+              <strong>Casos semanales observados<br />+<br />distribución territorial simulada</strong>
+              <FlowArrow />
+              <b>Simulación espacial experimental</b>
+              <p>Permite demostrar el comportamiento territorial del prototipo mientras no se dispone de casos georreferenciados.</p>
+            </div>
+          </div>
+        </article>
+      </div>
+      <div className="architecture-convergence" aria-hidden="true"><span>↘</span><span>↙</span></div>
+      <div className="flow-output">Presentación SIGARD</div>
+      <p className="independence-note">La predicción temporal y el análisis territorial son componentes conceptualmente independientes que SIGARD presenta de manera conjunta.</p>
+    </section>
+
+    <section className="panel temporal-explainer">
+      <span className="eyebrow">Predicción temporal</span>
+      <h2>Random Forest</h2>
+      <p>El modelo analiza la evolución histórica de los casos y variables climáticas para estimar la cantidad esperada de casos en el departamento Capital durante la semana siguiente.</p>
+      <p>Para capturar los cambios entre semanas, el modelo aprende la variación relativa respecto del período anterior y luego reconstruye la cantidad esperada.</p>
+    </section>
+
+    <section className="panel data-origins">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Fuentes y alcance</span>
+          <h2>De dónde provienen los datos</h2>
+          <p>El prototipo combina información observada con datos simulados exclusivamente para el componente espacial.</p>
+        </div>
+      </div>
+      <div className="source-grid">
+        <DataCard className="observed" title="Datos observados" subtitle="Epidemiología y clima" items={['Casos históricos oficiales de dengue', 'Temperatura', 'Humedad relativa', 'Precipitaciones']} footer="Estos datos se utilizan para construir y evaluar la predicción temporal." />
+        <DataCard className="territorial" title="Datos territoriales" subtitle="Censo y cartografía" items={['Población', 'Densidad poblacional', 'Hogares', 'Viviendas', 'Radios censales', 'Superficie territorial']} footer="Estos datos describen las características relativas de los 263 radios censales analizados." />
+        <DataCard className="simulated" title="Datos espaciales simulados" subtitle="Experimentación territorial" items={['Asignación semanal simulada de casos entre radios censales', 'Patrones de concentración territorial simulados', 'Historial territorial experimental por semana', 'Variables temporales derivadas para la experimentación espacial', 'Índice espacial experimental']} footer="El índice espacial experimental presentado en el mapa deriva de esta estructura simulada y no constituye validación epidemiológica real." />
+      </div>
+      <div className="simulation-notice">
+        <h3>¿Por qué se utiliza una simulación espacial?</h3>
+        <p>Actualmente se dispone de casos observados a nivel departamental, pero no de la ubicación georreferenciada necesaria para entrenar y validar un modelo espacial real por radio censal. Por ese motivo, SIGARD utiliza una distribución territorial simulada para demostrar el funcionamiento espacial del prototipo sin presentarla como evidencia epidemiológica observada.</p>
+        <strong>Los casos totales semanales utilizados como referencia son observados; la ubicación de esos casos dentro del territorio es la parte simulada.</strong>
+      </div>
+    </section>
+
+    <section className="panel future-panel">
+      <span className="eyebrow">Evolución del componente espacial</span>
+      <h2>¿Qué cambiaría con datos territoriales reales?</h2>
+      <div className="future-grid">
+        <article>
+          <h3>Prototipo actual</h3>
+          <div>Casos oficiales<br />por semana y departamento</div>
+          <FlowArrow />
+          <strong>Predicción temporal<br />con datos observados</strong>
+          <span className="future-plus">+</span>
+          <div>No se conoce la ubicación<br />de cada caso</div>
+          <FlowArrow />
+          <div>Distribución territorial<br />simulada</div>
+          <FlowArrow />
+          <strong>Simulación espacial experimental</strong>
+        </article>
+        <article className="georeferenced">
+          <h3>Con datos georreferenciados</h3>
+          <div>Casos oficiales<br />con referencia territorial</div>
+          <FlowArrow />
+          <div>Entrenamiento del componente espacial<br />con observaciones reales</div>
+          <FlowArrow />
+          <strong>Validación territorial real</strong>
+          <FlowArrow />
+          <strong>Predicción espacial basada en datos observados</strong>
+        </article>
+      </div>
+      <p className="future-message">La predicción temporal departamental puede continuar funcionando como un componente independiente. Los datos georreferenciados permitirían reemplazar la simulación espacial por un modelo entrenado y validado sobre observaciones territoriales reales.</p>
+    </section>
+  </div>
+}

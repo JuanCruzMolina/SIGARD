@@ -1,108 +1,36 @@
 import { useEffect, useMemo, useState } from 'react'
 import { GeoJSON, MapContainer, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
-import { formatDate, formatNumber, getPredictedCases, getRadioId, getRadioProperties, getRisk, riskColors, riskLabel } from '../services/sigardData'
+import { formatDate, formatDateRange, formatNumber, levelColors, levelLabel } from '../services/sigardData'
 import 'leaflet/dist/leaflet.css'
 
-const RISK_DISCLAIMER = 'Clasificación relativa dentro de la semana seleccionada. No corresponde a un umbral sanitario oficial.'
+export function PageIntro({ eyebrow, title, children }) { return <div className="page-intro"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{children && <p>{children}</p>}</div></div> }
+export function MethodNotice({ children, title = 'Nota metodológica' }) { return <aside className="method-notice"><span className="notice-icon">i</span><div><strong>{title}</strong><p>{children}</p></div></aside> }
+export function StatCard({ label, value, detail, accent = '' }) { return <article className={`stat-card ${accent}`}><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</article> }
 
-export function PageIntro({ eyebrow, title, children }) {
-  return <div className="page-intro"><div><span className="eyebrow">{eyebrow}</span><h1>{title}</h1>{children && <p>{children}</p>}</div></div>
+export function TemporalControls({ weeks, selectedCutoffDate, onCutoffChange, selectedWeek, territorialView, onViewChange, showView = true }) {
+  return <section className="data-controls" aria-label="Controles de visualización"><div className="week-control"><label htmlFor="cutoff-week">Semana de corte</label><select id="cutoff-week" value={selectedCutoffDate} onChange={(event) => onCutoffChange(event.target.value)}>{weeks.map((week) => <option key={week.cutoff_date} value={week.cutoff_date}>{formatDate(week.cutoff_date)}</option>)}</select><small>Semana objetivo: {formatDateRange(selectedWeek.target_week_start, selectedWeek.target_week_end)}</small></div>{showView && <div className="view-control"><span>Vista territorial</span><div className="segmented"><button type="button" aria-pressed={territorialView === 'context'} onClick={() => onViewChange('context')}>Contexto territorial</button><button type="button" aria-pressed={territorialView === 'simulation'} onClick={() => onViewChange('simulation')}>Simulación espacial</button></div></div>}</section>
 }
 
-export function MethodNotice({ children }) {
-  return <aside className="method-notice"><span className="notice-icon">i</span><div><strong>Nota metodológica</strong><p>{children}</p></div></aside>
-}
+export function LevelLegend({ view }) { const title = view === 'context' ? 'Contexto territorial relativo' : 'Nivel relativo experimental'; return <div className="risk-legend" aria-label={title}><strong>{title}</strong>{Object.entries(levelColors).map(([key, color]) => <span key={key}><i style={{ backgroundColor: color }} />{levelLabel(key)}</span>)}<small>Clasificación relativa por percentil. No corresponde a un umbral sanitario oficial.</small></div> }
+function FitBounds({ bounds }) { const map = useMap(); useEffect(() => { if (bounds?.isValid()) map.fitBounds(bounds, { padding: [16, 16] }) }, [bounds, map]); return null }
+function ResetView({ bounds }) { const map = useMap(); return <button className="map-reset" type="button" onClick={() => bounds?.isValid() && map.fitBounds(bounds, { padding: [16, 16] })}>Restablecer vista</button> }
 
-export function StatCard({ label, value, detail, accent = '' }) {
-  return <article className={`stat-card ${accent}`}><span>{label}</span><strong>{value}</strong>{detail && <small>{detail}</small>}</article>
-}
+function tooltipHtml(props, view) { const value = view === 'context' ? `Percentil territorial: ${formatNumber(props.percentile, 1)}` : `Índice espacial experimental: ${formatNumber(props.experimental_spatial_score, 3)}`; return `<strong>Radio ${props.radio_id}</strong><br/>${value}<br/>Nivel relativo: ${levelLabel(props.relative_level)}` }
 
-export function RiskLegend() {
-  return <div className="risk-legend" aria-label="Leyenda de niveles de riesgo relativo">{Object.entries(riskColors).map(([key, color]) => <span key={key}><i style={{ backgroundColor: color }} />{riskLabel(key)}</span>)}</div>
-}
-
-function FitBounds({ bounds }) {
-  const map = useMap()
-  useEffect(() => {
-    if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [16, 16] })
-  }, [bounds, map])
-  return null
-}
-
-function ResetView({ bounds }) {
-  const map = useMap()
-  return <button className="map-reset" type="button" onClick={() => { if (bounds && bounds.isValid()) map.fitBounds(bounds, { padding: [16, 16] }) }}>Restablecer vista</button>
-}
-
-function tooltipHtml(props) {
-  return `<strong>Radio ${getRadioId(props)}</strong><br/>Población: ${formatNumber(props.population, 0)}<br/>Densidad poblacional: ${formatNumber(props.population_density, 2)}<br/>Casos estimados: ${formatNumber(getPredictedCases(props), 3)}<br/>Nivel relativo estimado: ${riskLabel(getRisk(props))}`
-}
-
-export function RiskMap({ geojson, compact = false, onSelect }) {
+export function TerritorialMap({ geojson, view, disclaimer, compact = false }) {
   const [selected, setSelected] = useState(null)
-  const bounds = useMemo(() => (geojson ? L.geoJSON(geojson).getBounds() : null), [geojson])
-
-  const styleFor = (feature) => ({
-    color: '#ffffff',
-    weight: 1,
-    fillColor: riskColors[getRisk(feature.properties)] || riskColors.very_low,
-    fillOpacity: 0.72,
-  })
-
-  const onEachFeature = (feature, layer) => {
-    const props = getRadioProperties(feature)
-    layer.bindTooltip(tooltipHtml(props), { sticky: true, direction: 'top' })
-    layer.on({
-      mouseover: (event) => event.target.setStyle({ weight: 2.5, fillOpacity: 0.92 }),
-      mouseout: (event) => event.target.setStyle({ weight: 1, fillOpacity: 0.72 }),
-      click: () => {
-        const radio = { feature, props, risk: getRisk(props) }
-        setSelected(radio)
-        onSelect?.(radio)
-      },
-    })
-  }
-
-  if (!bounds || !bounds.isValid()) return null
-
-  return <div className={`map-layout ${compact ? 'compact' : ''}`}>
-    <div className="map-frame">
-      <MapContainer bounds={bounds} scrollWheelZoom={false} className="leaflet-map">
-        <TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <FitBounds bounds={bounds} />
-        <ResetView bounds={bounds} />
-        <GeoJSON data={geojson} style={styleFor} onEachFeature={onEachFeature} />
-      </MapContainer>
-      <RiskLegend />
-    </div>
-    {!compact && <aside className="map-side-panel">{selected ? <RadioDetails radio={selected} /> : <div className="empty-panel"><span className="panel-cross">+</span><strong>Seleccioná un radio</strong><p>Hacé clic sobre un radio del mapa para ver el detalle de la predicción.</p></div>}</aside>}
-  </div>
+  const bounds = useMemo(() => geojson ? L.geoJSON(geojson).getBounds() : null, [geojson])
+  const selectionKey = `${view}-${geojson.features[0]?.properties?.cutoff_date || 'stable'}`
+  const selectedProps = selected?.key === selectionKey ? selected.props : null
+  if (!bounds?.isValid()) return <div className="error-state" role="alert">No fue posible cargar los datos del prototipo.</div>
+  return <div className={`map-layout ${compact ? 'compact' : ''}`}><div className="map-frame"><MapContainer bounds={bounds} scrollWheelZoom={false} className="leaflet-map"><TileLayer attribution="&copy; OpenStreetMap contributors" url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" /><FitBounds bounds={bounds} /><ResetView bounds={bounds} /><GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, fillColor: levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .72 })} onEachFeature={(feature, layer) => { layer.bindTooltip(tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' }); layer.on({ mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: .92 }), mouseout: (e) => e.target.setStyle({ weight: 1, fillOpacity: .72 }), click: () => setSelected({ key: selectionKey, props: feature.properties }) }) }} /></MapContainer><LevelLegend view={view} /></div>{!compact && <aside className="map-side-panel">{selectedProps ? <RadioDetails props={selectedProps} view={view} disclaimer={disclaimer} /> : <div className="empty-panel"><span className="panel-cross">+</span><strong>Seleccioná un radio</strong><p>Hacé clic sobre un radio para consultar los datos de esta capa.</p></div>}</aside>}</div>
 }
 
-export function RadioDetails({ radio }) {
-  const { props, risk } = radio
-  return <div className="radio-details">
-    <span className="eyebrow">Detalle del radio</span>
-    <h2>Radio {getRadioId(props)}</h2>
-    <div className="risk-pill" style={{ backgroundColor: riskColors[risk] }}>Nivel relativo estimado: {riskLabel(risk)}</div>
-    <dl>
-      <div><dt>Código del radio</dt><dd>{getRadioId(props)}</dd></div>
-      <div><dt>Población</dt><dd>{formatNumber(props.population, 0)}</dd></div>
-      <div><dt>Densidad poblacional</dt><dd>{formatNumber(props.population_density, 2)}</dd></div>
-      <div><dt>Casos estimados</dt><dd>{formatNumber(getPredictedCases(props), 3)}</dd></div>
-      <div><dt>Casos estimados (redondeado)</dt><dd>{formatNumber(props.predicted_cases_rounded, 0)}</dd></div>
-      <div><dt>Nivel relativo estimado</dt><dd>{riskLabel(risk)}</dd></div>
-      <div><dt>Semana objetivo</dt><dd>{formatDate(props.prediction_week_start)} – {formatDate(props.prediction_week_end)}</dd></div>
-    </dl>
-    <p className="muted">{RISK_DISCLAIMER}</p>
-  </div>
-}
+function Detail({ label, children }) { return <div><dt>{label}</dt><dd>{children}</dd></div> }
+function scenarioLabel(value) { return value === 'spatial_clusters' ? 'Escenario espacial agrupado' : value }
+export function RadioDetails({ props, view, disclaimer }) { return <div className="radio-details"><span className="eyebrow">Detalle del radio</span><h2>Radio {props.radio_id}</h2><div className="risk-pill" style={{ backgroundColor: levelColors[props.relative_level] }}>Nivel relativo: {levelLabel(props.relative_level)}</div><dl>{view === 'context' ? <><Detail label="Código del radio">{props.radio_id}</Detail><Detail label="Población">{formatNumber(props.population, 0)}</Detail><Detail label="Densidad poblacional">{formatNumber(props.population_density, 2)}</Detail><Detail label="Hogares">{formatNumber(props.households, 0)}</Detail><Detail label="Viviendas">{formatNumber(props.dwellings, 0)}</Detail><Detail label="Superficie">{formatNumber(props.area_km2, 2)} km²</Detail><Detail label="Percentil territorial">{formatNumber(props.percentile, 1)}</Detail><Detail label="Nivel relativo">{levelLabel(props.relative_level)}</Detail>{props.territorial_context_score !== undefined && <Detail label="Índice de contexto territorial">{formatNumber(props.territorial_context_score, 3)}</Detail>}</> : <><Detail label="Código del radio">{props.radio_id}</Detail><Detail label="Semana objetivo">{formatDateRange(props.target_week_start, props.target_week_end)}</Detail><Detail label="Índice espacial experimental">{formatNumber(props.experimental_spatial_score, 3)}</Detail><Detail label="Percentil">{formatNumber(props.percentile, 1)}</Detail><Detail label="Nivel relativo">{levelLabel(props.relative_level)}</Detail><Detail label="Escenario sintético">{scenarioLabel(props.synthetic_scenario)}</Detail></>}</dl><p className="muted">{disclaimer}</p></div> }
 
-export function BacktestChart({ weeks }) {
-  const values = weeks || []; const max = Math.max(...values.flatMap((w) => [w.department_cases_official, w.department_cases_predicted_from_radio_sum]), 1)
-  return <div className="chart-wrap"><div className="chart-legend"><span><i className="line-real" />Real oficial</span><span><i className="line-pred" />Predicho</span></div><svg viewBox="0 0 720 250" role="img" aria-label="Comparación de casos reales y predichos por semana"><line x1="48" y1="210" x2="700" y2="210" stroke="currentColor" opacity=".2" />{values.map((w, i) => { const x = 74 + i * (610 / Math.max(values.length - 1, 1)); const realY = 210 - (w.department_cases_official / max) * 170; const predY = 210 - (w.department_cases_predicted_from_radio_sum / max) * 170; return <g key={w.cutoff_date}><circle cx={x} cy={realY} r="4" className="real-point" /><circle cx={x} cy={predY} r="4" className="pred-point" /><text x={x} y="232" textAnchor="middle">{w.cutoff_date.slice(5)}</text>{i > 0 && <><line x1={x - 610 / Math.max(values.length - 1, 1)} y1={210 - (values[i - 1].department_cases_official / max) * 170} x2={x} y2={realY} className="real-line" /><line x1={x - 610 / Math.max(values.length - 1, 1)} y1={210 - (values[i - 1].department_cases_predicted_from_radio_sum / max) * 170} x2={x} y2={predY} className="pred-line" /></>}</g> })}</svg></div>
-}
+export function TopRadios({ geojson }) { const sorted = [...geojson.features].sort((a, b) => b.properties.percentile - a.properties.percentile).slice(0, 5); return <div className="top-radios">{sorted.map((feature, index) => <div key={feature.properties.radio_id}><span>{String(index + 1).padStart(2, '0')}</span><strong>Radio {feature.properties.radio_id}</strong><em>Percentil {formatNumber(feature.properties.percentile, 1)} · {levelLabel(feature.properties.relative_level)}</em></div>)}</div> }
 
-export function TopRadios({ radios }) { return <div className="top-radios">{radios?.slice(0, 5).map((radio, i) => <div key={radio.radio_id}><span>{String(i + 1).padStart(2, '0')}</span><strong>Radio {radio.radio_id}</strong><em>{formatNumber(radio.predicted_cases, 3)}</em></div>)}</div> }
-
+export function BacktestChart({ rows }) { const series=[['official_cases','Oficial','real'],['rf_minimal_climate_log_delta_prediction','Random Forest','pred'],['persistence_baseline_prediction','Persistencia','base']]; const max=Math.max(...rows.flatMap((row)=>series.map(([key])=>row[key])),1); const points=(key)=>rows.map((row,i)=>`${54+i*(620/Math.max(rows.length-1,1))},${205-(row[key]/max)*165}`).join(' '); return <div className="chart-wrap"><div className="chart-legend">{series.map(([,label,cls])=><span key={label}><i className={`line-${cls}`} />{label}</span>)}</div><svg viewBox="0 0 720 245" role="img" aria-label="Comparación temporal entre casos oficiales, Random Forest y persistencia"><line x1="48" y1="205" x2="690" y2="205" stroke="currentColor" opacity=".2" />{series.map(([key,,cls])=><polyline key={key} points={points(key)} className={`${cls}-line`} fill="none" />)}{rows.map((row,i)=><text key={row.cutoff_date} x={54+i*(620/Math.max(rows.length-1,1))} y="230" textAnchor="middle">{formatDate(row.cutoff_date).slice(0,5)}</text>)}</svg></div> }
