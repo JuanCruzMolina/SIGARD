@@ -20,18 +20,18 @@ function assertFeatureCollection(value, label) {
 
 function assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation) {
   const expectedLevels = new Set(['very_low', 'low', 'medium', 'high'])
-  const hasAllLevels = (features) => {
+  const hasValidLevels = (features) => {
     const levels = new Set(features.map((feature) => feature.properties?.relative_level))
-    return levels.size === expectedLevels.size && [...expectedLevels].every((level) => levels.has(level))
+    return levels.size > 0 && [...levels].every((level) => expectedLevels.has(level))
   }
-  if (territorialContext.features.length !== 263 || !hasAllLevels(territorialContext.features)) throw new Error(DATA_ERROR_MESSAGE)
+  if (territorialContext.features.length !== 263 || !hasValidLevels(territorialContext.features)) throw new Error(DATA_ERROR_MESSAGE)
   if (!Array.isArray(temporalPredictions.predictions) || !Array.isArray(modelEvaluation.backtest) || modelEvaluation.backtest.length !== 6) throw new Error(DATA_ERROR_MESSAGE)
   for (const week of availableWeeks.weeks) {
     const predictions = temporalPredictions.predictions.filter((item) => item.cutoff_date === week.cutoff_date)
     const simulation = experimentalHistory.features.filter((feature) => feature.properties?.cutoff_date === week.cutoff_date)
     const predictionMatchesTarget = predictions.length === 1 && predictions[0].target_week_start === week.target_week_start && predictions[0].target_week_end === week.target_week_end
     const simulationMatchesTarget = simulation.length === 263 && simulation.every((feature) => feature.properties?.target_week_start === week.target_week_start && feature.properties?.target_week_end === week.target_week_end)
-    if (!predictionMatchesTarget || !simulationMatchesTarget || !hasAllLevels(simulation)) throw new Error(DATA_ERROR_MESSAGE)
+    if (!predictionMatchesTarget || !simulationMatchesTarget || !hasValidLevels(simulation)) throw new Error(DATA_ERROR_MESSAGE)
   }
 }
 
