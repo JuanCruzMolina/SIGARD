@@ -4,11 +4,12 @@ import hashlib
 import json
 from pathlib import Path
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
 
-from sigard_ml.territorial.analysis import LEVELS, deterministic_percentiles, run, write_outputs
+from sigard_ml.territorial.analysis import LEVELS, deterministic_percentiles, run, tie_aware_percentiles, write_outputs
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = json.loads((ROOT / "ml/configs/territorial_analysis.json").read_text(encoding="utf-8"))
@@ -59,6 +60,29 @@ def test_deterministic_tie_break_by_radio_id():
     assert first.loc["d", "percentile"] == 100.0
 
 
+def test_experimental_tie_aware_percentiles_are_monotonic_and_radio_independent():
+    frame = pd.DataFrame(
+        {
+            "radio_id": ["f", "e", "d", "c", "b", "a"],
+            "score": [0.01, 0.02, 0.08, 0.08, 0.08, 0.09],
+        }
+    )
+    first = tie_aware_percentiles(frame, "score").set_index("radio_id")
+    renamed = frame.assign(radio_id=["a", "b", "c", "d", "e", "f"])
+    second = tie_aware_percentiles(renamed, "score")
+    tied = first.loc[["d", "c", "b"]]
+    assert tied.percentile.nunique() == 1
+    assert tied.relative_level.nunique() == 1
+    ordered = first.sort_values("score")
+    assert ordered.percentile.is_monotonic_increasing
+    level_order = ordered.relative_level.map({level: index for index, level in enumerate(LEVELS)})
+    assert level_order.is_monotonic_increasing
+    pd.testing.assert_series_equal(
+        first.reset_index().sort_values("score").percentile.reset_index(drop=True),
+        second.sort_values("score").percentile.reset_index(drop=True),
+    )
+
+
 def test_experimental_contract_every_week_and_no_future(result):
     _, _, experimental, report = result
     assert len(experimental) == 4 * 263 and report["number_of_weeks"] == 4
@@ -69,16 +93,21 @@ def test_experimental_contract_every_week_and_no_future(result):
     assert (experimental.cutoff_date < experimental.target_week_start).all()
     for _, group in experimental.groupby("target_week_start"):
         assert len(group) == group.radio_id.nunique() == 263
-        assert set(group.relative_level) == set(LEVELS)
-        counts = group.relative_level.value_counts()
-        assert counts.max() - counts.min() <= 1
+        by_score = group.groupby("experimental_spatial_score")
+        assert by_score.percentile.nunique().eq(1).all()
+        assert by_score.relative_level.nunique().eq(1).all()
+        ordered = group.sort_values("experimental_spatial_score")
+        assert ordered.percentile.is_monotonic_increasing
+        level_order = ordered.relative_level.map({level: index for index, level in enumerate(LEVELS)})
+        assert level_order.is_monotonic_increasing
     assert experimental.crs.to_epsg() == 4326 and experimental.geometry.is_valid.all()
     assert report["missing_weeks"] == []
 
 
 def test_pipeline_and_serialized_outputs_are_reproducible(tmp_path: Path, result):
     config = json.loads(json.dumps(CONFIG))
-    config["outputs"] = {key: str(Path("out") / Path(value).name) for key, value in config["outputs"].items()}
+    context_keys = ["context_parquet", "context_geojson", "context_report"]
+    config["outputs"] = {key: str(Path("out") / Path(config["outputs"][key]).name) for key in context_keys}
     write_outputs(result, config, tmp_path)
     first = {key: hashlib.sha256((tmp_path / value).read_bytes()).hexdigest() for key, value in config["outputs"].items()}
     second_result = run(CONFIG, ROOT)
@@ -90,9 +119,31 @@ def test_pipeline_and_serialized_outputs_are_reproducible(tmp_path: Path, result
 
 def test_existing_experimental_artifacts_remain_frozen():
     expected = {
-        "experimental_spatial_history.parquet": "3A9D34C3E6E5101030633E66A23C8D49B7AEBD363CB25D0C3CD8C1AFAFC97315",
-        "experimental_spatial_history.geojson": "375D56B4782C47CA36B40C2614C98F06D91DAAB384BDC9B91119414C19905BC3",
-        "experimental_spatial_report.json": "86966908261D395C99032B37B50DA6A8A017B04787D4252A0FED0B69DA8EFEAB",
+        "experimental_spatial_history.parquet": "5BED7C27DDBBE273FBABEA53B783BA31E6856BE6C77FEC2C1E4D4C957FDDB116",
+        "experimental_spatial_history.geojson": "CBA113AD054C6817C87DD8A8D69A8A4D28686AB53F7F2091CDC261CB61192470",
+        "experimental_spatial_report.json": "EA7838F78B6751C9CE321F3C459314255D8E496DB6D7CDAA07FC5C4F805705DB",
     }
     for name, digest in expected.items():
         assert hashlib.sha256((ROOT / "data/processed" / name).read_bytes()).hexdigest() == digest.lower()
+
+
+def test_experimental_scores_and_geometries_match_unchanged_sources(result):
+    territorial = gpd.read_parquet(ROOT / CONFIG["inputs"]["territorial"])[["radio_id", "geometry"]]
+    predictions = pd.read_parquet(ROOT / CONFIG["inputs"]["experimental_predictions"])
+    expected = predictions.loc[predictions.variant.eq(CONFIG["experimental_variant"]), ["radio_id", "target_week_start_date", "predicted_cases"]].copy()
+    expected["target_week_start"] = pd.to_datetime(expected.pop("target_week_start_date"))
+    expected = expected.rename(columns={"predicted_cases": "experimental_spatial_score"}).sort_values(["target_week_start", "radio_id"]).reset_index(drop=True)
+    expected = expected[["radio_id", "target_week_start", "experimental_spatial_score"]]
+    experimental = result[2].sort_values(["target_week_start", "radio_id"]).reset_index(drop=True)
+    pd.testing.assert_frame_equal(experimental[["radio_id", "target_week_start", "experimental_spatial_score"]], expected, check_dtype=False)
+    expected_geometry = experimental[["radio_id"]].merge(territorial, on="radio_id", validate="many_to_one").geometry
+    assert experimental.geometry.geom_equals_exact(expected_geometry, tolerance=0).all()
+
+
+def test_temporal_frontend_artifacts_remain_frozen():
+    expected = {
+        "temporal_predictions.json": "963f0d63356b5e7f1f7a744a0d8806153536da6ac77cd6e81bcd5f4b3ed484bc",
+        "model_evaluation.json": "fb1887a525177a3ebbcd96528882cab10ce0cce1142c8932e5c8225dc1dc592c",
+    }
+    for name, digest in expected.items():
+        assert hashlib.sha256((ROOT / "frontend/public/data" / name).read_bytes()).hexdigest() == digest

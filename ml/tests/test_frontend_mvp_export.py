@@ -11,11 +11,14 @@ from sigard_ml.export.frontend_mvp import build_artifacts, write_artifacts
 
 ROOT = Path(__file__).resolve().parents[2]
 CONFIG = json.loads((ROOT / "ml/configs/frontend_mvp_export.json").read_text(encoding="utf-8"))
+CURRENT_FRONTEND_FILES = list(CONFIG["frontend_outputs"].values())
+TEST_CONFIG = json.loads(json.dumps(CONFIG))
+TEST_CONFIG["legacy_frontend_files"] = CURRENT_FRONTEND_FILES
 
 
 @pytest.fixture(scope="module")
 def built():
-    return build_artifacts(CONFIG, ROOT)
+    return build_artifacts(TEST_CONFIG, ROOT)
 
 
 def test_available_weeks_is_exact_intersection_and_default(built):
@@ -49,7 +52,10 @@ def test_context_and_experimental_universe_geometry_levels():
     assert context.geometry.is_valid.all() and experimental.geometry.is_valid.all()
     for _, group in experimental.groupby("target_week_start"):
         assert len(group) == group.radio_id.nunique() == 263
-        assert set(group.relative_level) == {"very_low", "low", "medium", "high"}
+        assert set(group.relative_level).issubset({"very_low", "low", "medium", "high"})
+        by_score = group.groupby("experimental_spatial_score")
+        assert by_score.percentile.nunique().eq(1).all()
+        assert by_score.relative_level.nunique().eq(1).all()
 
 
 def test_model_evaluation_exactly_reflects_delta_report(built):
@@ -65,21 +71,22 @@ def test_model_evaluation_exactly_reflects_delta_report(built):
     assert evaluation["backtest"] == source["weekly_predictions"] and len(evaluation["backtest"]) == 6
 
 
-def test_metadata_legacy_preservation_no_model_write_and_reproducibility(tmp_path: Path, built):
+def test_metadata_current_contract_no_model_write_and_reproducibility(tmp_path: Path, built):
     artifacts, report = built
     assert artifacts["metadata"]["territorial_context"]["data_type"] == "real"
     assert artifacts["metadata"]["experimental_spatial"]["data_type"] == "synthetic"
-    legacy_before = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in CONFIG["legacy_frontend_files"]}
+    assert set(report["files_exported"][:-1]) == set(CURRENT_FRONTEND_FILES)
+    current_before = {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in CURRENT_FRONTEND_FILES}
     models_before = {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in (ROOT / "ml/artifacts").glob("*") if path.is_file()}
-    config = json.loads(json.dumps(CONFIG))
+    config = json.loads(json.dumps(TEST_CONFIG))
     config["inputs"]["territorial_context"] = str((ROOT / CONFIG["inputs"]["territorial_context"]).resolve())
     config["inputs"]["experimental_history"] = str((ROOT / CONFIG["inputs"]["experimental_history"]).resolve())
     config["frontend_outputs"] = {key: str(Path("out") / Path(value).name) for key, value in config["frontend_outputs"].items()}
     config["quality_report"] = "out/frontend_mvp_export_report.json"
     write_artifacts(artifacts, report, config, tmp_path)
     first = {value: hashlib.sha256((tmp_path / value).read_bytes()).hexdigest() for value in [*config["frontend_outputs"].values(), config["quality_report"]]}
-    write_artifacts(*build_artifacts(CONFIG, ROOT), config, tmp_path, overwrite=True)
+    write_artifacts(*build_artifacts(TEST_CONFIG, ROOT), config, tmp_path, overwrite=True)
     second = {value: hashlib.sha256((tmp_path / value).read_bytes()).hexdigest() for value in [*config["frontend_outputs"].values(), config["quality_report"]]}
     assert first == second
-    assert legacy_before == {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in CONFIG["legacy_frontend_files"]}
+    assert current_before == {path: hashlib.sha256((ROOT / path).read_bytes()).hexdigest() for path in CURRENT_FRONTEND_FILES}
     assert models_before == {path: hashlib.sha256(path.read_bytes()).hexdigest() for path in (ROOT / "ml/artifacts").glob("*") if path.is_file()}

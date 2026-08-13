@@ -17,6 +17,9 @@
   "outputs": {
     "context_parquet": "data/processed/territorial_context.parquet",
     "context_geojson": "data/processed/territorial_context.geojson",
-    "context_report": "data/processed/territorial_context_report.json"
+    "context_report": "data/processed/territorial_context_report.json",
+    "experimental_parquet": "data/processed/experimental_spatial_history.parquet",
+    "experimental_geojson": "data/processed/experimental_spatial_history.geojson",
+    "experimental_report": "data/processed/experimental_spatial_report.json"
   }
 }

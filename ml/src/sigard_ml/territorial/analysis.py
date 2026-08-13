@@ -23,6 +23,20 @@ def deterministic_percentiles(frame: pd.DataFrame, score: str) -> pd.DataFrame:
     return result.sort_values("radio_id", kind="mergesort").reset_index(drop=True)
 
 
+def tie_aware_percentiles(frame: pd.DataFrame, score: str) -> pd.DataFrame:
+    """Clasifica por score con midranks; radio_id sólo ordena la salida."""
+    result = frame.copy()
+    result["deterministic_rank"] = result[score].rank(method="average", ascending=True)
+    result["percentile"] = result["deterministic_rank"] / len(result) * 100.0
+    result["relative_level"] = pd.cut(
+        result["percentile"],
+        bins=[0, 25, 50, 75, 100],
+        labels=LEVELS,
+        include_lowest=True,
+    ).astype("string")
+    return result.sort_values("radio_id", kind="mergesort").reset_index(drop=True)
+
+
 def _feature_rank(frame: pd.DataFrame, column: str) -> pd.Series:
     ordered = frame[["radio_id", column]].sort_values([column, "radio_id"], kind="mergesort")
     ranks = pd.Series(np.arange(1, len(ordered) + 1) / len(ordered), index=ordered.index)
@@ -86,7 +100,7 @@ def build_experimental(territorial: gpd.GeoDataFrame, predictions: pd.DataFrame,
     ranked = []
     for _, group in selected.groupby("target_week_start", sort=True):
         if len(group) != config["expected_radios"] or group.radio_id.nunique() != config["expected_radios"]: raise ValueError("Una semana no contiene 263 radios")
-        ranked.append(deterministic_percentiles(group, "experimental_spatial_score"))
+        ranked.append(tie_aware_percentiles(group, "experimental_spatial_score"))
     result = pd.concat(ranked, ignore_index=True)
     result["synthetic_scenario"] = "spatial_clusters"
     result = result.merge(territorial[["radio_id", "geometry"]], on="radio_id", validate="many_to_one")
@@ -97,7 +111,7 @@ def build_experimental(territorial: gpd.GeoDataFrame, predictions: pd.DataFrame,
     counts = {pd.Timestamp(week).date().isoformat(): {level: int(((result.target_week_start == week) & (result.relative_level == level)).sum()) for level in LEVELS} for week in weeks}
     report = {"pipeline": config["pipeline"], "number_of_radios": int(result.radio_id.nunique()), "number_of_weeks": len(weeks), "rows": len(result), "scenario": "spatial_clusters",
               "score_source": {"artifact": config["inputs"]["experimental_predictions"], "variant": config["experimental_variant"], "column": "predicted_cases", "retrained": False, "condition": "synthetic spatial prediction reused as experimental score"},
-              "classification_method": "independent deterministic rank per target week; percentile=rank/263*100; tie-break radio_id",
+              "classification_method": "independent average rank (midrank) by experimental_spatial_score per target week; percentile=midrank/263*100; radio_id only orders output rows",
               "counts_by_level_per_week": counts, "missing_weeks": [date.date().isoformat() for date in expected.difference(pd.DatetimeIndex(weeks))],
               "conservation_status": "not_applicable: scores are continuous experimental predictions and are not forced to sum to the official departmental total",
               "null_counts": {column: int(value) for column, value in result.drop(columns="geometry").isna().sum().items()}, "duplicate_radio_week_keys": int(result.duplicated(["radio_id", "target_week_start"]).sum()),
@@ -132,9 +146,27 @@ def write_outputs(result: tuple, config: dict[str, Any], root: Path, overwrite: 
     paths["context_report"].write_text(json.dumps(structural_report, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n", encoding="utf-8")
 
 
+def write_experimental_outputs(result: tuple, config: dict[str, Any], root: Path, overwrite: bool = False) -> None:
+    """Escribe sólo la capa experimental; no toca artefactos estructurales o temporales."""
+    _, _, experimental, experimental_report = result
+    keys = ["experimental_parquet", "experimental_geojson", "experimental_report"]
+    paths = {key: root / config["outputs"][key] for key in keys}
+    if existing := [str(path) for path in paths.values() if path.exists()]:
+        if not overwrite: raise FileExistsError(f"No se sobrescriben artefactos: {existing}")
+    for path in paths.values(): path.parent.mkdir(parents=True, exist_ok=True)
+    experimental.to_parquet(paths["experimental_parquet"], index=False, compression="snappy")
+    _write_geojson(experimental, paths["experimental_geojson"])
+    paths["experimental_report"].write_text(
+        json.dumps(experimental_report, ensure_ascii=False, indent=2, sort_keys=True, allow_nan=False) + "\n",
+        encoding="utf-8",
+    )
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--config", type=Path, required=True); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args(); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve(); write_outputs(run(config, root), config, root, args.overwrite)
+    parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--config", type=Path, required=True); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--overwrite", action="store_true"); parser.add_argument("--experimental-only", action="store_true")
+    args = parser.parse_args(); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve(); result = run(config, root)
+    if args.experimental_only: write_experimental_outputs(result, config, root, args.overwrite)
+    else: write_outputs(result, config, root, args.overwrite)
 
 
 if __name__ == "__main__": main()
