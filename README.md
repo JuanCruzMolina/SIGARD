@@ -63,6 +63,7 @@ entrenado.
 - [Contrato de datos](docs/data-contract.md)
 - [Metodología](docs/methodology.md)
 - [Datos sintéticos](docs/synthetic-data.md)
+- [Funcionalidades del MVP](docs/mvp-funcionalidades.md)
 - [Política del directorio de datos](data/README.md)
 
 ## Reglas del repositorio
