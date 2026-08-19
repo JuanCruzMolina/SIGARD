@@ -75,6 +75,29 @@ advertencias metodológicas también se muestran junto a las vistas territoriale
 para que los resultados sintéticos no se interpreten como evidencia
 epidemiológica observada.
 
+### 6. Prevenir, buscar atención y reportar un problema
+
+La ruta pública **Prevención y ayuda** funciona de manera independiente de los
+artefactos experimentales. Permite:
+
+- consultar recomendaciones y signos de alarma con fuentes oficiales;
+- explorar 24 CAPS públicos y 3 hospitales mediante mapa, búsqueda, filtros y
+  listado textual;
+- llamar a contactos oficiales publicados, sin afirmar que exista un celular
+  municipal vigente dedicado exclusivamente a fumigación;
+- registrar un problema de forma anónima con ubicación manual o geolocalización
+  opcional;
+- guardar un código no predecible y consultar un estado que nunca revela
+  descripción ni coordenadas.
+
+La ruta administrativa `/admin/reportes` permite al personal autorizado filtrar,
+revisar, actualizar, auditar y exportar los registros. Hasta confirmar un
+organismo receptor, el backend bloquea el estado `derivado`.
+
+El inventario incluye 24 CAPS y 3 hospitales. En la revisión vigente, 23 CAPS
+están marcados `vigencia_por_confirmar`; la interfaz no los presenta como
+abiertos en tiempo real.
+
 ## Datos que consume el frontend
 
 El MVP carga artefactos estáticos versionados desde `frontend/public/data/`:

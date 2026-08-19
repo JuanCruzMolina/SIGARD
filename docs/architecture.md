@@ -85,3 +85,32 @@ ambiguo `casos` para representar los tres conceptos.
 No se incorporan a Git fuentes de datos, datasets derivados, artefactos de
 modelos, secretos ni archivos `.env`. El repositorio sólo conserva código,
 configuración no sensible, contratos, metadatos y documentación.
+
+## Módulo informativo y de participación ciudadana
+
+La ruta pública `/prevencion` constituye una rama independiente del flujo
+epidemiológico. Consume dos artefactos estáticos versionados y una API
+operativa:
+
+```text
+Fuentes sanitarias oficiales --> contenido preventivo y directorio público
+                                          |
+Ciudadanía --> formulario anónimo --> API | --> citizen_reports (privado)
+                                          |
+                         código público --+--> estado sin ubicación ni texto
+                                          |
+                         JWT + rol admin --+--> bandeja, auditoría y exportación
+```
+
+`citizen_reports` no se conecta con el panel `radio-semana`, las tablas de
+casos, las asignaciones sintéticas ni las predicciones. La coordenada exacta se
+usa sólo para revisión operativa autorizada y se elimina al vencer su plazo de
+retención. En Docker, un servicio separado ejecuta la purga al iniciar y cada 24
+horas; otros despliegues deben programar una tarea diaria equivalente. Frontend
+y backend se despliegan por separado: Vercel puede alojar la
+SPA, mientras FastAPI y PostgreSQL/PostGIS requieren otro servicio.
+
+La superficie pública real es `/prevencion` y la operación protegida se realiza
+en `/admin/reportes`. Hasta confirmar un organismo receptor, la API impide marcar
+un reporte como `derivado` y el formulario se presenta sólo como registro interno
+de SIGARD.

@@ -199,3 +199,54 @@ cuatro capas históricas opcionales. Los tres artefactos principales se copian a
 
 Los archivos de estas zonas no se versionan. Tampoco se versionan modelos
 entrenados, secretos, credenciales ni archivos `.env`.
+
+## Contrato del módulo de prevención y ayuda
+
+### Directorio público de establecimientos
+
+`frontend/public/data/health_facilities.geojson` contiene una
+`FeatureCollection` EPSG:4326 con 24 CAPS públicos y 3 hospitales de referencia.
+Cada `Point` posee `id`, `name`, `type`, `address`, `neighborhood`, teléfono y
+horario publicados cuando existen, servicios, fuente, fecha de fuente, fecha de
+revisión, estado de verificación y precisión cartográfica. `vigencia_por_confirmar`
+impide interpretar la ficha como disponibilidad en tiempo real.
+
+En la revisión `2026-08-19`, 23 de los 24 CAPS conservan
+`vigencia_por_confirmar`; el restante está rotulado `publicado`. Ninguno de esos
+estados constituye verificación operativa en vivo. Los 3 hospitales se mantienen
+en una categoría separada.
+
+`frontend/public/data/prevention_content.json` contiene acciones preventivas,
+síntomas, signos de alarma, conducta recomendada, explicación de control
+vectorial, teléfonos publicados y sus fuentes. Ambos artefactos usan
+`schema_version: 1.0.0` y fueron revisados el `2026-08-19`.
+
+### Reporte ciudadano anónimo
+
+`citizen_reports` es una entidad operativa privada y separada. No representa un
+caso, una observación, una asignación sintética ni una predicción. Sus campos
+públicos se limitan a:
+
+```text
+tracking_code, status, created_at, updated_at, public_status_message
+```
+
+La creación acepta categoría, descripción, coordenada, referencia y barrio
+opcionales, versión/aceptación del aviso. No acepta identificadores de contacto
+y valida el rectángulo operativo de Ciudad de La Rioja. El encabezado
+`Idempotency-Key` se transforma con HMAC y evita duplicados por reintento; la IP
+no se persiste. Un segundo reporte de igual categoría, dentro de 150 metros y
+durante los siete días anteriores, se marca como posible duplicado sin impedir
+su alta. Ubicación, descripción, notas y duplicados sólo aparecen en
+endpoints administrativos con JWT y rol `admin`.
+
+La búsqueda opcional de dirección usa `POST /api/v1/geocoding/address` después
+de un consentimiento específico. La API valida que el texto no contenga correo,
+teléfono o DNI y consulta Nominatim desde el servidor. El proveedor recibe la
+referencia y la IP del servidor, no la del ciudadano. El mapa administrativo
+usa exclusivamente la cartografía censal local de SIGARD y no solicita teselas
+externas con la coordenada privada.
+
+El plazo inicial de retención es de 180 días. `python -m app.retention` elimina
+reportes vencidos y debe ejecutarse como tarea externa al proceso web. El
+`docker-compose.yml` incluido lo ejecuta al iniciar y luego cada 24 horas.

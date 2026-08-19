@@ -1,16 +1,41 @@
-# React + Vite
+# Frontend de SIGARD
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+SPA React/Vite con dos dominios visuales explícitamente separados:
 
-Currently, two official plugins are available:
+- vigilancia epidemiológica experimental: `/`, `/mapa`, `/validacion` y
+  `/metodologia`;
+- prevención y servicios ciudadanos: `/prevencion`;
+- operación privada de reportes: `/admin/reportes`.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Desarrollo
 
-## React Compiler
+```bash
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Copiar `.env.example` a `.env` y configurar `VITE_API_URL`. Para producción, la
+SPA puede desplegarse en Vercel y debe apuntar a una API FastAPI servida por
+HTTPS. Los datos sanitarios estáticos se cargan desde `public/data/` y se
+validan antes de mostrarse. El directorio contiene 24 CAPS públicos y 3
+hospitales de referencia; 23 CAPS conservan `vigencia_por_confirmar`, por lo que
+no deben interpretarse como atención disponible en tiempo real.
 
-## Expanding the ESLint configuration
+## Verificación
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```bash
+npm run lint
+npm run build
+```
+
+Ambas órdenes finalizaron correctamente en la verificación de cierre. No se
+pudieron ejecutar pruebas visuales, responsive, de teclado ni de lector de
+pantalla asistidas por navegador porque el entorno no dispone de uno instalado;
+son comprobaciones pendientes antes de publicar.
+
+El formulario nunca solicita identificadores directos. La geolocalización sólo
+se activa al pulsar el botón correspondiente y los reportes no se representan
+en el mapa epidemiológico. La búsqueda opcional requiere un consentimiento
+separado y envía la referencia a la API de SIGARD, que actúa como intermediaria
+ante Nominatim/OpenStreetMap sin reenviar la IP del navegador. Si la persona no
+quiere compartir esa referencia puede ubicar el marcador manualmente.

@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0.0",
+  "published_at": "2026-08-19",
+  "reviewed_at": "2026-08-19",
+  "scope": "Ciudad de La Rioja, Argentina",
+  "emergency_number": "107",
+  "prevention": [
+    "Eliminá recipientes en desuso que puedan acumular agua.",
+    "Da vuelta, cubrí o guardá bajo techo baldes, juguetes y tambores.",
+    "Cepillá y renová con frecuencia el agua de bebederos de animales.",
+    "Limpiá desagües, canaletas y colectores de aire acondicionado.",
+    "Tapá tanques, cisternas y cualquier depósito de agua.",
+    "Mantené patios y jardines desmalezados, y las piletas limpias y cubiertas.",
+    "Usá repelente según el envase, ropa clara que cubra la piel y mosquiteros."
+  ],
+  "symptoms": [
+    "Fiebre de 38 °C o más.",
+    "Dolor de cabeza o detrás de los ojos.",
+    "Dolor muscular o articular.",
+    "Náuseas, vómitos, diarrea, sarpullido o malestar general."
+  ],
+  "warning_signs": [
+    "Dolor abdominal intenso.",
+    "Vómitos persistentes.",
+    "Sangrado de mucosas.",
+    "Irritabilidad, somnolencia o letargo.",
+    "Dificultad para respirar."
+  ],
+  "medical_advice": [
+    "No te automediques.",
+    "Ante sospecha de dengue no uses aspirina, ibuprofeno, ketorolac ni inyectables intramusculares.",
+    "Consultá en el centro de salud más cercano; ante signos de alarma llamá al 107."
+  ],
+  "vector_control": {
+    "title": "Descacharreo y control vectorial no son lo mismo",
+    "body": "La eliminación de criaderos es la medida principal. La fumigación actúa sobre mosquitos adultos durante la aplicación, no elimina por sí sola huevos, larvas ni pupas y corresponde a una evaluación de la autoridad sanitaria.",
+    "request_label": "Solicitar evaluación para control vectorial"
+  },
+  "contacts": [
+    {
+      "id": "medical-emergency",
+      "label": "Emergencias médicas",
+      "number_display": "107",
+      "number_tel": "107",
+      "purpose": "Síntomas graves o signos de alarma.",
+      "source_url": "https://salud.larioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    },
+    {
+      "id": "general-emergency",
+      "label": "Emergencias generales",
+      "number_display": "911",
+      "number_tel": "911",
+      "purpose": "Situaciones de emergencia general.",
+      "source_url": "https://salud.larioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    },
+    {
+      "id": "health-ministry",
+      "label": "Ministerio de Salud de La Rioja",
+      "number_display": "(0380) 445-3700",
+      "number_tel": "+543804453700",
+      "purpose": "Consultas generales y orientación sanitaria.",
+      "source_url": "https://salud.larioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    },
+    {
+      "id": "coe",
+      "label": "Línea provincial COE",
+      "number_display": "0800-444-0353",
+      "number_tel": "08004440353",
+      "purpose": "Orientación provincial; horario y opción telefónica sujetos a confirmación.",
+      "source_url": "https://salud.larioja.gob.ar/index.php?Itemid=170&catid=8&id=1387%3Ainforman-lugares-horarios-y-telefonos-de-contacto-de-atencion-por-consultas-sobre-dengue&option=com_content&view=article",
+      "reviewed_at": "2026-08-19",
+      "status": "vigencia_por_confirmar"
+    },
+    {
+      "id": "municipality-1",
+      "label": "Municipalidad de La Rioja",
+      "number_display": "447-0000",
+      "number_tel": "+543804470000",
+      "purpose": "Central municipal para consultar el canal vigente de descacharreo o control ambiental.",
+      "source_url": "https://www.municipiolarioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    },
+    {
+      "id": "municipality-2",
+      "label": "Municipalidad de La Rioja",
+      "number_display": "442-7375",
+      "number_tel": "+543804427375",
+      "purpose": "Central municipal alternativa.",
+      "source_url": "https://www.municipiolarioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    },
+    {
+      "id": "municipality-3",
+      "label": "Municipalidad de La Rioja",
+      "number_display": "474-0901",
+      "number_tel": "+543804740901",
+      "purpose": "Central municipal alternativa.",
+      "source_url": "https://www.municipiolarioja.gob.ar/",
+      "reviewed_at": "2026-08-19",
+      "status": "publicado"
+    }
+  ],
+  "unverified_contacts": [
+    {
+      "number_display": "380 444-5300",
+      "reason": "Aparece en publicaciones anteriores como Centro de Atención al Vecino, pero no fue confirmado en el sitio municipal actual y no se publica como contacto vigente."
+    }
+  ],
+  "sources": [
+    {"title": "Cómo prevenir el dengue", "publisher": "Ministerio de Salud de la Nación", "url": "https://www.argentina.gob.ar/como-prevenir-el-dengue"},
+    {"title": "Cómo evitar picaduras de mosquitos", "publisher": "Ministerio de Salud de la Nación", "url": "https://www.argentina.gob.ar/como-evitar-picaduras-de-mosquitos"},
+    {"title": "Síntomas y signos de alarma", "publisher": "Ministerio de Salud de la Nación", "url": "https://www.argentina.gob.ar/sintomas-y-signos-de-alarma"},
+    {"title": "Información sobre fumigación", "publisher": "Ministerio de Salud de la Nación", "url": "https://www.argentina.gob.ar/node/371159"},
+    {"title": "Registro Federal de Establecimientos de Salud (REFES)", "publisher": "Ministerio de Salud de la Nación", "url": "https://datos.salud.gob.ar/dataset/listado-establecimientos-de-salud-asentados-en-el-registro-federal-refes"},
+    {"title": "Zona Sanitaria 1 y fichas de CAPS", "publisher": "Ministerio de Salud de La Rioja", "url": "https://salud.larioja.gob.ar/index.php?Itemid=201&id=12&option=com_content&view=category"},
+    {"title": "Sitio institucional y centrales de atención", "publisher": "Municipalidad de La Rioja", "url": "https://www.municipiolarioja.gob.ar/"}
+  ]
+}

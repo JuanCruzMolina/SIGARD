@@ -1,6 +1,7 @@
 # Entornos
 .env
 venv/
+.venv/
 node_modules/
 
 # Datos locales (no versionar fuentes ni artefactos generados)
@@ -25,6 +26,7 @@ ml/models/*.joblib
 # Python
 __pycache__/
 *.pyc
+*.db
 .pytest_cache/
 
 # Jupyter
