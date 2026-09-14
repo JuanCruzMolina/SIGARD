@@ -62,6 +62,20 @@ referentes del Ministerio de Salud.
 11. Una alerta algorítmica es una candidata: nunca se publica automáticamente.
 12. Los reportes ciudadanos son un dominio operativo separado y no alimentan
     el modelo, el panel radio-semana ni el mapa epidemiológico.
+13. Los archivos entregados por el Ministerio de Salud son privados y sólo
+    pueden tratarse localmente. No pueden subirse a Git, almacenamiento cloud,
+    servicios de análisis externos ni APIs de terceros.
+14. Los originales deben conservarse inmutables fuera del repositorio o en
+    `data/raw/`, siempre excluidos de Git y con acceso limitado al equipo
+    autorizado.
+15. Un dato derivado continúa siendo privado mientras conserve campos, detalle
+    territorial o combinaciones que permitan identificar o reidentificar
+    personas. El procesamiento no lo vuelve publicable automáticamente.
+16. Los datos personales o sanitarios no deben aparecer en logs, fixtures,
+    mensajes de error, capturas, documentación, notebooks ni reportes de prueba.
+17. Las copias de resguardo que contengan datos privados deben permanecer
+    locales, cifradas y sujetas a la misma política de acceso y eliminación que
+    los originales.
 
 ## 4. Estado inicial del repositorio
 
@@ -136,6 +150,12 @@ levantar los servicios básicos sin versionar datos, modelos ni secretos.
 - Documentar convenciones de commits, pull requests, versionado y etiquetas.
 - Revisar `.gitignore` para excluir `.env`, fuentes, derivados, artefactos de
   modelos, entornos virtuales y dependencias instaladas.
+- Comprobar con `git check-ignore` que cada fuente privada y cada directorio de
+  salida sensible quede efectivamente ignorado antes de procesar datos.
+- Incorporar una verificación local o de pre-commit que rechace extensiones de
+  datos, modelos, secretos y archivos que superen los límites definidos.
+- Revisar el índice y el historial de Git para detectar archivos privados que
+  hubieran sido incorporados accidentalmente.
 - Crear los archivos locales `.env` desde los ejemplos y reemplazar claves,
   contraseñas y credenciales de bootstrap.
 - Eliminar del Compose las credenciales operativas fijas o sustituirlas por
@@ -150,6 +170,8 @@ levantar los servicios básicos sin versionar datos, modelos ni secretos.
 - `.env.example` completos, sin secretos válidos.
 - Compose validado y procedimiento de bootstrap reproducible.
 - Lista inicial de comprobaciones de salud.
+- Política local de tratamiento de datos y lista de rutas que nunca deben
+  versionarse.
 
 #### Dependencias
 
@@ -165,6 +187,8 @@ RNF-05, RNF-11, RNF-12, RNF-13 y RNF-14.
 Desde un clon limpio, dos integrantes pueden configurar el entorno sin copiar
 secretos al repositorio; `docker compose config` resulta válido y los cuatro
 servicios alcanzan el estado esperado según el procedimiento documentado.
+Además, una fuente privada de prueba resulta ignorada por Git y el control local
+impide agregarla al índice.
 
 ---
 
@@ -242,7 +266,11 @@ mezclarlo con el dominio de reportes ciudadanos.
 - Agregar claves únicas, restricciones de no negatividad, relaciones, índices
   temporales e índices espaciales GiST.
 - Definir vistas o consultas específicas para productos públicos agregados.
-- Documentar backup, restauración, retención y eliminación.
+- Mantener la base que contiene información privada en infraestructura local;
+  no utilizar bases administradas o sincronizadas externamente.
+- Aplicar permisos mínimos al directorio de datos, volúmenes, exports y backups.
+- Documentar cifrado en reposo, backup local cifrado, restauración, retención y
+  eliminación segura.
 
 #### Entregables
 
@@ -250,6 +278,7 @@ mezclarlo con el dominio de reportes ciudadanos.
 - Modelo físico documentado.
 - Carga mínima de datos de prueba no sensibles.
 - Consultas de integridad y geoespaciales verificables.
+- Procedimiento local de custodia, respaldo y eliminación.
 
 #### Dependencias
 
@@ -265,6 +294,7 @@ RNF-07, RNF-08, RNF-11 y RNF-12.
 Una base vacía puede migrarse hasta la última versión, recibir fixtures no
 sensibles y responder consultas temporales y PostGIS. Las restricciones impiden
 sobrescribir o confundir observaciones, asignaciones sintéticas y predicciones.
+Los volúmenes y backups privados permanecen locales, cifrados y fuera de Git.
 
 ---
 
@@ -320,12 +350,16 @@ healthcheck y no ejecuta entrenamiento ni generación sintética ante peticiones
 
 #### Objetivo
 
-Integrar los pipelines existentes con la persistencia y garantizar productos
-deterministas, trazables y aptos para modelado y publicación.
+Integrar localmente los pipelines existentes con la persistencia y garantizar
+productos deterministas, trazables y aptos para modelado y publicación.
 
 #### Actividades
 
 - Reutilizar la ingestión territorial, temporal y climática existente.
+- Leer los archivos privados directamente desde el entorno local, sin cargarlos
+  en servicios web, planillas online, asistentes externos ni APIs de análisis.
+- Conservar el ZIP y los Excel ministeriales sin modificaciones; si se copian a
+  `data/raw/`, verificar primero que la ruta esté ignorada y restringida.
 - Validar calendarios epidemiológicos sin asumir 52 semanas por año.
 - Mantener diferencias entre cero explícito, registro ausente y período fuera
   de cobertura.
@@ -336,6 +370,10 @@ deterministas, trazables y aptos para modelado y publicación.
 - Cargar productos procesados en PostGIS mediante una tarea offline idempotente.
 - Guardar procedencia, hashes o versiones, cobertura, reglas de calidad y
   semillas.
+- Evitar que nombres, identificadores personales, domicilios u otros valores
+  sensibles se impriman en consola, logs o reportes de calidad.
+- Clasificar cada salida como `privada`, `publicable agregada` o `sintética` y
+  aplicar la política de custodia correspondiente.
 - Evitar que la carga reemplace fuentes o productos existentes sin una opción
   explícita y acotada.
 
@@ -345,6 +383,7 @@ deterministas, trazables y aptos para modelado y publicación.
 - Cargador offline hacia PostGIS.
 - Registro de ejecuciones y procedencia.
 - Pruebas de conservación, unicidad, cobertura y determinismo.
+- Inventario de campos sensibles y clasificación de cada producto derivado.
 
 #### Dependencias
 
@@ -359,7 +398,8 @@ RF-01 a RF-05; RN-07; CA-01 y CA-04.
 
 Una ejecución repetida con las mismas fuentes, configuraciones y semillas
 produce resultados equivalentes, conserva los totales semanales y genera un
-reporte que distingue cero observado, ausencia y datos sintéticos.
+reporte que distingue cero observado, ausencia y datos sintéticos. Ninguna
+salida revela valores personales en logs ni abandona el entorno local.
 
 ---
 
@@ -683,8 +723,15 @@ privacidad, el rendimiento, la usabilidad y las limitaciones del prototipo.
 - Verificar respuestas `401`, `403`, `404`, `409` y `422` en los escenarios
   correspondientes.
 - Inspeccionar la API pública para detectar datos individualizables.
+- Verificar que fuentes, derivados privados, modelos, exports y backups no
+  aparezcan en `git ls-files`, commits, tags ni artefactos de CI.
+- Ejecutar un escaneo local de secretos y patrones de datos sensibles sobre los
+  archivos versionados, sin enviar contenido a un servicio remoto.
 - Revisar cifrado en tránsito y reposo, secretos, CORS, headers, JWT, RBAC,
   auditoría y logs.
+- Revisar logs, errores, fixtures, capturas y evidencias para confirmar que no
+  contengan nombres, documentos, domicilios, coordenadas privadas u otros datos
+  sanitarios individualizables.
 - Probar retención, eliminación y restauración sobre datos de prueba.
 - Medir la consulta cartográfica con operación, volumen, concurrencia,
   infraestructura y percentil documentados.
@@ -698,6 +745,7 @@ privacidad, el rendimiento, la usabilidad y las limitaciones del prototipo.
 
 - Informe de pruebas funcionales y de integración.
 - Informe de seguridad y privacidad.
+- Evidencia del control de Git y del escaneo local de exposición accidental.
 - Evidencia de backup/restauración y retención.
 - Informe de rendimiento y usabilidad.
 - Matriz de trazabilidad y acta de aceptación o pendientes.
@@ -714,7 +762,8 @@ Todos los RF, RNF, reglas de negocio y criterios CA-01 a CA-13 de la línea base
 
 La suite completa puede ejecutarse desde un entorno limpio, cada requisito en
 alcance posee evidencia y las limitaciones o incumplimientos remanentes están
-registrados sin presentarse como funcionalidades validadas.
+registrados sin presentarse como funcionalidades validadas. Ninguna fuente ni
+salida privada aparece en Git, artefactos públicos, logs o servicios externos.
 
 ## 7. Dependencias críticas y puertas de decisión
 
@@ -723,7 +772,9 @@ registrados sin presentarse como funcionalidades validadas.
 Antes de utilizar datos sensibles reales deben existir autorización,
 responsable, finalidad, alcance, almacenamiento, retención, eliminación y
 resultados publicables. Si esta puerta no se cumple, el desarrollo continúa sólo
-con datos públicos, agregados o sintéticos identificados.
+con datos públicos, agregados o sintéticos identificados. Incluso con
+autorización, el tratamiento de los archivos ministeriales se mantiene
+exclusivamente local salvo una ampliación formal y documentada de permiso.
 
 ### G1. Granularidad territorial
 
@@ -790,6 +841,15 @@ mostrar degradación explícita cuando una fuente no esté disponible.
 **Respuesta:** definir casos de prueba durante cada etapa y consolidarlos en la
 matriz de trazabilidad final.
 
+### R-09. Exposición accidental de datos privados
+
+**Respuesta:** mantener fuentes y derivados sensibles fuera de Git, aplicar
+controles locales antes de cada commit, limitar permisos, eliminar datos de
+logs y capturas, cifrar backups y prohibir su envío a servicios externos. Ante
+una exposición, detener el procesamiento, preservar evidencia mínima, revocar
+accesos o secretos afectados y aplicar el procedimiento institucional de
+incidentes.
+
 ## 9. Definición de terminado del prototipo
 
 SIGARD `v0.1` se considera técnicamente terminado cuando:
@@ -808,6 +868,10 @@ SIGARD `v0.1` se considera técnicamente terminado cuando:
 12. Cada RF y RNF en alcance se vincula con una prueba y una evidencia.
 13. Las limitaciones del target espacial sintético aparecen en documentación,
     API e interfaz.
+14. Ningún archivo ministerial, derivado privado, modelo, export o backup
+    sensible está versionado o publicado fuera del entorno local autorizado.
+15. Logs, pruebas, documentación y capturas no contienen datos personales o
+    sanitarios individualizables.
 
 ## 10. Situación de verificación al iniciar el plan
 
@@ -817,6 +881,9 @@ SIGARD `v0.1` se considera técnicamente terminado cuando:
   automáticamente el entorno virtual exclusivo de ML.
 - La validación Docker requiere crear `backend/.env` desde su ejemplo y
   reemplazar secretos antes de levantar servicios.
+- El archivo `datos oficiales.zip` y sus libros Excel permanecen como fuentes
+  privadas locales; este plan no autoriza copiarlos, extraerlos, versionarlos ni
+  transmitirlos.
 - El frontend dispone de dependencias y scripts de `lint` y `build`, pero aún
   deben reunirse evidencias de pruebas visuales, responsive, teclado y lector de
   pantalla.
