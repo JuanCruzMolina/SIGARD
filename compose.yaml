@@ -1,0 +1,45 @@
+name: sigard-lab
+
+services:
+  database:
+    image: postgis/postgis:17-3.5
+    environment:
+      POSTGRES_USER: sigard
+      POSTGRES_DB: sigard
+      POSTGRES_PASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - database_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sigard -d sigard"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+    restart: unless-stopped
+
+  backend:
+    image: sigard-backend:lab
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.lab
+    environment:
+      DATABASE_URL: postgresql+psycopg2://sigard@database:5432/sigard
+      PGPASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
+      SECRET_KEY: ${SIGARD_SECRET_KEY:?Define SIGARD_SECRET_KEY antes de iniciar la API}
+      CORS_ORIGINS: http://localhost:5173
+      AUTO_CREATE_SCHEMA: "false"
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      database:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
+
+volumes:
+  database_data:

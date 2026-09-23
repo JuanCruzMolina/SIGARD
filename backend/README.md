@@ -6,13 +6,15 @@ reutilizar tablas epidemiológicas.
 
 ## Puesta en marcha
 
-1. Crear `.env` a partir de `.env.example` y reemplazar `SECRET_KEY` y las
-   credenciales de bootstrap.
-2. Iniciar PostgreSQL/PostGIS.
-3. Ejecutar `alembic upgrade head` desde `backend/`.
-4. Iniciar `uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log`
-   para que Uvicorn no persista direcciones IP en su registro de acceso.
-5. Retirar `ADMIN_BOOTSTRAP_PASSWORD` después de crear el primer administrador.
+La configuración Docker se está incorporando por etapas y se documenta en
+[`docs/docker-development.md`](../docs/docker-development.md). Las variables
+privadas se definen exclusivamente en el `.env` de la raíz, creado a partir de
+`.env.example` y nunca versionado.
+
+El orden previsto es iniciar PostgreSQL/PostGIS, ejecutar las migraciones con
+Alembic y después iniciar Uvicorn sin registro de acceso. Las migraciones y la
+retención se ejecutarán como trabajos independientes creados desde la misma
+imagen del backend.
 
 `AUTO_CREATE_SCHEMA=true` se reserva para desarrollo con una base vacía. En
 producción se usan las migraciones. `CORS_ORIGINS` acepta orígenes separados por
@@ -51,11 +53,9 @@ La ejecución final de `pytest -q` completa **9 pruebas**. La migración tambié
 compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo
-por defecto es 180 días. En el despliegue incluido, `docker compose up --build`
-espera a que PostgreSQL esté disponible, ejecuta las migraciones y levanta el
-servicio `retention`, que realiza la purga al iniciar y luego cada 24 horas. En
-otra plataforma debe configurarse un cron o tarea equivalente como condición
-obligatoria de salida a producción.
+por defecto es 180 días. El servicio Docker de retención se incorporará en su
+etapa correspondiente. En producción debe configurarse un cron o tarea
+equivalente como condición obligatoria de salida.
 
 Los límites antiabuso en memoria sirven para una sola instancia del MVP. Antes
 de escalar horizontalmente deben reemplazarse por un almacén efímero compartido

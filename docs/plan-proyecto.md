@@ -89,9 +89,10 @@ La clasificación utilizada en las etapas es:
 
 Al elaborar este plan se observó lo siguiente:
 
-- Git y `docker-compose.yml` ya están presentes.
-- Docker define `db`, `backend`, `retention` y `frontend`, pero el arranque
-  requiere crear `backend/.env` y sustituir secretos de ejemplo.
+- Git ya está presente. La configuración Docker heredada fue retirada para
+  reconstruirla sistemáticamente en `compose.yaml`.
+- Docker incorpora los servicios por etapas y usa el `.env` privado de la raíz;
+  el procedimiento vigente está en `docs/docker-development.md`.
 - PostgreSQL/PostGIS y Alembic existen, aunque el esquema operativo actual se
   concentra en reportes ciudadanos y usuarios.
 - FastAPI expone salud, geocodificación y reportes ciudadanos públicos y
@@ -879,8 +880,8 @@ SIGARD `v0.1` se considera técnicamente terminado cuando:
 - Las pruebas backend requieren instalar las dependencias de
   `backend/requirements.txt` en un entorno apropiado; no deben evaluarse usando
   automáticamente el entorno virtual exclusivo de ML.
-- La validación Docker requiere crear `backend/.env` desde su ejemplo y
-  reemplazar secretos antes de levantar servicios.
+- La validación Docker usa el `.env` privado de la raíz, creado desde
+  `.env.example`, antes de levantar servicios.
 - El archivo `datos oficiales.zip` y sus libros Excel permanecen como fuentes
   privadas locales; este plan no autoriza copiarlos, extraerlos, versionarlos ni
   transmitirlos.

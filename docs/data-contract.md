@@ -248,5 +248,6 @@ usa exclusivamente la cartografía censal local de SIGARD y no solicita teselas
 externas con la coordenada privada.
 
 El plazo inicial de retención es de 180 días. `python -m app.retention` elimina
-reportes vencidos y debe ejecutarse como tarea externa al proceso web. El
-`docker-compose.yml` incluido lo ejecuta al iniciar y luego cada 24 horas.
+reportes vencidos y debe ejecutarse como tarea externa al proceso web. Su
+servicio se incorporará a `compose.yaml` en la etapa de retención documentada
+en `docker-development.md`.

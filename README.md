@@ -64,6 +64,7 @@ entrenado.
 - [Metodología](docs/methodology.md)
 - [Datos sintéticos](docs/synthetic-data.md)
 - [Funcionalidades del MVP](docs/mvp-funcionalidades.md)
+- [Guía de Docker para desarrollo local](docs/docker-development.md)
 - [Política del directorio de datos](data/README.md)
 
 ## Reglas del repositorio
