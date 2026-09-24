@@ -26,6 +26,12 @@ coma y no debe usar comodines.
 GET   /
 GET   /health
 GET   /health/ready
+GET   /api/v1/public/weeks
+GET   /api/v1/public/predictions/{cutoff_date}
+GET   /api/v1/public/territorial-context
+GET   /api/v1/public/experimental-spatial-history/{cutoff_date}
+GET   /api/v1/public/metadata
+GET   /api/v1/public/model-evaluation
 POST  /api/v1/citizen-reports
 GET   /api/v1/citizen-reports/status/{tracking_code}
 POST  /api/v1/geocoding/address
@@ -35,6 +41,17 @@ GET   /api/v1/admin/citizen-reports/export.csv
 GET   /api/v1/admin/citizen-reports/{id}
 PATCH /api/v1/admin/citizen-reports/{id}
 ```
+
+Los endpoints epidemiológicos públicos leen exclusivamente el lote marcado
+como `published`. Ese lote se carga fuera del proceso web mediante:
+
+```powershell
+docker compose -f compose.yaml run --rm publication-import
+```
+
+El importador valida alineación temporal, 263 radios, niveles relativos,
+geometrías y ausencia de campos privados. La operación es transaccional e
+idempotente; no entrena modelos ni modifica las fuentes.
 
 La búsqueda de dirección requiere un consentimiento separado en el frontend y
 se realiza desde la API: OpenStreetMap recibe el texto buscado y la IP del
@@ -50,7 +67,7 @@ pytest -q
 python -m app.retention
 ```
 
-La ejecución final de `pytest -q` completa **9 pruebas**. La migración también se
+La ejecución final de `pytest -q` completa **13 pruebas**. La migración también se
 compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo

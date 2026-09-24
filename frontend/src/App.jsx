@@ -43,7 +43,7 @@ function AppContent() {
       <Route path="/metodologia" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{data && <Metodologia data={data} />}</EpidemiologicalRoute>} />
       <Route path="*" element={<Prevencion />} />
     </Routes>
-    <footer className="site-footer"><span><strong>SIGARD</strong> · La Rioja Capital</span>{selectedCutoffDate && <span>Último corte epidemiológico disponible: {formatDate(selectedCutoffDate)}</span>}<span>Información orientativa · No reemplaza indicaciones sanitarias oficiales</span></footer>
+    <footer className="site-footer"><span><strong>SIGARD</strong> · La Rioja Capital</span>{selectedCutoffDate && <span>Último corte epidemiológico disponible: {formatDate(selectedCutoffDate)}</span>}{data && <span>Fuente técnica: {data.dataSource === 'api' ? `API ${data.availableWeeks.publication?.version || 'versionada'}` : 'respaldo estático local'}</span>}<span>Información orientativa · No reemplaza indicaciones sanitarias oficiales</span></footer>
   </div>
 }
 

@@ -792,3 +792,42 @@ La etapa se verificó el 23 de septiembre de 2026:
 - Las fuentes de datos, secretos y modelos no forman parte de ninguna imagen.
 - La rutina cotidiana no ejecuta migraciones, retención ni entrenamiento de
   manera implícita.
+
+## Iteración 11: publicación epidemiológica
+
+La revisión Alembic `20260924_03` agrega lotes de publicación, semanas,
+predicciones temporales, contexto territorial PostGIS y resultados espaciales
+experimentales. Los reportes ciudadanos continúan en tablas y rutas separadas.
+
+Después de aplicar migraciones, cargar los seis contratos públicos aprobados:
+
+```powershell
+docker compose -f compose.yaml run --rm migrations
+docker compose -f compose.yaml run --rm publication-import
+```
+
+`publication-import` monta `frontend/public/data/` en modo de sólo lectura,
+valida el conjunto completo y publica el nuevo lote en una transacción. Si los
+archivos no cambiaron, una segunda ejecución reconoce el hash y no duplica
+registros.
+
+Verificación mínima:
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/public/weeks
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/public/predictions/2024-06-22
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/public/territorial-context
+Invoke-RestMethod http://127.0.0.1:8000/api/v1/public/experimental-spatial-history/2024-06-22
+```
+
+La API responde sólo desde el lote `published`. El frontend la usa como fuente
+primaria y conserva temporalmente los archivos estáticos como respaldo de
+demostración.
+
+La imagen `postgis/postgis` habilita PostGIS en la base `sigard` creada durante
+la inicialización. Si se crea manualmente otra base vacía para una prueba
+aislada, se debe ejecutar `CREATE EXTENSION postgis;` antes de aplicar Alembic.
+
+La validación de la iteración confirmó 13 pruebas del backend, importación
+idempotente, carga limpia desde una base temporal y visualización de los 263
+radios sin depender de teselas cartográficas externas.

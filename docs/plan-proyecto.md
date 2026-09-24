@@ -8,6 +8,20 @@
 **Audiencia principal:** equipo técnico  
 **Estado:** línea base de ejecución sujeta a validación institucional
 
+## Actualización de ejecución — 24 de septiembre de 2026
+
+La arquitectura Docker local quedó implementada y validada con cuatro imágenes:
+PostgreSQL/PostGIS, backend, frontend y ML. Las migraciones, pruebas del
+backend, retención y pipelines ML se ejecutan como trabajos temporales. La
+validación consolidada confirmó 13 pruebas del backend, migraciones idempotentes,
+servicios web saludables y dependencias ML importables.
+
+La próxima unidad de trabajo es la **Iteración 11: persistencia y API pública de
+artefactos epidemiológicos**. Su alcance ejecutable y criterios de aceptación se
+documentan en [`iteration-11-public-api.md`](iteration-11-public-api.md). Los
+estados de la sección 5 permanecen como diagnóstico inicial histórico; no deben
+interpretarse como el estado vigente del repositorio.
+
 ## 1. Propósito
 
 Este documento organiza la ejecución técnica de SIGARD en doce etapas

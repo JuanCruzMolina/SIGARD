@@ -53,21 +53,24 @@ al iniciar la API ni como parte de una solicitud HTTP.
 
 ### Persistencia
 
-PostgreSQL/PostGIS almacenará geometrías, unidades temporales, asignaciones
-sintéticas y predicciones con su procedencia y versión. El esquema SQL actual
-no representa todavía este contrato y se mantiene sin cambios durante esta
-etapa documental.
+PostgreSQL/PostGIS almacena lotes de publicación versionados, semanas,
+predicciones temporales departamentales, contexto territorial y resultados de
+la simulación espacial experimental. Las geometrías censales se conservan una
+vez por radio y lote; los resultados semanales las referencian sin presentarlas
+como ubicaciones observadas.
 
 ### API
 
-FastAPI expondrá resultados ya preparados y versionados. No asignará casos,
-entrenará modelos ni generará puntos sintéticos en tiempo de solicitud.
+FastAPI expone resultados ya preparados desde el único lote marcado como
+publicado. No asigna casos, entrena modelos ni genera puntos sintéticos en
+tiempo de solicitud.
 
 ### Frontend
 
-React o Next.js con Leaflet mostrará radios, semanas y predicciones. Los puntos
-sintéticos deberán identificarse visualmente como simulados. El frontend está
-previsto para Vercel; API y PostGIS requerirán infraestructura separada.
+React con Leaflet muestra radios, semanas y predicciones desde la API pública.
+Conserva temporalmente los contratos estáticos como respaldo explícito. Las
+capas sintéticas se identifican visualmente como experimentales. El frontend
+está previsto para Vercel; API y PostGIS requieren infraestructura separada.
 
 ## Fronteras de información
 
@@ -105,9 +108,9 @@ Ciudadanía --> formulario anónimo --> API | --> citizen_reports (privado)
 `citizen_reports` no se conecta con el panel `radio-semana`, las tablas de
 casos, las asignaciones sintéticas ni las predicciones. La coordenada exacta se
 usa sólo para revisión operativa autorizada y se elimina al vencer su plazo de
-retención. En Docker, un servicio separado ejecuta la purga al iniciar y cada 24
-horas; otros despliegues deben programar una tarea diaria equivalente. Frontend
-y backend se despliegan por separado: Vercel puede alojar la
+retención. En desarrollo, Compose ejecuta la purga como un trabajo temporal
+bajo demanda; un despliegue operativo debe programar y supervisar su ejecución
+diaria. Frontend y backend se despliegan por separado: Vercel puede alojar la
 SPA, mientras FastAPI y PostgreSQL/PostGIS requieren otro servicio.
 
 La superficie pública real es `/prevencion` y la operación protegida se realiza

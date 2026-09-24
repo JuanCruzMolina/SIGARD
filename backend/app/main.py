@@ -10,6 +10,7 @@ from .config import get_settings
 from .database import Base, build_engine, build_session_factory
 from .geocoding import router as geocoding_router
 from .models import CitizenReport, User
+from .public import router as public_router
 from .reports import router as reports_router
 from .security import hash_password
 
@@ -55,6 +56,7 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     application.include_router(reports_router)
     application.include_router(geocoding_router)
     application.include_router(admin_router)
+    application.include_router(public_router)
 
     @application.middleware("http")
     async def protect_sensitive_responses(request, call_next):

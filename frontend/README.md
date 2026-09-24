@@ -7,6 +7,11 @@ SPA React/Vite con dos dominios visuales explícitamente separados:
 - prevención y servicios ciudadanos: `/prevencion`;
 - operación privada de reportes: `/admin/reportes`.
 
+Las vistas epidemiológicas consultan la API pública configurada mediante
+`VITE_API_URL`. Durante la Iteración 11 conservan los contratos de
+`public/data/` como respaldo local explícito cuando la API no está disponible.
+El pie de la aplicación identifica cuál de las dos fuentes técnicas se utilizó.
+
 ## Desarrollo
 
 ```bash

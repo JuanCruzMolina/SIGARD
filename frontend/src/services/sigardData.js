@@ -1,18 +1,55 @@
 const DATA_ROOT = '/data'
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 export const DATA_ERROR_MESSAGE = 'No fue posible cargar los datos del prototipo.'
 
-async function loadJson(file) {
+async function loadStaticJson(file) {
   const response = await fetch(`${DATA_ROOT}/${file}`)
   if (!response.ok) throw new Error(DATA_ERROR_MESSAGE)
   return response.json()
 }
 
-export const loadAvailableWeeks = () => loadJson('available_weeks.json')
-export const loadTemporalPredictions = () => loadJson('temporal_predictions.json')
-export const loadTerritorialContext = () => loadJson('territorial_context.geojson')
-export const loadExperimentalSpatialHistory = () => loadJson('experimental_spatial_history.geojson')
-export const loadModelEvaluation = () => loadJson('model_evaluation.json')
-export const loadMvpMetadata = () => loadJson('mvp_metadata.json')
+async function loadApiJson(path) {
+  const response = await fetch(`${API_URL}/api/v1/public${path}`)
+  if (!response.ok) throw new Error(`API pública no disponible: ${response.status}`)
+  return response.json()
+}
+
+async function loadFromApi() {
+  const availableWeeks = await loadApiJson('/weeks')
+  if (!Array.isArray(availableWeeks.weeks) || availableWeeks.weeks.length === 0) throw new Error(DATA_ERROR_MESSAGE)
+  const [territorialContext, modelEvaluation, metadata, predictions, experimentalCollections] = await Promise.all([
+    loadApiJson('/territorial-context'),
+    loadApiJson('/model-evaluation'),
+    loadApiJson('/metadata'),
+    Promise.all(availableWeeks.weeks.map((week) => loadApiJson(`/predictions/${encodeURIComponent(week.cutoff_date)}`))),
+    Promise.all(availableWeeks.weeks.map((week) => loadApiJson(`/experimental-spatial-history/${encodeURIComponent(week.cutoff_date)}`))),
+  ])
+  return {
+    availableWeeks,
+    temporalPredictions: { model: metadata.temporal_model, predictions },
+    territorialContext,
+    experimentalHistory: {
+      type: 'FeatureCollection',
+      features: experimentalCollections.flatMap((collection) => collection.features),
+      publication: availableWeeks.publication,
+    },
+    modelEvaluation,
+    metadata,
+    dataSource: 'api',
+  }
+}
+
+async function loadFromStaticFallback() {
+  const [availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata] = await Promise.all([
+    loadStaticJson('available_weeks.json'), loadStaticJson('temporal_predictions.json'),
+    loadStaticJson('territorial_context.geojson'), loadStaticJson('experimental_spatial_history.geojson'),
+    loadStaticJson('model_evaluation.json'), loadStaticJson('mvp_metadata.json'),
+  ])
+  return {
+    availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata,
+    dataSource: 'static-fallback',
+  }
+}
 
 function assertFeatureCollection(value, label) {
   if (value?.type !== 'FeatureCollection' || !Array.isArray(value.features)) throw new Error(`${DATA_ERROR_MESSAGE} ${label} no es una colección geográfica válida.`)
@@ -37,15 +74,19 @@ function assertCompleteData(availableWeeks, temporalPredictions, territorialCont
 
 export async function loadSigardData() {
   try {
-    const [availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata] = await Promise.all([
-      loadAvailableWeeks(), loadTemporalPredictions(), loadTerritorialContext(), loadExperimentalSpatialHistory(), loadModelEvaluation(), loadMvpMetadata(),
-    ])
+    let loaded
+    try {
+      loaded = await loadFromApi()
+    } catch {
+      loaded = await loadFromStaticFallback()
+    }
+    const { availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation } = loaded
     if (!Array.isArray(availableWeeks.weeks) || availableWeeks.weeks.length === 0) throw new Error(`${DATA_ERROR_MESSAGE} No hay semanas disponibles.`)
     if (!availableWeeks.weeks.some((week) => week.cutoff_date === availableWeeks.default_cutoff_date)) throw new Error(`${DATA_ERROR_MESSAGE} El corte predeterminado no está disponible.`)
     assertFeatureCollection(territorialContext, 'El contexto territorial')
     assertFeatureCollection(experimentalHistory, 'La simulación espacial')
     assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation)
-    return { availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata }
+    return loaded
   } catch (error) {
     if (error.message?.startsWith(DATA_ERROR_MESSAGE)) throw error
     throw new Error(DATA_ERROR_MESSAGE, { cause: error })

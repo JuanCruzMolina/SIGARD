@@ -58,6 +58,14 @@ services:
     profiles: ["tools"]
     restart: "no"
 
+  publication-import:
+    <<: *backend-common
+    command: ["python", "-m", "app.publication_import", "--source-dir", "/publication"]
+    volumes:
+      - ./frontend/public/data:/publication:ro
+    profiles: ["tools"]
+    restart: "no"
+
   backend-tests:
     image: sigard-backend-test:lab
     build:

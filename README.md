@@ -37,25 +37,32 @@ funcionan, pero **no demuestra capacidad epidemiológica real para localizar
 casos de dengue por radio censal**. Sus resultados no deben utilizarse para
 decisiones sanitarias ni interpretarse como ubicaciones reales de personas.
 
-## Arquitectura prevista
+## Arquitectura vigente
 
-| Capa | Tecnología prevista |
+| Capa | Tecnología |
 | --- | --- |
 | Preparación y ML | Python, pandas y scikit-learn (Random Forest) |
 | API | FastAPI |
 | Persistencia espacial | PostgreSQL y PostGIS |
-| Visualización | React o Next.js con Leaflet |
+| Visualización | React con Leaflet |
 | Despliegue web | Vercel para el frontend |
 
-El entrenamiento se ejecutará fuera del backend. La API sólo consumirá
-artefactos ya generados y publicará resultados versionados.
+El entrenamiento se ejecuta fuera del backend. La API operativa actual atiende
+reportes ciudadanos y administración; la siguiente iteración incorporará la
+publicación versionada de artefactos epidemiológicos ya generados.
 
 ## Estado actual
 
-El repositorio contiene scaffolding inicial para backend, frontend, ML y
-Docker. En esta etapa se establece únicamente la base documental y el contrato
-conceptual de `v0.1`; todavía no existe un pipeline integrado ni un modelo
-entrenado.
+El repositorio contiene pipelines reproducibles de preparación, simulación,
+features, evaluación temporal, modelos exploratorios y exportación para el
+frontend. También dispone de PostgreSQL/PostGIS, migraciones Alembic, una API
+FastAPI para reportes ciudadanos, una SPA React servida por Nginx y una imagen
+ML offline. Los servicios permanentes y los trabajos temporales se coordinan
+mediante `compose.yaml`.
+
+El frontend epidemiológico todavía consume artefactos estáticos aprobados. El
+próximo hito es persistir y publicar esos contratos mediante una API pública,
+sin ejecutar entrenamiento dentro del backend.
 
 ## Documentación
 
