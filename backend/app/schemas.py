@@ -95,7 +95,7 @@ class PublicReportStatus(BaseModel):
 
 
 class AdminLogin(BaseModel):
-    email: str = Field(min_length=5, max_length=255)
+    email: str = Field(min_length=5, max_length=150)
     password: str = Field(min_length=8, max_length=200)
 
 

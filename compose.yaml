@@ -1,5 +1,20 @@
 name: sigard-lab
 
+x-backend-common: &backend-common
+  image: sigard-backend:lab
+  build:
+    context: ./backend
+    dockerfile: Dockerfile
+  environment:
+    DATABASE_URL: postgresql+psycopg2://sigard@database:5432/sigard
+    PGPASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
+    SECRET_KEY: ${SIGARD_SECRET_KEY:?Define SIGARD_SECRET_KEY antes de iniciar la API}
+    CORS_ORIGINS: http://localhost:5173
+    AUTO_CREATE_SCHEMA: "false"
+  depends_on:
+    database:
+      condition: service_healthy
+
 services:
   database:
     image: postgis/postgis:17-3.5
@@ -19,27 +34,21 @@ services:
     restart: unless-stopped
 
   backend:
-    image: sigard-backend:lab
-    build:
-      context: ./backend
-      dockerfile: Dockerfile.lab
-    environment:
-      DATABASE_URL: postgresql+psycopg2://sigard@database:5432/sigard
-      PGPASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
-      SECRET_KEY: ${SIGARD_SECRET_KEY:?Define SIGARD_SECRET_KEY antes de iniciar la API}
-      CORS_ORIGINS: http://localhost:5173
-      AUTO_CREATE_SCHEMA: "false"
+    <<: *backend-common
     ports:
       - "127.0.0.1:8000:8000"
-    depends_on:
-      database:
-        condition: service_healthy
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 6
     restart: unless-stopped
+
+  migrations:
+    <<: *backend-common
+    command: ["alembic", "upgrade", "head"]
+    profiles: ["tools"]
+    restart: "no"
 
 volumes:
   database_data:

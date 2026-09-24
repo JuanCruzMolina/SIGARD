@@ -28,8 +28,8 @@ y el proceso o trabajo programado de retención.
 ## Orden de implementación
 
 - [x] Etapa 1: base de datos PostgreSQL/PostGIS.
-- [ ] Etapa 2: construcción de la imagen `sigard-backend`.
-- [ ] Etapa 3: migraciones Alembic como trabajo independiente.
+- [x] Etapa 2: construcción de la imagen `sigard-backend`.
+- [x] Etapa 3: migraciones Alembic como trabajo independiente.
 - [ ] Etapa 4: API FastAPI.
 - [ ] Etapa 5: retención como trabajo independiente.
 - [ ] Etapa 6: frontend local.
@@ -149,8 +149,15 @@ Después de abrir Docker Desktop:
 
 ```powershell
 Set-Location C:\Users\usuario\Documents\Proyectos\SIGARD
-docker compose -f compose.yaml up -d
+docker compose -f compose.yaml up -d database
 docker compose -f compose.yaml ps
+```
+
+Después de completar y validar la etapa 4, la rutina podrá iniciar también la
+API:
+
+```powershell
+docker compose -f compose.yaml up -d
 ```
 
 Para revisar un problema del servicio:
@@ -176,3 +183,197 @@ Cumplidos esos puntos, el siguiente paso es construir la imagen
 `sigard-backend` sin iniciar todavía la API. Después se ejecutarán las
 migraciones de la etapa 3. Sólo con el esquema actualizado iniciaremos FastAPI
 y verificaremos su conexión real con PostgreSQL en la etapa 4.
+
+## Etapa 2: imagen del backend
+
+### Objetivo
+
+Construir una imagen reproducible que contenga FastAPI, Alembic y el código del
+backend. La imagen no contiene datos, secretos, herramientas de ML ni archivos
+de pruebas. En las etapas siguientes se reutilizará para ejecutar migraciones,
+la API y la retención con comandos diferentes.
+
+### Archivos involucrados
+
+- `backend/Dockerfile`: receta de construcción de la imagen.
+- `backend/.dockerignore`: excluye archivos innecesarios o privados del contexto.
+- `backend/requirements.runtime.txt`: dependencias requeridas en ejecución.
+- `backend/requirements.txt`: agrega herramientas de desarrollo y pruebas.
+- `compose.yaml`: asigna a la imagen el nombre `sigard-backend:lab`.
+
+Las dependencias de ML se mantienen fuera de la imagen del backend. Esto evita
+acoplar la API al entrenamiento y reduce el tamaño y la superficie de
+dependencias del servicio web.
+
+### Lectura del Dockerfile
+
+`FROM python:3.12-slim` selecciona una base pequeña con Python 3.12.
+
+`ENV PYTHONDONTWRITEBYTECODE=1` evita archivos `.pyc` y
+`PYTHONUNBUFFERED=1` envía los registros directamente a Docker.
+
+`WORKDIR /app` fija el directorio de trabajo interno. Los `COPY` posteriores
+no copian todo el repositorio: sólo las dependencias, la aplicación, las
+migraciones y `alembic.ini`.
+
+Las dependencias se copian e instalan antes que el código para aprovechar la
+caché de construcción cuando sólo cambia la aplicación.
+
+`USER sigard` hace que Uvicorn se ejecute como un usuario sin privilegios de
+administrador dentro del contenedor.
+
+`EXPOSE 8000` documenta el puerto interno. No publica el puerto por sí mismo;
+la publicación local se define en `compose.yaml`.
+
+`CMD` es el comando predeterminado de la API. Migraciones y retención podrán
+reemplazarlo sin construir imágenes nuevas.
+
+### Validar antes de construir
+
+```powershell
+docker compose -f compose.yaml config --quiet
+```
+
+### Construir la imagen
+
+```powershell
+docker compose -f compose.yaml build backend
+```
+
+`build` procesa el Dockerfile y crea `sigard-backend:lab`, pero no inicia el
+contenedor de la API.
+
+### Verificar la imagen sin iniciar la API
+
+```powershell
+docker image ls sigard-backend:lab
+docker run --rm --entrypoint python sigard-backend:lab -c "import fastapi, sqlalchemy, alembic; print('dependencias OK')"
+docker run --rm --entrypoint id sigard-backend:lab
+```
+
+La segunda orden comprueba las dependencias principales. La tercera debe
+mostrar que el usuario activo es `sigard` y no `root`. `--rm` elimina esos
+contenedores temporales al finalizar, pero conserva la imagen.
+
+### Criterio para avanzar a la etapa 3
+
+- La construcción termina sin errores.
+- `docker image ls` muestra `sigard-backend` con la etiqueta `lab`.
+- Las importaciones principales funcionan.
+- El usuario de ejecución es `sigard`.
+- La API todavía no está iniciada.
+
+Cumplidos esos puntos se añadirá un servicio temporal `migrations`, construido
+desde la misma imagen y responsable de ejecutar `alembic upgrade head`.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- se construyó la imagen `sigard-backend:lab`;
+- se importaron correctamente FastAPI, SQLAlchemy y Alembic;
+- se importó `app.main`, incluyendo sus rutas;
+- se confirmó que `.env`, las pruebas y las librerías de ML no están dentro;
+- el proceso se ejecuta como `uid=999(sigard)` y no como `root`;
+- sólo `database` permaneció iniciado durante la validación.
+
+La prueba inicial de importación permitió detectar que `httpx` es una
+dependencia de ejecución del módulo de geocodificación. Se corrigió su
+clasificación antes de cerrar la etapa.
+
+## Etapa 3: migraciones Alembic
+
+### Objetivo
+
+Crear y actualizar el esquema de PostgreSQL mediante un contenedor temporal,
+separado de la API. El servicio `migrations` reutiliza
+`sigard-backend:lab`, ejecuta `alembic upgrade head` y termina.
+
+### Configuración compartida
+
+`compose.yaml` define la extensión `x-backend-common` con la imagen, la
+construcción, el entorno y la dependencia saludable de PostgreSQL. `backend` y
+`migrations` reutilizan ese bloque para evitar que sus conexiones diverjan.
+
+El servicio de migraciones pertenece al perfil `tools`. Por eso no se ejecuta
+como servicio permanente al usar el `up` cotidiano, pero sí puede invocarse
+explícitamente. Usa `restart: "no"`: terminar después de aplicar el esquema es
+el comportamiento correcto.
+
+### Comprobaciones previas
+
+Validar Compose y listar los perfiles:
+
+```powershell
+docker compose -f compose.yaml config --quiet
+docker compose -f compose.yaml config --profiles
+```
+
+Comprobar la conexión desde el contenedor sin modificar la base:
+
+```powershell
+docker compose -f compose.yaml run --rm migrations python -c "from sqlalchemy import create_engine, text; from app.config import get_settings; engine=create_engine(get_settings().database_url); connection=engine.connect(); print(connection.execute(text('SELECT current_database()')).scalar()); connection.close(); engine.dispose()"
+```
+
+Generar el SQL sin ejecutarlo:
+
+```powershell
+docker compose -f compose.yaml run --rm migrations alembic upgrade head --sql
+```
+
+La simulación permite revisar tablas, restricciones, índices y la transacción
+antes de modificar PostgreSQL.
+
+### Aplicar la migración
+
+```powershell
+docker compose -f compose.yaml run --rm migrations
+```
+
+`run` crea un contenedor temporal usando la definición de `migrations`; `--rm`
+lo elimina cuando termina. La imagen y el esquema creado en PostgreSQL
+permanecen.
+
+### Verificar la versión
+
+```powershell
+docker compose -f compose.yaml run --rm migrations alembic current
+```
+
+El resultado esperado en esta etapa es:
+
+```text
+20260819_01 (head)
+```
+
+Volver a ejecutar `docker compose -f compose.yaml run --rm migrations` es
+seguro: Alembic consulta `alembic_version` y no repite una revisión ya aplicada.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- la base estaba vacía de tablas de aplicación antes de migrar;
+- PostGIS `3.5.2` estaba disponible;
+- se revisó el SQL offline antes de ejecutarlo;
+- Alembic registró `20260819_01` como `head`;
+- se crearon `usuarios`, `citizen_reports` y `citizen_report_audit`;
+- `citizen_reports.geom` es un `POINT` con SRID 4326;
+- existe el índice espacial GiST `ix_citizen_reports_geom`;
+- una segunda ejecución terminó correctamente sin repetir cambios;
+- los contenedores temporales fueron eliminados con `--rm`.
+
+Durante la revisión previa se alinearon el modelo y la migración de `usuarios`:
+correo de hasta 150 caracteres, rol de hasta 20 y rol predeterminado `user`.
+La creación administrativa continúa asignando `admin` de forma explícita.
+
+### Criterio para avanzar a la etapa 4
+
+- El servicio `migrations` sólo se ejecuta bajo demanda.
+- La base se encuentra en la revisión `head`.
+- Las tablas, restricciones e índice espacial existen.
+- Repetir `upgrade head` no genera modificaciones.
+- El contenedor de la API todavía no está iniciado.
+
+Cumplidos esos puntos se puede iniciar `backend`, verificar su healthcheck y
+probar una consulta real desde FastAPI hacia PostgreSQL.

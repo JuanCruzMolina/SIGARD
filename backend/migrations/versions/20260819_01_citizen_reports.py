@@ -12,17 +12,16 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.execute(sa.text("""
-        CREATE TABLE IF NOT EXISTS usuarios (
-            id SERIAL PRIMARY KEY,
-            email VARCHAR(150) NOT NULL UNIQUE,
-            password_hash VARCHAR(255) NOT NULL,
-            rol VARCHAR(20) NOT NULL DEFAULT 'user',
-            activo BOOLEAN NOT NULL DEFAULT TRUE,
-            created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-            CONSTRAINT usuarios_rol_check CHECK (rol IN ('admin', 'user'))
-        )
-    """))
+    op.create_table(
+        "usuarios",
+        sa.Column("id", sa.Integer(), primary_key=True, autoincrement=True),
+        sa.Column("email", sa.String(150), nullable=False, unique=True),
+        sa.Column("password_hash", sa.String(255), nullable=False),
+        sa.Column("rol", sa.String(20), nullable=False, server_default="user"),
+        sa.Column("activo", sa.Boolean(), nullable=False, server_default=sa.true()),
+        sa.Column("created_at", sa.DateTime(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.CheckConstraint("rol IN ('admin', 'user')", name="usuarios_rol_check"),
+    )
     op.create_table(
         "citizen_reports",
         sa.Column("id", sa.String(36), primary_key=True),
@@ -77,3 +76,4 @@ def downgrade() -> None:
     op.drop_table("citizen_report_audit")
     op.drop_index("ix_citizen_reports_geom", table_name="citizen_reports", postgresql_using="gist")
     op.drop_table("citizen_reports")
+    op.drop_table("usuarios")
