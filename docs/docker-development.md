@@ -31,7 +31,7 @@ y el proceso o trabajo programado de retención.
 - [x] Etapa 2: construcción de la imagen `sigard-backend`.
 - [x] Etapa 3: migraciones Alembic como trabajo independiente.
 - [x] Etapa 4: API FastAPI.
-- [ ] Etapa 5: retención como trabajo independiente.
+- [x] Etapa 5: retención como trabajo independiente.
 - [ ] Etapa 6: frontend local.
 - [ ] Etapa 7: pipeline ML offline.
 
@@ -477,3 +477,87 @@ docker compose -f compose.yaml down
 
 Cumplidos esos puntos se puede crear el servicio de retención usando la misma
 imagen `sigard-backend:lab`, sin ejecutar la purga dentro del proceso web.
+
+## Etapa 5: retención de reportes ciudadanos
+
+### Objetivo y alcance
+
+Eliminar reportes ciudadanos cuando vence `retention_until`, fuera del proceso
+de FastAPI. Esta política no elimina observaciones epidemiológicas,
+asignaciones sintéticas, predicciones ni artefactos del pipeline ML.
+
+El plazo usado al crear cada reporte se configura mediante
+`SIGARD_REPORT_RETENTION_DAYS` y debe ser un entero mayor o igual que uno. El
+valor predeterminado es 180 días. Cambiarlo afecta los reportes nuevos; no
+reescribe retroactivamente `retention_until` en registros existentes.
+
+### Servicio temporal
+
+`retention` reutiliza `sigard-backend:lab`, depende únicamente de una base
+saludable, pertenece al perfil `tools` y usa `restart: "no"`. No se implementa
+un bucle infinito ni un temporizador dentro del contenedor.
+
+Compose ejecuta el trabajo bajo demanda en desarrollo. En producción, un
+programador externo debe invocar el mismo contenedor una vez al día y vigilar
+su código de salida.
+
+### Simular sin eliminar
+
+```powershell
+docker compose -f compose.yaml run --rm retention python -m app.retention --dry-run
+```
+
+La salida informa solamente la cantidad de reportes vencidos. No imprime
+descripciones, ubicaciones, códigos de seguimiento ni otros datos privados.
+
+### Ejecutar la purga
+
+```powershell
+docker compose -f compose.yaml run --rm retention
+```
+
+El trabajo elimina en una transacción los reportes cuyo `retention_until` sea
+anterior al instante de ejecución, confirma la transacción, libera la conexión
+y termina. `--rm` elimina el contenedor temporal.
+
+Las auditorías asociadas al reporte se eliminan por cascada. Si un reporte
+vigente señalaba al vencido como posible duplicado, la revisión Alembic
+`20260923_02` pone esa referencia en `NULL` mediante `ON DELETE SET NULL`.
+
+### Secuencia segura al desplegar cambios
+
+```powershell
+docker compose -f compose.yaml run --rm --build backend-tests
+docker compose -f compose.yaml build backend
+docker compose -f compose.yaml run --rm migrations
+docker compose -f compose.yaml run --rm retention python -m app.retention --dry-run
+docker compose -f compose.yaml run --rm retention
+```
+
+Las migraciones deben ejecutarse antes de la purga para garantizar que las
+reglas de integridad requeridas ya estén activas.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- las 11 pruebas del backend pasaron;
+- la migración incremental se revisó en modo SQL antes de aplicarse;
+- Alembic quedó en `20260923_02 (head)`;
+- la clave de posibles duplicados quedó con `ON DELETE SET NULL`;
+- sobre una base sin vencidos, simulación y purga informaron cero;
+- una prueba controlada detectó y eliminó exactamente un reporte vencido;
+- conservó el reporte vigente y anuló su referencia al registro eliminado;
+- eliminó por cascada la auditoría asociada al reporte vencido;
+- todos los registros sintéticos de validación fueron eliminados al finalizar.
+
+### Criterio para avanzar a la etapa 6
+
+- La retención se ejecuta como trabajo temporal y no dentro de FastAPI.
+- Existe un modo de simulación no destructivo.
+- La migración y las reglas de integridad están en `head`.
+- La eliminación conserva reportes no vencidos.
+- No quedan contenedores ni datos sintéticos de la validación.
+
+Cumplidos esos puntos se puede contenerizar el frontend local sin acoplarlo a
+la ejecución de migraciones, retención o entrenamiento ML.

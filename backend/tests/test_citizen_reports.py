@@ -7,7 +7,7 @@ from app.main import create_app
 from app.models import User
 from app.config import get_settings
 from app.schemas import PRIVACY_NOTICE_VERSION
-from app.retention import purge_expired
+from app.retention import count_expired, purge_expired
 from app.security import hash_password
 
 
@@ -145,6 +145,7 @@ def test_retention_removes_only_expired_reports(client):
         ])
         db.commit()
 
+    assert count_expired(str(client.app.state.engine.url)) == 1
     assert purge_expired(str(client.app.state.engine.url)) == 1
     with client.app.state.SessionLocal() as db:
         assert db.scalar(select(func.count()).select_from(CitizenReport)) == 1

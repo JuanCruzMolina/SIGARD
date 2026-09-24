@@ -38,7 +38,7 @@ class CitizenReport(Base):
     public_status_message: Mapped[str | None] = mapped_column(Text, nullable=True)
     internal_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     possible_duplicate_of: Mapped[str | None] = mapped_column(
-        String(36), ForeignKey("citizen_reports.id"), nullable=True
+        String(36), ForeignKey("citizen_reports.id", ondelete="SET NULL"), nullable=True
     )
     privacy_notice_version: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)

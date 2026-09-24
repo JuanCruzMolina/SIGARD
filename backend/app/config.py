@@ -1,6 +1,6 @@
 from functools import lru_cache
 
-from pydantic import field_validator
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     auto_create_schema: bool = False
     admin_bootstrap_email: str | None = None
     admin_bootstrap_password: str | None = None
-    report_retention_days: int = 180
+    report_retention_days: int = Field(default=180, ge=1)
     report_rate_limit: int = 5
     geocoding_rate_limit: int = 10
     admin_login_rate_limit: int = 5

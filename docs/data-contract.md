@@ -249,5 +249,7 @@ externas con la coordenada privada.
 
 El plazo inicial de retención es de 180 días. `python -m app.retention` elimina
 reportes vencidos y debe ejecutarse como tarea externa al proceso web. Su
-servicio se incorporará a `compose.yaml` en la etapa de retención documentada
-en `docker-development.md`.
+servicio está definido en `compose.yaml` como un trabajo temporal y se detalla
+en `docker-development.md`. Esta política aplica únicamente a reportes
+ciudadanos y no elimina observaciones epidemiológicas, asignaciones sintéticas
+ni predicciones.

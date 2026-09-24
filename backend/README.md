@@ -54,9 +54,9 @@ La ejecución final de `pytest -q` completa **9 pruebas**. La migración tambié
 compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo
-por defecto es 180 días. El servicio Docker de retención se incorporará en su
-etapa correspondiente. En producción debe configurarse un cron o tarea
-equivalente como condición obligatoria de salida.
+por defecto es 180 días. En Docker se ejecuta mediante el servicio temporal
+`retention`; en producción debe configurarse un cron o tarea equivalente como
+condición obligatoria de salida.
 
 Los límites antiabuso en memoria sirven para una sola instancia del MVP. Antes
 de escalar horizontalmente deben reemplazarse por un almacén efímero compartido
