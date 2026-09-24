@@ -32,7 +32,7 @@ y el proceso o trabajo programado de retención.
 - [x] Etapa 3: migraciones Alembic como trabajo independiente.
 - [x] Etapa 4: API FastAPI.
 - [x] Etapa 5: retención como trabajo independiente.
-- [ ] Etapa 6: frontend local.
+- [x] Etapa 6: frontend local.
 - [ ] Etapa 7: pipeline ML offline.
 
 ## Etapa 1: PostgreSQL y PostGIS
@@ -561,3 +561,122 @@ La etapa se verificó el 23 de septiembre de 2026:
 
 Cumplidos esos puntos se puede contenerizar el frontend local sin acoplarlo a
 la ejecución de migraciones, retención o entrenamiento ML.
+
+## Etapa 6: frontend React/Vite
+
+### Objetivo
+
+Construir los archivos estáticos de React en una etapa Node separada y servir
+únicamente el resultado con Nginx sin privilegios. El frontend conserva su
+capacidad de desplegarse independientemente en Vercel; esta imagen se usa para
+integración local y despliegues alternativos.
+
+### Validación previa
+
+Antes de crear la imagen se ejecutó una instalación reproducible y las
+comprobaciones disponibles:
+
+```powershell
+Set-Location frontend
+npm ci
+npm run lint
+npm run build
+```
+
+`npm ci` usa exactamente `package-lock.json`. El proyecto no define todavía
+una suite automatizada de pruebas frontend, por lo que lint, build y las
+pruebas HTTP de integración son las verificaciones disponibles en esta etapa.
+
+### Construcción multietapa
+
+`frontend/Dockerfile` contiene dos etapas:
+
+1. `node:24-alpine` instala dependencias, ejecuta lint y produce `dist/`.
+2. `nginxinc/nginx-unprivileged:1.30.3-alpine` recibe únicamente `dist/` y la
+   configuración del servidor.
+
+La imagen final no contiene Node, npm, `node_modules`, código fuente, `.env` ni
+herramientas de compilación. Nginx escucha en el puerto interno 8080 como el
+usuario sin privilegios `nginx`.
+
+### Variable pública de API
+
+Vite incorpora `VITE_API_URL` durante el build. En Compose se obtiene desde
+`SIGARD_FRONTEND_API_URL`, con `http://localhost:8000` como valor local
+predeterminado:
+
+```text
+SIGARD_FRONTEND_API_URL=http://localhost:8000
+```
+
+Una variable `VITE_*` queda visible en el JavaScript descargado por el
+navegador y nunca debe contener credenciales. Se usa `localhost`, no
+`backend:8000`, porque la solicitud a la API la realiza el navegador fuera de
+la red interna de Docker.
+
+### Servidor estático
+
+`frontend/nginx.conf` implementa:
+
+- fallback a `index.html` para las rutas de `BrowserRouter`;
+- cabeceras CSP, `nosniff`, `DENY`, `no-referrer` y Permissions Policy;
+- compresión para JavaScript, CSS, JSON y GeoJSON;
+- endpoint interno `/healthz`;
+- registro de acceso desactivado para no persistir IP ni rutas solicitadas.
+
+El puerto se publica sólo en el equipo local:
+
+```text
+127.0.0.1:5173 -> frontend:8080
+```
+
+### CORS local
+
+FastAPI autoriza explícitamente los dos orígenes locales equivalentes para el
+usuario, pero distintos para el navegador:
+
+```text
+http://localhost:5173
+http://127.0.0.1:5173
+```
+
+Se configuran mediante `SIGARD_CORS_ORIGINS`. No se utiliza un comodín.
+
+### Construir e iniciar
+
+```powershell
+docker compose -f compose.yaml build frontend
+docker compose -f compose.yaml up -d --wait --wait-timeout 60 frontend
+```
+
+Compose espera a que `database` y `backend` estén saludables antes de iniciar
+el frontend.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- `npm ci` instaló 167 paquetes y reportó cero vulnerabilidades conocidas;
+- lint y build terminaron correctamente dentro y fuera de Docker;
+- la imagen `sigard-frontend:lab` se construyó correctamente;
+- la imagen final ejecuta como `uid=101(nginx)` y no contiene Node ni npm;
+- no se encontraron nombres de secretos ni archivos `.env` en los artefactos;
+- `/`, `/mapa`, `/validacion`, `/metodologia`, `/prevencion` y
+  `/admin/reportes` respondieron `200` mediante el fallback SPA;
+- los datos públicos respondieron correctamente;
+- `/healthz` respondió `200`;
+- ambos orígenes locales superaron el preflight CORS;
+- `database`, `backend` y `frontend` quedaron `healthy`;
+- los registros de Nginx no contienen accesos HTTP.
+
+### Criterio para avanzar a la etapa 7
+
+- La compilación es reproducible desde `package-lock.json`.
+- La imagen final sólo contiene los artefactos estáticos y Nginx.
+- Las rutas directas de la SPA funcionan.
+- Frontend, API y base están saludables.
+- CORS acepta únicamente los orígenes locales previstos.
+- El despliegue del frontend continúa desacoplado de FastAPI y PostgreSQL.
+
+Cumplidos esos puntos se puede diseñar la imagen offline de ML sin incorporar
+entrenamiento ni artefactos de modelos al backend.

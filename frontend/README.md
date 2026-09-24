@@ -10,7 +10,7 @@ SPA React/Vite con dos dominios visuales explícitamente separados:
 ## Desarrollo
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -32,6 +32,21 @@ Ambas órdenes finalizaron correctamente en la verificación de cierre. No se
 pudieron ejecutar pruebas visuales, responsive, de teclado ni de lector de
 pantalla asistidas por navegador porque el entorno no dispone de uno instalado;
 son comprobaciones pendientes antes de publicar.
+
+## Docker local
+
+La imagen multietapa compila con Node y sirve solamente `dist/` mediante Nginx
+sin privilegios. Desde la raíz del repositorio:
+
+```powershell
+docker compose -f compose.yaml build frontend
+docker compose -f compose.yaml up -d --wait frontend
+```
+
+La aplicación queda disponible en `http://localhost:5173`. El valor de
+`SIGARD_FRONTEND_API_URL` se incorpora al build y es público; nunca debe
+contener secretos. El despliegue previsto en Vercel continúa siendo
+independiente del contenedor local, de FastAPI y de PostgreSQL.
 
 El formulario nunca solicita identificadores directos. La geolocalización sólo
 se activa al pulsar el botón correspondiente y los reportes no se representan

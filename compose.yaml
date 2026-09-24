@@ -10,7 +10,7 @@ x-backend-common: &backend-common
     DATABASE_URL: postgresql+psycopg2://sigard@database:5432/sigard
     PGPASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
     SECRET_KEY: ${SIGARD_SECRET_KEY:?Define SIGARD_SECRET_KEY antes de iniciar la API}
-    CORS_ORIGINS: http://localhost:5173
+    CORS_ORIGINS: ${SIGARD_CORS_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173}
     AUTO_CREATE_SCHEMA: "false"
     REPORT_RETENTION_DAYS: ${SIGARD_REPORT_RETENTION_DAYS:-180}
   depends_on:
@@ -68,6 +68,25 @@ services:
       SECRET_KEY: test-only-key-with-at-least-32-characters
     profiles: ["tools"]
     restart: "no"
+
+  frontend:
+    image: sigard-frontend:lab
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${SIGARD_FRONTEND_API_URL:-http://localhost:8000}
+    ports:
+      - "127.0.0.1:5173:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    restart: unless-stopped
 
 volumes:
   database_data:
