@@ -1,0 +1,14 @@
+venv/
+.venv/
+artifacts/
+tests/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.cache/
+.tmp/
+*.egg-info/
+.env
+.env.*
+README.md
+experimentos.md

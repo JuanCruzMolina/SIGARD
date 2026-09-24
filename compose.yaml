@@ -88,5 +88,21 @@ services:
       retries: 6
     restart: unless-stopped
 
+  ml:
+    image: sigard-ml:lab
+    build:
+      context: ./ml
+      dockerfile: Dockerfile
+      target: runtime
+    working_dir: /workspace
+    volumes:
+      - ./data:/workspace/data:ro
+      - ./data/interim:/workspace/data/interim
+      - ./data/processed:/workspace/data/processed
+      - ./ml/artifacts:/workspace/ml/artifacts
+      - ./frontend/public/data:/workspace/frontend/public/data
+    profiles: ["tools"]
+    restart: "no"
+
 volumes:
   database_data:

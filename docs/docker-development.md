@@ -33,7 +33,7 @@ y el proceso o trabajo programado de retención.
 - [x] Etapa 4: API FastAPI.
 - [x] Etapa 5: retención como trabajo independiente.
 - [x] Etapa 6: frontend local.
-- [ ] Etapa 7: pipeline ML offline.
+- [x] Etapa 7: pipeline ML offline.
 
 ## Etapa 1: PostgreSQL y PostGIS
 
@@ -680,3 +680,115 @@ La etapa se verificó el 23 de septiembre de 2026:
 
 Cumplidos esos puntos se puede diseñar la imagen offline de ML sin incorporar
 entrenamiento ni artefactos de modelos al backend.
+
+## Etapa 7: pipeline ML offline
+
+### Objetivo
+
+Ejecutar preparación, evaluación, entrenamiento y exportación en un contenedor
+temporal separado de la API. El servicio `ml` usa la cuarta imagen de la
+arquitectura, `sigard-ml:lab`, pertenece al perfil `tools` y termina después de
+cada comando. No se inicia mediante el `docker compose up -d` cotidiano.
+
+El contexto de construcción es exclusivamente `ml/`. Por lo tanto, los datos,
+modelos entrenados, credenciales, frontend y backend no pueden incorporarse por
+accidente a la imagen durante el build.
+
+### Construcción de la imagen
+
+El Dockerfile usa dos etapas:
+
+1. `builder` construye una rueda instalable del paquete `sigard-ml`.
+2. `runtime` instala la rueda, incorpora las configuraciones y ejecuta como el
+   usuario sin privilegios `sigardml`.
+
+`ml/requirements.runtime.txt` fija las versiones directas y transitivas usadas
+por Docker. La etapa final instala exclusivamente desde las ruedas descargadas
+por `builder`, sin volver a consultar repositorios de paquetes.
+
+Construir sin ejecutar ningún pipeline:
+
+```powershell
+docker compose -f compose.yaml build ml
+```
+
+Comprobar la instalación y el usuario:
+
+```powershell
+docker compose -f compose.yaml run --rm ml python -c "import geopandas, pandas, pyarrow, sklearn, sigard_ml; print('dependencias ML OK')"
+docker compose -f compose.yaml run --rm ml id
+```
+
+La segunda orden debe mostrar `sigardml` y no `root`.
+
+### Montajes y límites de escritura
+
+El repositorio no se copia completo ni se monta completo. Compose expone sólo
+las rutas necesarias:
+
+- `data/` se monta en modo de sólo lectura para proteger las fuentes;
+- `data/interim/` y `data/processed/` sobrescriben dos subrutas concretas con
+  montajes de escritura;
+- `ml/artifacts/` recibe modelos entrenados;
+- `frontend/public/data/` recibe únicamente exports públicos aprobados.
+
+Este esquema mantiene inmutables las fuentes y evita que el proceso de ML tenga
+acceso al `.env`, al historial Git o al código del backend. Los artefactos de
+datos y modelos continúan excluidos de Git.
+
+### Ejecutar un pipeline
+
+La imagen no tiene un proceso residente. Cada etapa se invoca explícitamente,
+por ejemplo:
+
+```powershell
+docker compose -f compose.yaml run --rm ml python -m sigard_ml.evaluation.department_temporal_pipeline --config ml/configs/department_temporal_random_forest.json
+```
+
+Cuando una etapa ya generó sus salidas, sólo debe añadirse `--overwrite` después
+de revisar qué archivos reemplazará:
+
+```powershell
+docker compose -f compose.yaml run --rm ml python -m sigard_ml.evaluation.department_temporal_pipeline --config ml/configs/department_temporal_random_forest.json --overwrite
+```
+
+`run --rm` crea un contenedor temporal y lo elimina al finalizar. La imagen y
+los archivos escritos mediante los montajes permanecen.
+
+La exportación para el frontend se ejecuta de manera independiente; no vuelve a
+entrenar modelos:
+
+```powershell
+docker compose -f compose.yaml run --rm ml python -m sigard_ml.export.frontend_mvp --config ml/configs/frontend_mvp_export.json
+```
+
+### Relación con los servicios web
+
+El servicio `ml` no depende de PostgreSQL, FastAPI ni Nginx. Tampoco publica
+puertos. Los pipelines trabajan offline con archivos y la API consume resultados
+aprobados mediante contratos separados. Esto permite entrenar o regenerar
+artefactos sin bloquear ni aumentar la imagen del backend.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- Compose reconoció `ml` únicamente bajo el perfil `tools`;
+- la imagen `sigard-ml:lab` se construyó desde `ml/`;
+- las versiones de todas las dependencias quedaron fijadas para Docker;
+- las dependencias geoespaciales, tabulares y de modelado se importaron;
+- los comandos instalados y la carga de configuraciones funcionaron;
+- el proceso se ejecutó como usuario `sigardml` y no como `root`;
+- la imagen no contiene datos, modelos, pruebas, credenciales ni archivos `.env`;
+- el contenedor no publicó puertos ni dependió de servicios web;
+- las fuentes quedaron en sólo lectura y las salidas limitaron su escritura a
+  las rutas documentadas.
+
+### Criterio de cierre de la arquitectura local
+
+- Las cuatro imágenes de ejecución tienen responsabilidades separadas.
+- Los trabajos de migraciones, retención y ML son temporales.
+- Los servicios permanentes poseen healthchecks y puertos limitados a localhost.
+- Las fuentes de datos, secretos y modelos no forman parte de ninguna imagen.
+- La rutina cotidiana no ejecuta migraciones, retención ni entrenamiento de
+  manera implícita.
