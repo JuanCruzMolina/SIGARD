@@ -1,14 +1,15 @@
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 
 from .admin import router as admin_router
 from .config import get_settings
 from .database import Base, build_engine, build_session_factory
 from .geocoding import router as geocoding_router
-from .models import User
+from .models import CitizenReport, User
 from .reports import router as reports_router
 from .security import hash_password
 
@@ -72,6 +73,19 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     @application.get("/health")
     def health():
         return {"status": "ok"}
+
+    @application.get("/health/ready")
+    def readiness():
+        try:
+            with application.state.engine.connect() as connection:
+                connection.execute(select(User.id).limit(1)).first()
+                connection.execute(select(CitizenReport.id).limit(1)).first()
+        except SQLAlchemyError:
+            raise HTTPException(
+                status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                detail="Base de datos o esquema no disponible",
+            ) from None
+        return {"status": "ready"}
 
     return application
 

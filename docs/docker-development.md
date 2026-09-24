@@ -30,7 +30,7 @@ y el proceso o trabajo programado de retención.
 - [x] Etapa 1: base de datos PostgreSQL/PostGIS.
 - [x] Etapa 2: construcción de la imagen `sigard-backend`.
 - [x] Etapa 3: migraciones Alembic como trabajo independiente.
-- [ ] Etapa 4: API FastAPI.
+- [x] Etapa 4: API FastAPI.
 - [ ] Etapa 5: retención como trabajo independiente.
 - [ ] Etapa 6: frontend local.
 - [ ] Etapa 7: pipeline ML offline.
@@ -377,3 +377,103 @@ La creación administrativa continúa asignando `admin` de forma explícita.
 
 Cumplidos esos puntos se puede iniciar `backend`, verificar su healthcheck y
 probar una consulta real desde FastAPI hacia PostgreSQL.
+
+## Etapa 4: API FastAPI
+
+### Objetivo
+
+Iniciar la API sólo después de aplicar las migraciones y marcarla como
+saludable únicamente cuando pueda consultar el esquema requerido en
+PostgreSQL.
+
+### Liveness y readiness
+
+La API ofrece dos comprobaciones diferentes:
+
+- `GET /health` confirma que el proceso HTTP responde.
+- `GET /health/ready` consulta las tablas `usuarios` y `citizen_reports`.
+
+Si PostgreSQL no está disponible o falta el esquema, readiness responde `503`
+sin exponer el error interno. El healthcheck de Docker usa readiness, por lo
+que `healthy` confirma proceso, conexión y esquema; no sólo que Uvicorn abrió
+un puerto.
+
+### Pruebas en una etapa Docker separada
+
+El Dockerfile contiene los targets `runtime` y `test`. La imagen desplegable
+se construye con `runtime` y no contiene Pytest ni los archivos de pruebas. El
+servicio `backend-tests`, bajo el perfil `tools`, construye el target `test` y
+se usa exclusivamente para validación:
+
+```powershell
+docker compose -f compose.yaml run --rm --build backend-tests
+```
+
+La caché de Pytest se desactiva porque las pruebas se ejecutan como el usuario
+sin privilegios `sigard`. Las advertencias de deprecación de dependencias se
+registran, pero no se ocultan ni convierten en fallos de la aplicación.
+
+### Construir e iniciar la API
+
+```powershell
+docker compose -f compose.yaml build backend
+docker compose -f compose.yaml up -d --wait --wait-timeout 60 backend
+```
+
+`--wait` no devuelve el control hasta que los servicios estén saludables o se
+agote el plazo indicado.
+
+### Verificación local
+
+```powershell
+Invoke-RestMethod http://127.0.0.1:8000/health
+Invoke-RestMethod http://127.0.0.1:8000/health/ready
+Invoke-RestMethod http://127.0.0.1:8000/
+docker compose -f compose.yaml ps
+docker compose -f compose.yaml logs --tail 100 backend
+```
+
+La documentación interactiva de FastAPI queda disponible localmente en
+`http://127.0.0.1:8000/docs` y el contrato OpenAPI en
+`http://127.0.0.1:8000/openapi.json`.
+
+### Resultado de la validación local
+
+La etapa se verificó el 23 de septiembre de 2026:
+
+- las 11 pruebas del backend pasaron;
+- se comprobó el caso positivo de readiness;
+- se comprobó que readiness responde `503` cuando falta el esquema;
+- `database` y `backend` quedaron `healthy`;
+- liveness y readiness respondieron `200`;
+- el endpoint raíz informó la versión `0.2.0`;
+- OpenAPI respondió `200`;
+- se verificaron `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY` y
+  `Referrer-Policy: no-referrer`;
+- Uvicorn continuó con el registro de acceso desactivado y no almacenó IP ni
+  rutas solicitadas.
+
+### Operación cotidiana
+
+Iniciar base y API:
+
+```powershell
+docker compose -f compose.yaml up -d --wait
+```
+
+Detener los servicios conservando el volumen:
+
+```powershell
+docker compose -f compose.yaml down
+```
+
+### Criterio para avanzar a la etapa 5
+
+- La suite de pruebas termina correctamente.
+- El contenedor `backend` figura como `healthy`.
+- Readiness demuestra acceso al esquema en PostgreSQL.
+- La API es accesible sólo mediante `127.0.0.1:8000` en desarrollo.
+- Los registros no incluyen accesos HTTP.
+
+Cumplidos esos puntos se puede crear el servicio de retención usando la misma
+imagen `sigard-backend:lab`, sin ejecutar la purga dentro del proceso web.

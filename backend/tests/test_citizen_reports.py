@@ -1,12 +1,27 @@
 from datetime import datetime, timedelta, timezone
 
+from fastapi.testclient import TestClient
 from sqlalchemy import func, select
 
+from app.main import create_app
 from app.models import User
 from app.config import get_settings
 from app.schemas import PRIVACY_NOTICE_VERSION
 from app.retention import purge_expired
 from app.security import hash_password
+
+
+def test_health_endpoints_confirm_process_and_database(client):
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health/ready").json() == {"status": "ready"}
+
+
+def test_readiness_returns_503_when_schema_is_missing(tmp_path):
+    app = create_app(database_url=f"sqlite:///{tmp_path / 'unmigrated.db'}", auto_create_schema=False)
+    with TestClient(app) as test_client:
+        response = test_client.get("/health/ready")
+    assert response.status_code == 503
+    assert response.json() == {"detail": "Base de datos o esquema no disponible"}
 
 
 VALID_REPORT = {

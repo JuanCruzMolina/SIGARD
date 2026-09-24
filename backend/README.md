@@ -25,6 +25,7 @@ coma y no debe usar comodines.
 ```text
 GET   /
 GET   /health
+GET   /health/ready
 POST  /api/v1/citizen-reports
 GET   /api/v1/citizen-reports/status/{tracking_code}
 POST  /api/v1/geocoding/address

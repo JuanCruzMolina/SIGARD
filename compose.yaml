@@ -5,6 +5,7 @@ x-backend-common: &backend-common
   build:
     context: ./backend
     dockerfile: Dockerfile
+    target: runtime
   environment:
     DATABASE_URL: postgresql+psycopg2://sigard@database:5432/sigard
     PGPASSWORD: ${SIGARD_DB_PASSWORD:?Define SIGARD_DB_PASSWORD antes de iniciar Compose}
@@ -38,7 +39,7 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3)"]
       interval: 10s
       timeout: 5s
       retries: 6
@@ -47,6 +48,17 @@ services:
   migrations:
     <<: *backend-common
     command: ["alembic", "upgrade", "head"]
+    profiles: ["tools"]
+    restart: "no"
+
+  backend-tests:
+    image: sigard-backend-test:lab
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: test
+    environment:
+      SECRET_KEY: test-only-key-with-at-least-32-characters
     profiles: ["tools"]
     restart: "no"
 
