@@ -1,0 +1,17 @@
+{
+  "assets": {
+    "data/available_weeks.json": "5614253bcb43c5894ac2bb96c7d34ccbe8b6d110c648c469a14721cfbc44f93f",
+    "data/experimental_spatial_history.geojson": "cba113ad054c6817c87dd8a8d69a8a4d28686ab53f7f2091cdc261cb61192470",
+    "data/health_facilities.geojson": "790f94c6d4caa9dea971db4d35afc247d71287411c7c3eac168306dee1539817",
+    "data/model_evaluation.json": "fb1887a525177a3ebbcd96528882cab10ce0cce1142c8932e5c8225dc1dc592c",
+    "data/mvp_metadata.json": "cb8bbdabb3edc27caaab1bbcd1d35a72d87c7745396fe4caf3467e9e5e91c973",
+    "data/prevention_content.json": "f00cd602d75211e2db76ec23e62d19e01de40ea09e5bd1764b711bbd2cae1ed3",
+    "data/temporal_predictions.json": "963f0d63356b5e7f1f7a744a0d8806153536da6ac77cd6e81bcd5f4b3ed484bc",
+    "data/territorial_context.geojson": "8afc1dad04a47f55510e198ecca3bf787779fa8bc4f5108b910e7ac4774b040d",
+    "favicon.svg": "61bc9a161de58248288e6905425d7180f0624c2865007b97d763fdac12043a66",
+    "icons.svg": "b45fa506195cfcdef406ba9f0c77b36ddc1a7c224040926ec70abc2fdea7b93a"
+  },
+  "hash_normalization": "utf8_crlf_to_lf",
+  "purpose": "approved existing public MVP resources; no patient data; update only after explicit review",
+  "schema_version": 1
+}

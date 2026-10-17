@@ -6,6 +6,7 @@ COPY package.json package-lock.json ./
 RUN npm ci
 
 COPY index.html eslint.config.js vite.config.js ./
+COPY security/ ./security/
 COPY src/ ./src/
 COPY public/ ./public/
 

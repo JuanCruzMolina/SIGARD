@@ -4,6 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "security:check": "node security/public-assets.mjs",
+    "test:security": "node --test security/public-assets.test.mjs",
     "dev": "vite",
     "build": "vite build",
     "lint": "eslint .",
