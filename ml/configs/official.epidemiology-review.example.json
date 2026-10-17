@@ -1,0 +1,13 @@
+{
+  "version": "official-epidemiology-decision-review-0.5b.1",
+  "access_config": "data/interim/official/access.private.json",
+  "phase2_dir": "data/interim/official",
+  "observed_dir": "data/interim/official/observed/date_recovery_041",
+  "coverage_dir": "data/interim/official/observed/coverage_042",
+  "universe_dir": "data/interim/official/observed/universe_043_v1",
+  "phase5b_dir": "data/interim/official/spatial_experiment_05b_v1",
+  "output_dir": "data/interim/official/epidemiology_review_05b1_v1",
+  "source_2022_id": "delivery_2022",
+  "training_enabled": false,
+  "materialize_negatives": false
+}

@@ -1,0 +1,11 @@
+{
+  "version": "official-spatial-experiment-preparation-0.5b.0",
+  "access_config": "data/interim/official/access.private.json",
+  "phase5a_dir": "data/processed/official/spatial_ml_05a_v2",
+  "universe_dir": "data/interim/official/observed/universe_043_v1",
+  "observed_dir": "data/interim/official/observed/date_recovery_041",
+  "output_dir": "data/interim/official/spatial_experiment_05b_v1",
+  "source_2022_id": "delivery_2022",
+  "training_enabled": false,
+  "materialize_assumed_zeros": false
+}

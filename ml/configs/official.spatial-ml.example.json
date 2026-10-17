@@ -1,0 +1,17 @@
+{
+  "version": "official-spatial-ml-preparation-0.5a.0",
+  "access_config": "data/interim/official/access.private.json",
+  "observed_dir": "data/interim/official/observed/date_recovery_041",
+  "coverage_dir": "data/interim/official/observed/coverage_042",
+  "universe_dir": "data/interim/official/observed/universe_043_v1",
+  "geography_dir": "data/interim/official/geography",
+  "cartography": "data/processed/territorial_master.parquet",
+  "territorial_config": "ml/configs/territorial_master.json",
+  "output_dir": "data/processed/official/spatial_ml_05a_v2",
+  "split_plans": [
+    {"name": "seasons_2023_2024", "validation_start": "2023-01-01", "test_start": "2023-12-31", "end": "2024-12-29"},
+    {"name": "within_2024_diagnostic", "validation_start": "2024-03-03", "test_start": "2024-05-05", "end": "2024-12-29"}
+  ],
+  "training_enabled": false,
+  "generate_zeros": false
+}

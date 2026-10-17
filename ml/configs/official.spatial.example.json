@@ -1,0 +1,12 @@
+{
+  "cartography": "data/processed/territorial_master.parquet",
+  "territorial_config": "ml/configs/territorial_master.json",
+  "output_dir": "data/interim/official/geography",
+  "assumed_crs": "EPSG:4326",
+  "boundary_review_m": null,
+  "sensitivity_distances_m": [10, 25, 50, 100],
+  "documented_uncertainty_m": null,
+  "uncertainty_evidence_ref": null,
+  "geocoding_provenance_ref": null,
+  "location_role": "unknown"
+}

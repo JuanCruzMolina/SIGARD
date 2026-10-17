@@ -1,0 +1,9 @@
+{
+  "version": "official-assumed-label-scenario-0.5b.3.0",
+  "access_config": "data/interim/official/access.private.json",
+  "phase5a_dir": "data/processed/official/spatial_ml_05a_v2",
+  "phase5b_dir": "data/interim/official/spatial_experiment_05b_v1",
+  "output_dir": "data/processed/official/spatial_assumed_2024_v1",
+  "training_enabled": false,
+  "authorization": null
+}
