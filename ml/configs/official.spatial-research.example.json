@@ -1,0 +1,10 @@
+{
+  "version": "official-spatial-rf-research-0.5c.0",
+  "access_config": "data/interim/official/access.private.json",
+  "phase5a_dir": "data/processed/official/spatial_ml_05a_v2",
+  "phase5b_dir": "data/interim/official/spatial_experiment_05b_v1",
+  "scenario_dir": "data/processed/official/spatial_assumed_2024_v1",
+  "output_dir": "data/processed/official/spatial_rf_05c_v1",
+  "training_authorized": false,
+  "research_authorization": null
+}
