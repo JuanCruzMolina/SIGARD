@@ -1,8 +1,10 @@
-"""Transformaciones diarias y epidemiológicas a semana ISO."""
+"""Transformaciones del MVP histórico; calendario sigard-iso-shift-v0 explícito."""
 
 from __future__ import annotations
 
 import pandas as pd
+
+from sigard_ml.official.calendar_rules import LEGACY_CALENDAR
 
 from sigard_ml.validation.temporal import epidemiological_week_start, require_unique_weeks
 
@@ -30,9 +32,10 @@ def aggregate_dengue(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def aggregate_climate(frame: pd.DataFrame) -> pd.DataFrame:
-    """Agrega observaciones climáticas diarias por semana ISO."""
-    iso = (frame["date"] + pd.Timedelta(days=1)).dt.isocalendar()
-    daily = frame.assign(epidemiological_year=iso.year.astype("int64"), epidemiological_week=iso.week.astype("int64"))
+    """Reproduce el calendario del MVP; no extiende la validación oficial."""
+    labels = frame["date"].map(lambda value: LEGACY_CALENDAR.date_week(value.date()))
+    daily = frame.assign(epidemiological_year=labels.map(lambda value: value[0]).astype("int64"),
+                         epidemiological_week=labels.map(lambda value: value[1]).astype("int64"))
     grouped = daily.groupby(["epidemiological_year", "epidemiological_week"], as_index=False, sort=True).agg(
         temperature_min_mean=("temperature_min", "mean"),
         temperature_max_mean=("temperature_max", "mean"),

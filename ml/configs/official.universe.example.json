@@ -1,0 +1,9 @@
+{
+  "version": "official-universe-review-0.4.3",
+  "access_config": "data/interim/official/access.private.json",
+  "output_dir": "data/interim/official/observed/universe_043_v1",
+  "evaluation_starts": ["2024-01-07", "2024-03-03", "2024-04-07", "2024-05-05"],
+  "coverage_declarations": [],
+  "generate_assumed_zeros": false,
+  "training_enabled": false
+}

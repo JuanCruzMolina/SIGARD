@@ -1,0 +1,21 @@
+{
+  "source_root": "CONFIGURAR_RUTA_LOCAL_AUTORIZADA",
+  "output_dir": "data/interim/official",
+  "uses": ["inspection", "processing"],
+  "as_of_date": "2026-10-09",
+  "write_normalized": false,
+  "allowed_classifications": null,
+  "layouts": {},
+  "authorization": {
+    "evidence_ref": null,
+    "custodian_ref": null,
+    "confidentiality_ref": null,
+    "storage_policy_ref": null
+  },
+  "sources": [],
+  "geography": {
+    "crs_confirmed": false,
+    "crs": null,
+    "capital_boundary": null
+  }
+}

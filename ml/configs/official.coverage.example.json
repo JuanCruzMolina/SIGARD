@@ -1,0 +1,11 @@
+{
+  "input_dir": "data/interim/official/observed/date_recovery_041",
+  "output_dir": "data/interim/official/observed/coverage_042",
+  "coverage_version": "official-weekly-coverage-0.4.2",
+  "zero_policy": {"enabled": true, "allow_declared_complete_in_exploratory": true},
+  "source_period_declarations": [],
+  "coverage_declarations": [],
+  "coverage_verifications": [],
+  "evaluation_start": "2024-01-07",
+  "diagnostic_activity_rule": {"min_positive_weeks": 8, "min_positive_cells": 30}
+}

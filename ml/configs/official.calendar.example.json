@@ -1,0 +1,11 @@
+{
+  "calendar": {"version": "ar-snvs-2020-2026-v1"},
+  "historical_replay_calendar": {"version": "sigard-iso-shift-v0"},
+  "analysis_period": {"start": "2020-01-01", "end": "2024-12-31"},
+  "coverage_extension": {
+    "enabled": false,
+    "requested_end": null,
+    "source_evidence_ref": null,
+    "note": "Validar el calendario 2026 no acredita cobertura de registros en 2025 o 2026."
+  }
+}

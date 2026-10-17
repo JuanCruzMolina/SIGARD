@@ -1,0 +1,5 @@
+{
+  "output_dir": "data/interim/official/observed/date_recovery_041",
+  "date_hierarchy": ["symptom_onset", "consultation_on", "sample_on", "notified_on"],
+  "date_rule_version": "reference-date-hierarchy-0.4.1"
+}

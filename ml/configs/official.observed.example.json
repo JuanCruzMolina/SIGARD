@@ -1,0 +1,21 @@
+{
+  "output_dir": "data/interim/official/observed",
+  "spatial_dir": "data/interim/official/geography",
+  "cartography": "data/processed/territorial_master.parquet",
+  "period_start": "2020-01-01",
+  "period_end": "2024-12-31",
+  "classification_version": "classification-explicit-0.4.0",
+  "eligibility_version": "eligibility-conservative-0.4.0",
+  "exploratory_include": ["confirmado"],
+  "exploratory_exclude": ["probable", "sospechoso", "descartado"],
+  "episode_version": "episode-identifiers-0.4.0",
+  "episode_resolutions": [],
+  "reference_date_field": "symptom_onset",
+  "date_hierarchy": null,
+  "date_rule_version": "symptom-onset-no-fallback-0.4.0",
+  "coverage": [],
+  "coverage_version": "coverage-unverified-0.4.0",
+  "geocoding_acceptance_ref": "project-phase4-approximate-location-decision",
+  "geocoder_providers_declared": ["Nominatim", "Georef"],
+  "auxiliary_columns": []
+}

@@ -4,7 +4,8 @@
   "epidemiological_calendar": {
     "convention": "ARGENTINA_SNVS_SUNDAY_SATURDAY",
     "week_starts_on": "Sunday",
-    "description": "Calendario epidemiológico del Ministerio de Salud: domingo a sábado; la SE 1 es la que contiene al menos cuatro días del nuevo año. Equivale a desplazar la fecha un día y aplicar numeración ISO, pero no es una semana ISO.",
+    "calendar_version": "sigard-iso-shift-v0",
+    "description": "Reproducción del MVP histórico: ISO(fecha + 1 día), intervalos domingo-sábado. No equivale en todos los años a la regla de cuatro días aplicada a semanas domingo-sábado. Para fuentes oficiales 2020–2026 usar ar-snvs-2020-2026-v1; ver docs/official-calendar.md.",
     "documentation_urls": [
       "https://www.argentina.gob.ar/salud/epidemiologia/herramientas",
       "https://www.argentina.gob.ar/salud/boletin-epidemiologico-nacional/boletines-2024"
