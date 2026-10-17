@@ -1,5 +1,87 @@
 # Contrato conceptual de datos de SIGARD v0.1
 
+## Contratos internos del circuito oficial
+
+La fase 1 agrega objetos validados en `sigard_ml.official` para procedencia,
+registros privados, semanas, coordenadas, asignaciones, calidad, panel observado,
+entrenamiento y predicciones. Distingue observaciones oficiales y fixtures;
+excluye asignaciones sintéticas. Son interfaces internas: no alteran el contrato
+público, no habilitan lectura de Excel y no autorizan entrenar ni divulgar.
+Ver [campos, semántica y límites de implementación](official-pipeline.md).
+
+La [fase 2](official-ingestion.md) agrega una proyección privada de filas bajo
+unidad `unresolved_source_record`, con fechas y coordenadas candidatas, calidad,
+hashes y trazabilidad. No equivale a episodios elegibles ni al panel observado
+radio-semana. El objetivo futuro solicitado es probabilidad de aparición de
+casos; no se genera aún su etiqueta ni se modifica el objetivo del MVP sintético.
+
+La [fase 3](official-geography.md) agrega un diagnóstico privado por registro.
+La clave es `source_id + sheet_ref + record_ref`. Se conservan por separado
+`coordinate_status`, `geocoding_category`, `geometry_status`, `assignment_state`
+y `eligibility`; ésta permanece sin resolver si no existía una decisión previa.
+`radio_candidate` sólo existe en un interior único, incluyendo los resultados
+inciertos. Bordes y múltiples coincidencias quedan sin candidato elegido.
+Los grupos de coordenadas y radios alternativos son controles de diagnóstico,
+no episodios deduplicados ni probabilidades de ubicación. No se generan casos
+por radio, semanas, etiquetas ni panel observado. Este contrato de filas no
+reemplaza el contrato de episodios resueltos de Fase 1 ni los productos del MVP.
+
+La [fase 4](official-observed-panel.md) construye una grilla privada con
+`radio_censal`, `fraccion_censal`, `anio_epidemiologico`, `semana_epidemiologica`,
+límites de semana, `registros_elegibles_provisionales` nullable y
+`estado_observacion`. Distingue registros observados, cero respaldado, información
+insuficiente, cobertura parcial y fuera de cobertura. Conserva versiones, calidad
+espacial, procedencia y pendientes; no equivale a casos únicos validados.
+Las claves técnicas de filas y episodios quedan exclusivamente en auditoría
+privada. `validado` y `apto_entrenamiento` son falsos; disponibilidad histórica
+no reconstruida implica modo retrospectivo. No se crean etiquetas negativas ni
+se usan null como cero. El contrato provisional no reemplaza `ObservedRadioWeek`
+como observación epidemiológica validada ni los contratos públicos actuales.
+
+La [fase 4.1](official-date-recovery.md) agrega una jerarquía temporal opcional:
+inicio de síntomas, consulta médica, toma de muestra y notificación. La auditoría
+privada conserva `fecha_inicio_sintomas_original`, `fecha_referencia`,
+`tipo_fecha_referencia`, `fecha_aproximada` y `motivo_seleccion_fecha`, además de
+rechazos y procedencia por columna. Las alternativas no confirman el inicio de
+síntomas. Los escenarios estricto/ampliado tienen carpetas versionadas privadas;
+conservan el panel previo, identidad, elegibilidad, incertidumbre espacial y null.
+
+La [fase 4.2](official-coverage.md) deriva `casos_observados` nullable,
+`estado_cobertura`, `objetivo_semana_siguiente` (0/1/null), `objetivo_valido`,
+`escenario` y `calidad_geografica` sobre la misma unidad radio-semana. Los
+conteos son registros elegibles provisionales, no casos únicos validados.
+Separa cobertura declarada/comprobada; los ceros declarados del escenario
+exploratorio son provisionales. La etiqueta usa exclusivamente la semana exacta
+siguiente y no se incorpora como predictor. Una etiqueta conocida no valida
+disponibilidad histórica ni habilita entrenamiento. No altera el objetivo del MVP.
+
+La [Fase 5A](official-spatial-ml.md) prepara tablas privadas separadas de
+predictores retrospectivos, calendario, etiquetas y contexto de auditoría, por
+fechas estrictas/ampliadas y cobertura conservadora/exploratoria. Conserva
+objetivos `1/0/null` heredados; no genera negativos. Los rezagos usan fechas
+exactas y los acumulados `[t-W,t-1]` requieren ventanas completas conocidas,
+también para todos los vecinos verificados con polígonos. Población/densidad
+Censo 2022 son contexto retrospectivo sin disponibilidad histórica acreditada.
+Ninguna variable utiliza t+1, pero las historias no están validadas para operación
+sin reconstruir disponibilidad de registros/clasificaciones. Catálogo explícito,
+hashes y particiones cronológicas purgadas quedan privados; entrenamiento bloqueado.
+
+La [Fase 5B](official-spatial-experiment.md) audita las 55 columnas sin alterar
+Fase 5A y prepara conjuntos A/B/C, protocolo de RF y previsualización de
+cobertura explícitamente declarada. Separa disponibilidad retrospectiva e
+histórica operativa; no imputa ni convierte null en cero. La historia es
+opcional y su soporte se revisa sólo en entrenamiento. No se materializan
+negativos, reclasifican registros ni entrenan modelos. Los diagnósticos,
+configuraciones y máscaras permanecen privados y no habilitan entrenamiento.
+
+La [Fase 5B.1](official-epidemiology-review.md) agrega evidencia y plantillas de
+decisión privadas, sin modificar la unidad, features, etiquetas o configuración
+del Modelo A. Distingue banderas conservadoras del software de confirmación
+clínica documentada; propone intervalos sin declararlos completos y conserva
+todos los bloqueos de pendientes. La geografía aproximada ya aceptada permanece
+como limitación, sin exigir precisión absoluta. La generación del diagnóstico
+no depende de documentación externa que aún no esté disponible.
+
 ## Contrato frontend de Iteración 10
 
 - `temporal_predictions.json`: predicciones departamentales publicables sólo
@@ -43,6 +125,20 @@ una semana epidemiológica**. Su clave lógica es:
 `radio_id` debe ser el identificador oficial estable de la cartografía. La
 semana debe validarse según el calendario epidemiológico usado por la fuente;
 no se asumirá que cada año contiene exactamente 52 semanas.
+
+El circuito oficial usa `ar-snvs-2020-2026-v1`: 53 semanas en 2020 y 2025,
+52 en 2021–2024 y 2026. El 04/01/2026 es 2026-SE1. La
+[validación del calendario](official-calendar.md) documenta la contradicción
+publicada al cerrar 2025 y la reproducción explícita `sigard-iso-shift-v0`.
+Conservar fecha de inicio y versión al interpretar una clave año-SE; validar
+el calendario hasta 2026 no amplía la cobertura vigente hasta 31/12/2024.
+
+La [Fase 4.3](official-universe.md) revisa el universo para el objetivo binario
+experimental de registrar al menos un confirmado provisional en el radio la
+semana siguiente. Sus agregados y capacidades negativas condicionadas no son
+un panel nuevo ni sustituyen objetivos/modelos existentes. Distingue positivos
+provisionales, ceros comprobados, ceros asumidos experimentales y desconocidos;
+no materializa ceros sin declaración explícita y autorización posterior.
 
 ## Entidades conceptuales
 

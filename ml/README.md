@@ -1,5 +1,127 @@
 # Pipelines reproducibles de SIGARD
 
+La [preparación del escenario de cobertura asumida](../docs/official-assumed-scenario.md)
+genera etiquetas experimentales autorizadas en un destino privado nuevo, sin
+alterar conteos/predictores, paneles conservadores ni el Modelo A y sin entrenar.
+
+## Circuito territorial oficial
+
+La [Fase 5B.2](../docs/official-selection-reconciliation.md) prepara un cotejo
+local de originales, copias de trabajo y procesados, con HMAC sólo en memoria
+y salidas exclusivamente agregadas. Requiere rutas y correspondencias explícitas
+del responsable; no busca originales por similitud de nombres ni exporta filas.
+La herramienta se ejecuta con configuración privada y no modifica paneles/modelos.
+
+La [Fase 5B.1](../docs/official-epidemiology-review.md) prepara un dossier privado
+de confirmación epidemiológica, residencia, cobertura y decisiones del responsable.
+Reutiliza normalizados/diagnósticos sin abrir Excel, recalcular features o cambiar
+el Modelo A. La documentación externa faltante se identifica sin bloquear el informe:
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.epidemiology_review_pipeline --config ml/configs/official.epidemiology-review.example.json
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_epidemiology_review.py -p no:cacheprovider --basetemp=ml/.tmp/phase5b1-check
+```
+
+El destino debe ser privado y nuevo. La plantilla queda sin firmar, sin intervalos
+declarados ni autorización para negativos/entrenamiento. No modifica paneles previos.
+
+La [Fase 5B](../docs/official-spatial-experiment.md) audita las 55 columnas de
+Fase 5A y prepara configuraciones A/B/C de un futuro RF, preservando NaN y
+separando disponibilidad retrospectiva/operativa. Consume la configuración de
+Fase 4.3 sin materializar negativos ni entrenar. Todas las salidas son privadas:
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.spatial_ml.experiment_pipeline --config ml/configs/official.spatial-experiment.example.json
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_spatial_experiment.py -p no:cacheprovider --basetemp=ml/.tmp/phase5b-check
+```
+
+Elegir un destino nuevo para repetir. No ejecutar entrenadores ni suites legacy
+que ajusten modelos para comprobar esta fase de preparación.
+
+La [Fase 5A](../docs/official-spatial-ml.md) reutiliza las salidas privadas
+de Fases 4–4.3 para preparar características espaciales retrospectivas,
+diagnósticos y particiones cronológicas, sin entrenar ni generar negativos.
+Conserva null en ventanas temporales o vecinales incompletas y contrasta
+vecindad con polígonos. Censo 2022 se usa como contexto retrospectivo.
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.spatial_ml.pipeline --config ml/configs/official.spatial-ml.example.json
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_spatial_ml.py -p no:cacheprovider --basetemp=ml/.tmp/phase5a-check
+```
+
+El destino privado `data/processed/official/spatial_ml_05a_v2/` debe ser nuevo;
+para repetir elegir otro nombre. Allí se conservan informe, catálogo, hashes,
+metadatos, predictores/etiquetas/contexto separados y diagnósticos por año/radio.
+La disponibilidad histórica no está reconstruida; todas las salidas siguen
+no aptas para entrenamiento. No se publican artefactos ni se alteran los modelos.
+
+La [fase 2](../docs/official-ingestion.md) ya ofrece ingestión y calidad local
+con autorización explícita y derivados privados. No entrena ni publica.
+El manifiesto real permanece fuera de Git; el ejemplo tiene fuentes vacías.
+
+La [fase 3](../docs/official-geography.md) reutiliza los normalizados para
+auditar los 263 radios, obtener candidatos geométricos y reportar incertidumbre.
+El resultado sigue siendo preliminar, privado y separado de elegibilidad.
+Los parámetros están en `official/spatial_settings.py` y pueden reemplazarse
+con `ml/configs/official.spatial.example.json`.
+
+La [fase 4](../docs/official-observed-panel.md) construye un panel semanal privado
+de registros provisionales, conserva incertidumbre y distingue ceros de ausencias.
+Sus reglas están en `official/observed_settings.py`; el ejemplo configurable es
+`ml/configs/official.observed.example.json`. El modo conservador no incluye filas
+automáticamente. El escenario exploratorio requiere esta opción explícita:
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.observed_pipeline --config data/interim/official/access.private.json --exploratory
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_observed.py -p no:cacheprovider --basetemp=ml/.tmp/phase4-check
+```
+
+Se aceptan las ubicaciones aproximadas declaradas de Nominatim/Georef y se
+reutiliza Fase 3. No se vuelve a geocodificar ni se entrenan modelos. Los modos
+conservador y exploratorio escriben en subcarpetas separadas bajo
+`data/interim/official/observed/`; el panel validado sigue pendiente.
+
+La [fase 4.1](../docs/official-date-recovery.md) permite respaldos explícitos de
+consulta médica, toma de muestra y notificación. Conserva el panel previo y genera
+escenarios estricto/ampliado en `observed/date_recovery_041/`, siempre privados.
+Las fechas alternativas son aproximadas y no confirman el inicio de síntomas.
+El ejemplo permite editar la política y su versión sin cambiar otras reglas:
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.date_recovery_pipeline --config data/interim/official/access.private.json --recovery-config ml/configs/official.date-recovery.example.json
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_date_recovery.py -p no:cacheprovider --basetemp=ml/.tmp/phase41-check
+```
+
+La [fase 4.2](../docs/official-coverage.md) prepara cobertura, ceros respaldados
+y objetivos binarios semanales. Conserva cuatro paneles privados bajo
+`observed/coverage_042/`: fechas estrictas/ampliadas por cobertura conservadora/
+exploratoria. La declaración de entrega y filtrado no verifica continuidad;
+sin respaldo explícito no se generan negativos. El ejemplo editable es
+`ml/configs/official.coverage.example.json`; las declaraciones reales son privadas.
+
+```powershell
+.\ml\venv\Scripts\python.exe -B -m sigard_ml.official.coverage_pipeline --config data/interim/official/access.private.json --coverage-config data/interim/official/observed/coverage_042.private.json
+.\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_coverage.py -p no:cacheprovider --basetemp=ml/.tmp/phase42-check
+```
+
+```powershell
+.\ml\venv\Scripts\python.exe -m sigard_ml.official.spatial_pipeline --config data/interim/official/access.private.json
+.\ml\venv\Scripts\python.exe -m pytest ml/tests/test_official_spatial.py -p no:cacheprovider --basetemp=ml/.tmp/phase3-check
+```
+
+`sigard_ml.official` conserva los contratos independientes de fase 1 y agrega
+un lector local de XLSX. El registro vacío deniega todas las fuentes; sólo el
+manifiesto privado habilita la entrega autorizada. Ver
+[arquitectura base](../docs/official-pipeline.md) y
+[configuración de ingestión](../docs/official-ingestion.md) antes de ejecutarlo.
+
+```powershell
+.\ml\venv\Scripts\python.exe -m pytest ml/tests/test_official_contracts.py ml/tests/test_official_ingestion.py ml/tests/test_official_quality.py -p no:cacheprovider
+```
+
+El comando se ejecuta desde la raíz del repositorio. Los modelos vigentes y
+sus configuraciones permanecen separados de este circuito.
+
 ## Iteración 10: contrato frontend
 
 ```powershell

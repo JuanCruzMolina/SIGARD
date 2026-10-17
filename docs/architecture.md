@@ -39,7 +39,24 @@ domicilios o ubicaciones observadas.
 
 ## Responsabilidades por componente
 
+La [preparación espacial oficial de Fase 5A](official-spatial-ml.md) corre offline
+en `sigard_ml.official.spatial_ml`, reutilizando los paneles y auditorías privados
+preservados. Separa ingeniería de características, construcción, validación,
+diagnóstico y particiones cronológicas. Escribe exclusivamente en una carpeta
+nueva de `data/processed/official/`, excluida de Git/Docker. No entrena, no genera
+ceros, no reingiere fuentes y no modifica el modelo temporal departamental,
+el modelo espacial sintético, la API ni el frontend. Su dataset es retrospectivo
+y provisional; la disponibilidad histórica y los negativos respaldados siguen
+siendo requisitos previos al entrenamiento.
+
 ### Preparación y machine learning
+
+La [Fase 5B](official-spatial-experiment.md) añade módulos independientes de
+auditoría/selección, faltantes, elegibilidad/cobertura propuesta y protocolo del
+experimento. Reutiliza Fase 5A y configuración de Fase 4.3, conserva sus archivos
+y sólo escribe diagnósticos/configuraciones privados en un destino nuevo de
+`data/interim/official/`. La preparación no importa entrenadores existentes,
+no ejecuta `fit` y mantiene bloqueada la materialización de negativos asumidos.
 
 - valida y normaliza las fuentes;
 - construye el panel radio-semana;
@@ -84,6 +101,42 @@ Ninguna tabla, endpoint, archivo o etiqueta de interfaz debe usar un único camp
 ambiguo `casos` para representar los tres conceptos.
 
 ## Artefactos y seguridad
+
+El circuito territorial oficial en `sigard_ml.official` está separado del
+recorrido sintético. La [fase 2](official-ingestion.md) incorpora lectura y
+calidad local de fuentes autorizadas; conserva registros cuya unidad está
+pendiente de definición. El panel observado radio-semana, entrenamiento y
+publicación requieren fases y aprobaciones posteriores. La
+[arquitectura de fase 1](official-pipeline.md) documenta los contratos base.
+
+La [fase 3](official-geography.md) reutiliza esos normalizados y la cartografía
+vigente para un diagnóstico geográfico privado. Separa lectura autorizada,
+auditoría cartográfica, coincidencia espacial, incertidumbre y reportes. Sus
+salidas permanecen en `data/interim/official/`; una coincidencia interior única
+no convierte la fila en caso elegible ni valida precisión epidemiológica.
+
+La [fase 4](official-observed-panel.md) agrega un panel exploratorio retrospectivo
+privado. Reutiliza normalizados y asignaciones, recupera referencias opacas de
+identidad, separa clasificación, elegibilidad, episodio, fecha y cobertura, y
+concilia todas las filas. La opción explícita `--exploratory` habilita reglas
+provisionales y candidatos aproximados conforme a la decisión del proyecto.
+El modo conservador no incorpora registros sin validación epidemiológica.
+Ambos preservan null y cobertura; el panel validado y el entrenamiento siguen
+pendientes. El objetivo futuro oficial es probabilidad de registro en la semana
+siguiente, independiente de los modelos, objetivos y artefactos vigentes.
+
+La [fase 4.1](official-date-recovery.md) reutiliza ese constructor para comparar
+una regla estricta con una jerarquía explícita de fechas identificadas. Mantiene
+el panel anterior y escribe versiones privadas independientes, con procedencia
+temporal por fila y verificación de conciliación. No geocodifica, modifica modelos,
+entrena ni cambia contratos de frontend/backend.
+
+La [fase 4.2](official-coverage.md) consume los paneles y auditorías privados de
+Fase 4.1. Separa declaraciones de procedencia, cobertura declarada y resoluciones
+de cobertura comprobada; construye escenarios de ceros conservador/exploratorio
+para fechas estrictas/ampliadas y un objetivo binario de la semana siguiente.
+Preserva null, bloquea ceros afectados por pendientes y conserva incertidumbre.
+El diagnóstico es retrospectivo, sin entrenamiento ni métricas predictivas.
 
 No se incorporan a Git fuentes de datos, datasets derivados, artefactos de
 modelos, secretos ni archivos `.env`. El repositorio sólo conserva código,
