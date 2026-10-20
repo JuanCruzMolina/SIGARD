@@ -6,7 +6,9 @@
   "scripts": {
     "security:check": "node security/public-assets.mjs",
     "test:security": "node --test security/public-assets.test.mjs",
-    "dev": "vite",
+    "test:research": "node --test security/experimental-results.test.mjs security/experimental-analysis.test.mjs",
+    "test:dev": "node --test scripts/dev.test.mjs",
+    "dev": "node scripts/dev.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"
