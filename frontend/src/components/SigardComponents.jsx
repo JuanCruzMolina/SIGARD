@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { GeoJSON, MapContainer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { formatDate, formatDateRange, formatNumber, levelColors, levelLabel } from '../services/sigardData'
@@ -29,16 +29,61 @@ function ResetView({ bounds, initialView }) {
 
 function tooltipHtml(props, view) { const value = view === 'context' ? `Percentil territorial: ${formatNumber(props.percentile, 1)}` : `Índice espacial experimental: ${formatNumber(props.experimental_spatial_score, 6)}<br/>Percentil relativo: ${formatNumber(props.percentile, 2)}`; return `<strong>Radio ${props.radio_id}</strong><br/>${value}<br/>Nivel relativo: ${levelLabel(props.relative_level)}` }
 
+function PublicRadioFocus({ feature }) {
+  const map = useMap()
+  useEffect(() => {
+    if (feature) map.fitBounds(L.geoJSON(feature).getBounds(), { padding: [24, 24], maxZoom: 15, animate: false })
+  }, [feature, map])
+  return null
+}
+
 export function TerritorialMap({ geojson, view, disclaimer, compact = false, collectionKey = '', selectedRadio, onRadioSelect, researchDetails, showData = true, statusMessage = 'Consultando scores experimentales…' }) {
   const [selected, setSelected] = useState(null)
+  const controlId = useId()
   const bounds = useMemo(() => geojson ? L.geoJSON(geojson).getBounds() : null, [geojson])
   const selectionKey = `${view}-${collectionKey || geojson.features[0]?.properties?.cutoff_date || 'stable'}`
-  const selectedProps = !showData ? null : view === 'research' && selectedRadio !== undefined
-    ? geojson.features.find(feature => feature.properties.radio_id === selectedRadio)?.properties
-    : selected?.key === selectionKey ? selected.props : null
+  const selectedFeature = !showData ? null : geojson.features.find(feature => feature.properties.radio_id === (selectedRadio !== undefined ? selectedRadio : selected))
+  const selectedProps = selectedFeature?.properties
+  const publicSelection = view !== 'research' && !compact
+  const radios = useMemo(() => publicSelection ? [...geojson.features].sort((a, b) => a.properties.radio_id.localeCompare(b.properties.radio_id)) : [], [geojson, publicSelection])
+  function selectRadio(id) {
+    setSelected(id || null)
+    onRadioSelect?.(id || null)
+  }
   const initialView = view === 'research' ? researchInitialView : null
   if (!bounds?.isValid()) return <div className="error-state" role="alert">No fue posible cargar los datos del prototipo.</div>
-  return <div className={`map-layout ${compact ? 'compact' : ''}`}><div className="map-frame"><MapContainer {...(initialView || { bounds })} scrollWheelZoom={false} className="leaflet-map">{!initialView && <FitBounds bounds={bounds} />}<ResetView bounds={bounds} initialView={initialView} />{showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, fillColor: view === 'research' ? experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => { layer.bindTooltip(view === 'research' ? researchTooltip(feature.properties) : tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' }); layer.on({ mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: .96 }), mouseout: (e) => e.target.setStyle({ weight: 1, fillOpacity: .82 }), click: () => { setSelected({ key: selectionKey, props: feature.properties }); onRadioSelect?.(feature.properties.radio_id) } }) }} />}</MapContainer>{view === 'research' ? <ResearchLegend /> : <LevelLegend view={view} />}</div>{!compact && <aside className="map-side-panel">{!showData ? <p role="status" className="empty-panel">{statusMessage}</p> : selectedProps ? view === 'research' ? <div className="radio-details"><h2>Radio {selectedProps.radio_id}</h2><p>Score experimental: <strong>{selectedProps.score_status === 'available' ? formatNumber(selectedProps.experimental_score, 6) : 'Sin resultado disponible'}</strong></p><p>Rezagos conocidos: {selectedProps.data_availability.known_lag_count === null ? 'No utilizados por A' : `${selectedProps.data_availability.known_lag_count}/4 (retrospectivos)`}</p>{researchDetails}<p className="muted">{disclaimer}</p></div> : <RadioDetails props={selectedProps} view={view} disclaimer={disclaimer} /> : <div className="empty-panel"><svg className="empty-map-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="m3 7 8-3 10 3 8-3v21l-8 3-10-3-8 3Z" /><path d="M11 4v21M21 7v21" /></svg><strong>Seleccioná un radio</strong><p>Hacé clic sobre un radio para consultar los datos agregados de esta capa.</p></div>}</aside>}</div>
+  return <div className={`map-layout ${compact ? 'compact' : ''}`}>
+    <div className="map-frame">
+      <MapContainer {...(initialView || { bounds })} zoomAnimation={false} scrollWheelZoom={false} className="leaflet-map">
+        {!initialView && <FitBounds bounds={bounds} />}
+        <ResetView bounds={bounds} initialView={initialView} />
+        {showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, fillColor: view === 'research' ? experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => {
+          layer.bindTooltip(view === 'research' ? researchTooltip(feature.properties) : tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' })
+          // These views have a textual selector; avoid 263 tooltip-only tab stops.
+          if (!compact) layer.on('add', () => layer.getElement()?.setAttribute('tabindex', '-1'))
+          layer.on({ mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: .96 }), mouseout: (e) => e.target.setStyle({ weight: 1, fillOpacity: .82 }), click: () => selectRadio(feature.properties.radio_id) })
+        }} />}
+        {publicSelection && selectedFeature && <>
+          <PublicRadioFocus feature={selectedFeature} />
+          <GeoJSON key={`selection-${selectionKey}-${selectedProps.radio_id}`} data={selectedFeature} interactive={false} style={{ color: '#123a3d', weight: 3, dashArray: '6 4', fill: false }} />
+        </>}
+      </MapContainer>
+      {view === 'research' ? <ResearchLegend /> : <LevelLegend view={view} />}
+    </div>
+    {!compact && <aside className="map-side-panel">
+      {publicSelection && <div className="public-radio-control week-control">
+        <label htmlFor={`${controlId}-radio`}>Consultar un radio censal</label>
+        <select id={`${controlId}-radio`} value={selectedProps?.radio_id || ''} onChange={(event) => selectRadio(event.target.value)} disabled={!showData} aria-describedby={`${controlId}-help`} aria-controls={`${controlId}-details`}>
+          <option value="">Seleccioná un radio</option>
+          {radios.map(({ properties }) => <option key={properties.radio_id} value={properties.radio_id}>Radio {properties.radio_id}</option>)}
+        </select>
+        <small id={`${controlId}-help`}>{radios.length} radios disponibles. Podés elegir un código con el teclado o seleccionar su polígono en el mapa.</small>
+      </div>}
+      <div id={`${controlId}-details`} aria-live={publicSelection ? 'polite' : undefined} aria-atomic={publicSelection ? true : undefined}>
+        {!showData ? <p role="status" className="empty-panel">{statusMessage}</p> : selectedProps ? view === 'research' ? <div className="radio-details"><h2>Radio {selectedProps.radio_id}</h2><p>Score experimental: <strong>{selectedProps.score_status === 'available' ? formatNumber(selectedProps.experimental_score, 6) : 'Sin resultado disponible'}</strong></p><p>Rezagos conocidos: {selectedProps.data_availability.known_lag_count === null ? 'No utilizados por A' : `${selectedProps.data_availability.known_lag_count}/4 (retrospectivos)`}</p>{researchDetails}<p className="muted">{disclaimer}</p></div> : <RadioDetails props={selectedProps} view={view} disclaimer={disclaimer} /> : <div className="empty-panel"><svg className="empty-map-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="m3 7 8-3 10 3 8-3v21l-8 3-10-3-8 3Z" /><path d="M11 4v21M21 7v21" /></svg><strong>Seleccioná un radio</strong><p>{publicSelection ? 'Elegí un código en el selector o un polígono en el mapa para consultar los datos agregados de esta capa.' : 'Hacé clic sobre un radio para consultar los datos agregados de esta capa.'}</p></div>}
+      </div>
+    </aside>}
+  </div>
 }
 
 function Detail({ label, children }) { return <div><dt>{label}</dt><dd>{children}</dd></div> }

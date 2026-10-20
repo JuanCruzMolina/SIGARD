@@ -94,6 +94,10 @@
 .map-frame { min-height: inherit; position: relative; }
 .leaflet-map { width: 100%; height: 100%; min-height: inherit; background: var(--canvas-deep); }
 .map-side-panel { background: #fbfcf8; border-left: 1px solid var(--line); }
+.public-radio-control { padding: 23px; border-bottom: 1px solid var(--line); }
+.public-radio-control label { font-size: .875rem; }
+.public-radio-control select { width: 100%; min-width: 0; min-height: 44px; font-size: 1rem; }
+.public-radio-control small { font-size: .875rem; line-height: 1.5; }
 .map-reset { position: absolute; z-index: 1000; top: 14px; right: 14px; min-height: 34px; padding: 7px 11px; color: var(--navy); background: var(--paper); border: 1px solid var(--line-strong); border-radius: 7px; box-shadow: var(--shadow-low); cursor: pointer; font-size: .68rem; font-weight: 700; }
 .map-reset:hover { border-color: var(--teal); }
 .risk-legend { max-width: calc(100% - 28px); padding: 11px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; position: absolute; z-index: 1000; left: 14px; bottom: 14px; color: var(--ink); background: rgba(255, 254, 250, .96); border-radius: 8px; box-shadow: var(--shadow-low); font-size: .65rem; }
@@ -150,7 +154,7 @@
 .empty-panel p { margin: 7px 0 0; color: var(--muted); font-size: .74rem; line-height: 1.5; }
 .radio-details { padding: 28px 23px; }
 .radio-details h2 { margin: 0 0 11px; color: var(--navy); font-size: 1.3rem; }
-.risk-pill { display: inline-block; padding: 5px 9px; border-radius: 999px; color: var(--navy-deep); font-size: .65rem; font-weight: 700; }
+.risk-pill { display: inline-block; padding: 5px 9px; border-radius: 999px; color: #000; font-size: .65rem; font-weight: 700; }
 .radio-details dl { margin: 24px 0 0; }
 .radio-details dl div { padding: 11px 0; display: flex; justify-content: space-between; gap: 12px; border-bottom: 1px solid var(--line); }
 .radio-details dt { color: var(--muted); font-size: .68rem; }
@@ -237,7 +241,7 @@ tbody tr:hover { background: #f3f7f3; }
 .spinner { width: 26px; height: 26px; border: 2px solid #ccded9; border-top-color: var(--teal); border-radius: 50%; animation: spin .8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid #f0bc45; outline-offset: 3px; }
+button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid var(--gold-deep); outline-offset: 3px; }
 ::selection { color: #fff; background: var(--teal); }
 
 @media (max-width: 980px) {
@@ -293,7 +297,7 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .research-mode { margin-bottom: 24px; }
 .research-controls { align-items: flex-end; flex-wrap: wrap; }
 .research-controls input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--navy); background: #fff; min-width: 0; width: 100%; }
-.research-controls input:focus-visible { outline: 3px solid #f0bc45; outline-offset: 3px; }
+.research-controls input:focus-visible { outline: 3px solid var(--gold-deep); outline-offset: 3px; }
 .research-controls button { padding: 10px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--navy); background: #fff; cursor: pointer; }
 .research-controls button:disabled { opacity: .65; cursor: wait; }
 .research-spatial .week-control { min-width: 0; }
