@@ -1,19 +1,58 @@
 # Contrato interno propuesto: resultados espaciales retrospectivos A/B
 
-Estado: **diseño para revisión**, sin adaptador, endpoint, migración, exportación
-ni interfaz implementados. No habilita publicación ni entrenamiento oficial.
+Estado: **primera integración local implementada, pendiente de revisión humana**.
+Adaptador privado de sólo lectura, API FastAPI optativa y modalidad local del mapa.
+No habilita publicación, despliegue ni entrenamiento oficial. El arranque habitual
+no registra las rutas experimentales. El launcher local permite consultar sólo
+agregados sin autenticación, cookies ni confirmaciones, con escucha exclusiva en
+`127.0.0.1:8765` y origen Vite exacto `http://127.0.0.1:5173`. No incluye rutas de
+reportes privados ni acceso a archivos. Se conserva la autorización de lectura
+de artefactos y su integridad; no equivale a una sesión de usuario.
+Ver [ejecución local](experimental-spatial-local.md).
 Unidad: radio censal y semana objetivo; objetivo binario de presencia experimental
 de registros en t+1. Es distinto de los conteos y de la simulación sintética del MVP.
 
 ## Consulta y procedencia
 
-Interfaz interna recomendada, todavía sin código:
+Interfaz interna implementada en `backend/app/experimental_results.py`:
 
 ```text
 list_experiments() -> metadatos de A/B y semanas disponibles
 get_retrospective_scores(model_id, experiment_id, target_week_start)
     -> metadatos comunes + hasta 263 filas agregadas por radio
+compare(radio_censal, target_week_start) -> colecciones A/B de una fila
+get_evaluation() -> seis métricas congeladas por modelo y partición
+history(radio_censal) -> comparaciones de las semanas ya calculadas de ese radio
 ```
+
+## Ampliación local de etapa 10
+
+La comparación de métricas requiere una proyección nueva, limitada a
+`GET /api/v1/research/spatial/evaluation`. Lee exclusivamente las columnas
+`model`, `partition`, `n`, `positive`, `negative`, `grid_rows`, `unknown_excluded`,
+`threshold`, `precision`, `recall`, `f1`, `average_precision_pr_auc`, `roc_auc` y
+`brier` de `metrics.private.parquet` del experimento B, cuyo manifiesto ya está
+fijado por el registro local. Esa tabla congelada compara A/B sobre las mismas
+filas y distingue métricas no definidas; no se recalcula a partir de scores.
+Los conteos positivos/negativos sólo se comprueban internamente y no se publican.
+
+La respuesta `sigard-retrospective-spatial-evaluation/1` incluye calendario,
+escenario, limitaciones, retrospectividad, flags de uso/publicación falsos,
+fuente `frozen_comparative_evaluation`, umbral 0,5 y tres particiones. Cada una
+incluye fechas/semanas del catálogo, cantidad de filas radio–semana evaluadas
+y las seis métricas por modelo con su identidad/versiones. Los null permanecen
+no definidos; Brier es menor-mejor y las demás mayor-mejor, sin dictaminar un
+ganador. Se comprueba el mismo denominador y composición de etiquetas entre A/B.
+Sin B o sin tabla autorizada la respuesta es 404; integridad o formato inválido
+produce bloqueo 503. El mapa puede seguir mostrando scores si faltan métricas.
+
+`GET /api/v1/research/spatial/history/{radio}` devuelve las comparaciones ya
+definidas, sólo para ese radio y las semanas del catálogo, en una única lectura
+verificada. No incorpora pacientes, etiquetas ni coordenadas. Evita descargar
+la grilla completa por cada semana; no añade ni interpola resultados. El gráfico
+temporal corta las líneas ante valores null o saltos de semanas no calculadas.
+Ambas rutas heredan exactamente la restricción local y de sólo lectura; no se
+añaden a la API pública ni a recursos estáticos.
 
 `model_id` admite exclusivamente `A` o `B`; no seleccionar automáticamente el
 modelo con mejores métricas. La versión de entrenamiento es inmutable y forma
@@ -61,6 +100,10 @@ Cada fila contiene sólo:
 - `experimental_score`: número finito en [0,1] leído de la predicción congelada.
 - `score_status`: `available` o `not_computed`. Un resultado no calculado se
   representa con `experimental_score=null` y causa explícita; nunca con cero.
+- `score_unavailable_reason`: `frozen_score_missing` cuando el valor congelado
+  es null; `null` cuando está disponible. Un NaN, infinito o valor fuera de [0,1]
+  bloquea el artefacto. Una clave ausente o duplicada bloquea la grilla completa;
+  no se fabrica una fila para completar un radio faltante.
 - `data_availability`: objeto descrito a continuación.
 
 El modelo, versión, semana y cobertura de cada fila se heredan inequívocamente de
@@ -132,6 +175,12 @@ retrospective_only_no_operational_forecast
 
 ## Presentación relativa futura
 
+La primera interfaz usa **intervalos fijos del score bruto**, no percentiles:
+[0;0,25), [0,25;0,50), [0,50;0,75), [0,75;1]. Los colores violetas no corresponden
+a las categorías sanitarias ni a los niveles de la simulación del MVP. Gris indica
+score no calculado; nunca ausencia de casos. Se mantiene el valor bruto en el
+detalle y se explican los intervalos en la leyenda.
+
 El score no es cantidad de casos, incidencia, probabilidad calibrada de dengue
 ni nivel de riesgo sanitario. Mantener visible el valor bruto y la advertencia
 de retrospectividad. Si se añade un percentil de color, calcularlo exclusivamente
@@ -141,7 +190,7 @@ Los percentiles de semanas/modelos diferentes no miden el mismo nivel absoluto.
 No aplicar umbrales sanitarios ni reutilizar categorías del MVP sin una
 explicación nueva. No elegir umbral o calibración con la prueba ya examinada.
 
-Los componentes existentes pueden reutilizarse con un adaptador futuro explícito.
+La integración reutiliza el mapa existente con un adaptador explícito.
 El almacenamiento público actual tiene unicidad lote + corte + radio y no
 incluye modelo; el importador y el cliente también requieren productos del MVP
 que este contrato no promete. No insertar A/B allí mediante un cambio de nombre

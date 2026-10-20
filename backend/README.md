@@ -4,6 +4,24 @@ FastAPI expone el alta anónima, seguimiento público y administración protegid
 de reportes ciudadanos. Los reportes se almacenan en `citizen_reports`, sin
 reutilizar tablas epidemiológicas.
 
+La consulta retrospectiva A/B tiene un [launcher de investigación exclusivamente
+local](../docs/experimental-spatial-local.md). El arranque habitual no registra
+sus rutas; no habilitarla en Docker ni en despliegues públicos.
+El mapa local A/B consulta agregados sin autenticación, cookies ni diálogos de
+Windows. Su instancia FastAPI fija `127.0.0.1:8765`, sin base de datos ni claves,
+y sólo permite lectura desde Vite en `127.0.0.1:5173`. La administración habitual
+de reportes conserva su autenticación; ver la guía anterior.
+
+El panel local de análisis reutiliza esa instancia con dos consultas GET de
+sólo lectura: `/api/v1/research/spatial/evaluation` proyecta las seis métricas
+comparativas A/B ya guardadas por partición, y
+`/api/v1/research/spatial/history/{radio_censal}` devuelve los scores congelados
+de un radio en las semanas disponibles. Conservan las mismas comprobaciones
+de integridad, acceso loopback, Origin, marcador local y `no-store`. No cargan
+modelos ni recalculan métricas. La ausencia de métricas autorizadas produce 404;
+un artefacto incompatible produce 503. El contrato público no cambia. Ver el
+[contrato experimental](../docs/experimental-spatial-results-contract.md).
+
 ## Puesta en marcha
 
 La configuración Docker se está incorporando por etapas y se documenta en
@@ -62,12 +80,23 @@ endpoints administrativos requieren JWT y rol `admin`, responden con
 
 ## Pruebas y retención
 
+Desde la raíz, para comprobar la proyección y las restricciones del análisis
+experimental con fixtures ficticias:
+
+```powershell
+.\backend\.venv\Scripts\python.exe -B -m pytest backend/tests/test_experimental_results.py -q -p no:cacheprovider --basetemp backend/.tmp/analysis-pytest
+```
+
 ```bash
 pytest -q
 python -m app.retention
 ```
 
-La ejecución final de `pytest -q` completa **13 pruebas**. La migración también se
+En una validación anterior del backend se aprobaron **13 pruebas**,
+correspondientes al alcance implementado en ese momento. Durante la etapa 11
+se verificó una selección de **49 pruebas de backend**, con bases y artefactos
+ficticios. Estas cifras describen el alcance de cada revisión y no acreditan
+la totalidad de las pruebas existentes del proyecto. La migración también se
 compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo
