@@ -31,13 +31,13 @@ def verify_password(password: str, password_hash: str) -> bool:
 def create_access_token(user: User, settings: Settings) -> str:
     expires = datetime.now(timezone.utc) + timedelta(minutes=settings.access_token_expire_minutes)
     return jwt.encode(
-        {"sub": str(user.id), "role": user.rol, "exp": expires},
+        {"sub": str(user.id), "role": user.rol, "ver": user.token_version, "exp": expires},
         settings.secret_key,
         algorithm=settings.algorithm,
     )
 
 
-def get_current_admin(
+def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
@@ -50,12 +50,21 @@ def get_current_admin(
     if credentials is None:
         raise unauthorized
     try:
-        payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(credentials.credentials, settings.secret_key, algorithms=[settings.algorithm], options={"require_exp": True, "require_sub": True})
         user_id = int(payload.get("sub", ""))
-    except (JWTError, ValueError):
+        version = payload.get("ver")
+        if type(version) is not int:
+            raise ValueError("Invalid session version")
+    except (JWTError, ValueError, TypeError):
         raise unauthorized from None
     user = db.scalar(select(User).where(User.id == user_id, User.active.is_(True)))
-    if not user or user.rol != "admin":
+    if not user or user.token_version != version:
+        raise unauthorized
+    return user
+
+
+def get_current_admin(user: User = Depends(get_current_user)) -> User:
+    if user.rol != "admin":
         raise HTTPException(status_code=403, detail="Rol administrador requerido")
     return user
 

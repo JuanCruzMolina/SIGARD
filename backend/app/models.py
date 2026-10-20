@@ -11,9 +11,11 @@ from sqlalchemy import (
     ForeignKey,
     ForeignKeyConstraint,
     Integer,
+    Index,
     String,
     Text,
     UniqueConstraint,
+    func,
 )
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -48,6 +50,18 @@ class User(Base):
     password_hash: Mapped[str] = mapped_column(String(255))
     rol: Mapped[str] = mapped_column(String(20), default="user")
     active: Mapped[bool] = mapped_column("activo", Boolean, default=True)
+    token_version: Mapped[int] = mapped_column(Integer, default=0, server_default="0", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    __table_args__ = (Index("uq_usuarios_email_normalized", func.lower(func.trim(email)), unique=True),)
+
+
+class AdminAccountAudit(Base):
+    __tablename__ = "admin_account_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    target_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"))
+    action: Mapped[str] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
 

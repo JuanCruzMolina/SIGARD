@@ -38,8 +38,8 @@ def login(
         limit=settings.admin_login_rate_limit,
         identity=payload.email.strip().lower(),
     )
-    user = db.scalar(select(User).where(func.lower(User.email) == payload.email.lower()))
-    if not user or not user.active or not verify_password(payload.password, user.password_hash):
+    user = db.scalar(select(User).where(func.lower(func.trim(User.email)) == payload.email))
+    if not user or not user.active or not verify_password(payload.password.get_secret_value(), user.password_hash):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     if user.rol != "admin":
         raise HTTPException(status_code=403, detail="Rol administrador requerido")

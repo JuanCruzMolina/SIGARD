@@ -62,11 +62,37 @@ export function updateAdminReport(token, reportId, changes) {
   })
 }
 
+export function listAdminAccounts(token, page = 1) {
+  return apiRequest(`/api/v1/admin/users?page=${page}`, { headers: adminHeaders(token) })
+}
+
+export function createAdminAccount(token, payload) {
+  return apiRequest('/api/v1/admin/users', {
+    method: 'POST', headers: adminHeaders(token), body: JSON.stringify(payload),
+  })
+}
+
+export function deactivateAdminAccount(token, id, payload) {
+  return apiRequest(`/api/v1/admin/users/${id}/deactivate`, {
+    method: 'POST', headers: adminHeaders(token), body: JSON.stringify(payload),
+  })
+}
+
+export function rotateAdminPassword(token, id, payload) {
+  return apiRequest(`/api/v1/admin/users/${id}/password`, {
+    method: 'POST', headers: adminHeaders(token), body: JSON.stringify(payload),
+  })
+}
+
 export async function downloadAdminExport(token) {
   const response = await fetch(`${API_URL}/api/v1/admin/citizen-reports/export.csv`, {
     headers: adminHeaders(token),
   })
-  if (!response.ok) throw new Error('No se pudo descargar la exportación.')
+  if (!response.ok) {
+    const error = new Error('No se pudo descargar la exportación.')
+    error.status = response.status
+    throw error
+  }
   const url = URL.createObjectURL(await response.blob())
   const anchor = document.createElement('a')
   anchor.href = url

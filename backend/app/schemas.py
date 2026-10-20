@@ -2,7 +2,7 @@ import re
 from datetime import datetime
 from enum import Enum
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator, model_validator
 
 
 PRIVACY_NOTICE_VERSION = "2026-08-19"
@@ -96,7 +96,48 @@ class PublicReportStatus(BaseModel):
 
 class AdminLogin(BaseModel):
     email: str = Field(min_length=5, max_length=150)
-    password: str = Field(min_length=8, max_length=200)
+    password: SecretStr = Field(min_length=8, max_length=200)
+
+    @field_validator("email", mode="before")
+    @classmethod
+    def normalize_email(cls, value):
+        if not isinstance(value, str):
+            raise ValueError("Correo inválido")
+        value = value.strip().lower()
+        if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", value):
+            raise ValueError("Correo inválido")
+        return value
+
+
+class AdminAccountCreate(AdminLogin):
+    model_config = ConfigDict(extra="forbid")
+    current_password: SecretStr = Field(min_length=8, max_length=200)
+
+
+class AdminAccountConfirm(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    current_password: SecretStr = Field(min_length=8, max_length=200)
+
+
+class AdminPasswordRotation(AdminAccountConfirm):
+    new_password: SecretStr = Field(min_length=8, max_length=200)
+
+
+class AdminAccountSummary(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+    id: int
+    email: str
+    active: bool
+    created_at: datetime
+
+
+class AdminAccountPage(BaseModel):
+    items: list[AdminAccountSummary]
+    total: int
+    page: int
+    page_size: int
+    current_user_id: int
+    active_admin_count: int
 
 
 class TokenResponse(BaseModel):
