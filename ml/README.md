@@ -1,5 +1,22 @@
 # Pipelines reproducibles de SIGARD
 
+El [validador epidemiológico de etapa 7](../docs/official-epidemiology-review.md#etapa-7-validador-independiente-de-consistencia)
+se ejecuta de forma independiente mediante
+`python -B -m sigard_ml.official.epidemiological_validator` (JSON por stdin).
+Comprueba consistencia sin modificar datos ni conectarse al entrenamiento.
+
+El [preflight de etapa 8](../docs/official-epidemiology-review.md#etapa-8-preflight-de-elegibilidad-con-datos-ficticios)
+se invoca con `run_preflight` desde Python o mediante
+`python -B -m sigard_ml.official.epidemiological_preflight` (JSON por stdin).
+Separa consistencia y elegibilidad por uso con evidencia simulada en memoria;
+sólo admite conjuntos ficticios y nunca autoriza entrenamientos efectivos.
+
+La [preparación controlada de etapa 9](../docs/official-epidemiology-review.md#etapa-9-preparación-controlada-con-fixtures)
+se invoca con `sigard_ml.official.preparation_pipeline.run_preparation` desde
+Python. Exige permiso externo para la fixture exacta y reutiliza el preflight
+sin duplicar validaciones. Devuelve un informe agregado, con entrenamiento,
+evaluación efectiva y escritura de datasets deshabilitados.
+
 La [preparación del escenario de cobertura asumida](../docs/official-assumed-scenario.md)
 genera etiquetas experimentales autorizadas en un destino privado nuevo, sin
 alterar conteos/predictores, paneles conservadores ni el Modelo A y sin entrenar.
