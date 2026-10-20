@@ -1,4 +1,91 @@
-# SIGARD: consolidación técnica de las etapas 1 a 11
+# SIGARD: consolidación técnica de las etapas 1 a 16
+
+**Preparación de etapa 16 — 20/10/2026, `entrenamiento-ML`:** inicio nuevo con el
+comando habitual, frontend 5173 y A/B 8765 exclusivamente en `127.0.0.1`.
+La API pública persistente y administración siguen siendo independientes.
+Se corrigió un defecto demostrado de tabulación: los tooltips hacían que Chromium
+recorriera los 263 polígonos antes del selector. Las vistas con selector textual
+retiran esos paths de Tab; conservan clic/hover y controles existentes. Se añadió
+la comprobación al harness integral, sin nuevo módulo ni dependencia.
+
+Regresión: **1.042 aprobadas, cero fallidas, una omitida PostgreSQL real**;
+cuatro casos ML deseleccionados y ocho módulos excluidos, con entrenamiento/carga
+de modelos bloqueados. Lint, build y 178 controles de seguridad aprobados.
+11 grupos de navegador sobre API/SQLite ficticios, revisión visual a 1440/390 px
+y prueba adicional de Tab/Enter, historial y reintento A/B; cero excepciones JS.
+Se conciliaron nuevamente 10.520 filas, 36 métricas y 20 semanas congeladas.
+Nombres accesibles y contraste de muestras comprobados mediante CDP; lector de
+pantalla, móvil físico y auditoría integral pendientes.
+
+No se accedió a las bases del servicio 5432 ni se inició PostgreSQL/Docker.
+Migraciones PostgreSQL compiladas offline en ambos sentidos y reversión
+administrativa SQLite comprobada; concurrencia/PostGIS real **no verificados**.
+El [procedimiento aislado pendiente](../backend/README.md#ensayo-postgresqlpostgis-descartable--preparación-de-etapa-16)
+define puertos 5434/5435, bases separadas y limpieza, sujeto a autorización.
+El [guion de siete minutos](SIGARD-resumen-desarrollo.md#8-guion-académico-de-siete-minutos)
+incluye servicios, checklist y condiciones que impiden cada recorrido.
+Estado: preparado para demostración académica experimental, no validado para
+utilización epidemiológica real. La matriz conserva **15 completas, 8 parciales
+y 3 bloqueadas**. Sin commits, cambios de rama ni modificación de resultados.
+Las actualizaciones siguientes conservan sus resultados históricos.
+
+**Actualización de etapa 15 — 20/10/2026, `entrenamiento-ML`:** se estabilizaron
+los recorridos de consulta pública, A/B y administración conservando los cambios
+de etapas 13/14. Se corrigieron cinco defectos comprobados: transición de zoom
+de Leaflet después del desmontaje, sesión local no cerrada ante rechazo de
+reportes/exportación, ubicación ciudadana inaccesible con teclado, contraste de
+distintivo/foco y un marcador privado sin acción presentado como botón sin nombre.
+No se añadieron módulos, endpoints, frameworks ni archivos versionables nuevos
+en esta etapa; tampoco se modificaron modelos, resultados o fuentes.
+
+Resultado: **1.042 pruebas aprobadas**, cero fallidas; una prueba PostgreSQL
+omitida y cuatro casos ML deseleccionados (además de ocho módulos excluidos).
+Las 79 backend y 51 frontend mantienen la regresión de etapa 14; las 912 ML
+coinciden con la selección segura de etapa 11, con `fit`/`joblib.load` bloqueados.
+Lint, build, recursos públicos y 178 controles de seguridad aprobados. Inicio
+real con el comando único, API en `127.0.0.1:8765` y Vite en `127.0.0.1:5173`.
+
+Chromium: 11 grupos integrales sobre API/SQLite descartables y usuarios ficticios,
+incluidos alta→seguimiento→revisión de reportes y ciclo de cuentas. A/B: 40
+colecciones/10.520 filas, 36 métricas y 20 semanas conciliadas con resultados
+congelados. Capturas a 1440/390 px; cero excepciones JavaScript/advertencias React
+al cierre. CDP/contraste de muestras usados para accesibilidad; lector de pantalla,
+dispositivo físico y auditoría integral permanecen pendientes.
+
+PostgreSQL 18 nativo acepta conexiones en 5432, pero no se identificó como instancia
+de pruebas ni se accedió a sus bases. Docker está detenido y 5433 no responde.
+Cadena Alembic completa compilada a SQL PostgreSQL en ambos sentidos y migración
+administrativa reversible probada en SQLite ficticio; **concurrencia PostgreSQL
+real no verificada**. La prueba opcional exige un entorno descartable autorizado;
+la integración geoespacial necesita además PostGIS. No se iniciaron esos servicios
+ni se aplicaron migraciones a bases persistentes.
+
+La [matriz funcional](mvp-functional-status.md#etapa-15--pruebas-integrales-y-estabilización)
+detalla evidencia, límites y las ocho funcionalidades parciales: se conservan
+15 completas, 8 parciales y 3 bloqueadas. No hubo staging/commit/push ni cambio de
+rama; etapa 16 sin iniciar. El contenido siguiente conserva revisiones históricas
+y sus cantidades/estado Git no describen el cierre actual.
+
+**Actualización de etapa 13 — 20/10/2026:** se revisaron los módulos contra la
+documentación disponible y se registró la [matriz funcional del MVP](mvp-functional-status.md).
+Los documentos originales de línea base citados por el plan no están en este
+checkout; la matriz usa referencias verificables del plan y alcance existentes.
+La única mejora implementada completa la consulta pública de radios por teclado,
+prevista por la etapa 7 del plan: `TerritorialMap` reutiliza el detalle agregado,
+sincroniza selector/clic, enfoca y marca el radio y conserva su código al cambiar
+semana o capa. Cambiaron el componente compartido, cuatro reglas CSS y el script
+de prueba del frontend; se añadieron cinco pruebas focalizadas y se actualizó su
+README. No se cambiaron API, datos, modelos ni unidades.
+
+Validación de etapa 13: 443 pruebas seleccionadas aprobadas (0 fallidas/omitidas),
+lint/build y 178 controles de seguridad aprobados. Chromium: 11 grupos de
+comprobaciones, capturas a 1440/390 px, consulta pública y regresión A/B, sin
+excepciones JavaScript ni advertencias React. Docker detenido: PostGIS y el
+circuito ciudadano con base real siguen sin verificarse aquí. El detalle de
+comandos, reintentos por permisos y límites está en la matriz. La revisión partió
+de árbol limpio en `entrenamiento-ML` y deja siete archivos nuevos/modificados,
+sin staging ni commit. El contenido siguiente conserva la evidencia histórica
+de etapa 11; sus cantidades/estado Git no describen esta entrega.
 
 Revisión local: **20/10/2026**, rama `entrenamiento-ML`, HEAD `b160601`.
 Este documento actualiza la consolidación existente hasta Fase 5F. Describe el

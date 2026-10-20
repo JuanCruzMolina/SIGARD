@@ -170,3 +170,13 @@ La superficie pública real es `/prevencion` y la operación protegida se realiz
 en `/admin/reportes`. Hasta confirmar un organismo receptor, la API impide marcar
 un reporte como `derivado` y el formulario se presenta sólo como registro interno
 de SIGARD.
+
+La gestión de cuentas de etapa 14 reutiliza esa interfaz y `usuarios`. La API
+`/api/v1/admin/users` requiere JWT, cuenta activa, versión de sesión vigente y
+rol `admin`; las mutaciones requieren además la contraseña del actor. Una
+transacción serializa los cambios, protege al último administrador y registra
+auditoría sin credenciales. Desactivación y rotación revocan los tokens previos.
+El bootstrap sólo inicia una tabla de usuarios vacía. La migración versionada
+queda preparada, sin aplicación a bases persistentes. El contrato y las pruebas
+se detallan en [backend/README.md](../backend/README.md#cuentas-administrativas-y-autenticación--etapa-14).
+Este circuito no participa en el acceso público ni en la API local A/B.

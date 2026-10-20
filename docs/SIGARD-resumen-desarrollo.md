@@ -4,6 +4,11 @@
 Material de apoyo para comprender el proyecto y preparar la tesis.  
 Síntesis documental: etapa 12 | 20 de octubre de 2026
 
+**Preparación de etapa 16 — 20/10/2026:** el resumen histórico de las secciones
+1–7 se conserva. El [guion de exposición](#8-guion-académico-de-siete-minutos)
+y la lista de preparación al final describen la demostración actual. Consultar
+la [matriz vigente](mvp-functional-status.md) para el estado de implementación.
+
 ## 1. Introducción a SIGARD
 
 SIGARD es un prototipo informático para explorar información territorial y desarrollar modelos predictivos relacionados con el dengue en La Rioja Capital. Busca reunir preparación de información, análisis con Machine Learning y visualización en un mapa dentro de un flujo comprensible y reproducible.
@@ -201,3 +206,104 @@ Las guías anteriores reflejan su momento de elaboración; se tomó la etapa 11 
 - **Uso de la aplicación:** `experimental-spatial-local.md`, `backend/README.md` y `frontend/README.md`.
 
 Salvo los README indicados, las fuentes están en `docs/`. Las variables de A/B y el límite ficticio de la preparación se contrastaron con el código correspondiente. Esta síntesis utiliza documentación, sin abrir datasets privados o registros individuales. Los resultados técnicos citados pertenecen a la etapa 11; en la etapa 12 no se ejecutaron entrenamientos ni se recalcularon evaluaciones.
+
+## 8. Guion académico de siete minutos
+
+**0:00–0:45 — Problema y objetivo.** Abrir la pantalla inicial.
+«SIGARD estudia cómo integrar información temporal y territorial sobre dengue
+en La Rioja Capital, organizarla de forma reproducible y explorar modelos para
+la semana siguiente. Es un prototipo de tesis: distingue información observada,
+simulación y resultados experimentales; no es una herramienta sanitaria validada».
+
+**0:45–1:30 — Arquitectura y preparación.** Abrir **Cómo funciona**.
+«Python realiza la preparación y scikit-learn los experimentos fuera del servidor.
+FastAPI entrega resultados ya calculados; React/Vite y Leaflet permiten consultarlos.
+PostgreSQL/PostGIS está previsto para persistencia y geometrías del circuito público.
+La unidad de análisis es radio censal–semana epidemiológica. Se conservan fuentes,
+procedencia, incertidumbre y calendario argentino; la cartografía comprende 263 radios.
+Los validadores distinguen una estructura correcta de una etiqueta acreditada».
+
+**1:30–2:30 — Consulta pública.** Ir a **Mapa público**, elegir un código con el
+selector, cambiar semana y alternar contexto/simulación.
+«El contexto censal describe el territorio. La simulación es una distribución
+sintética para comprobar el flujo, no domicilios ni casos reales por radio. Los
+colores son niveles relativos, no umbrales sanitarios». Señalar leyenda, detalle
+agregado y fuente técnica del pie. El resumen temporal agregado y la clasificación
+A/B son objetivos diferentes: no interpretar sus magnitudes como equivalentes.
+
+**2:30–4:15 — Modelos A/B.** Elegir **Investigación local A/B**, Modelo A, una semana
+y un radio. Cambiar a B conservando radio/semana; abrir **Ver evolución temporal**.
+«Ambos son Random Forest de clasificación de presencia experimental en t+1.
+A usa siete entradas de territorio y calendario: superficie, población, densidad,
+vecinos, semana de origen y su seno/coseno. B conserva esas siete y añade cuatro
+rezagos de presencia y cuatro indicadores de faltantes: 15 entradas. Desconocido
+no se convierte en cero. La interfaz lee resultados congelados; no está entrenando
+ni generando un pronóstico nuevo». Mostrar los dos scores, las 20 semanas y los
+huecos, sin interpolarlos ni presentar un ganador.
+
+**4:15–5:15 — Evaluación y límites científicos.** Mostrar **Análisis de modelos** y
+cambiar partición. «Se evaluaron retrospectivamente con positivos provisionales
+y negativos experimentales asumidos, con cortes temporales y semanas de separación.
+Entrenamiento, validación y prueba ya fueron examinados. Precisión y sensibilidad
+describen acuerdo con esas etiquetas; Brier menor representa menor error contra
+ellas. Ni las métricas ni un score alto acreditan casos, riesgo clínico calibrado
+o superioridad de B. Faltan cobertura negativa y disponibilidad histórica acreditadas,
+definiciones institucionales y evaluación futura independiente». Mantener visibles
+los avisos de uso no sanitario.
+
+**5:15–6:15 — Prevención y circuito ciudadano/administrativo.** Ir a **Prevención
+y ayuda**, mostrar contenidos, búsqueda y filtros del directorio. «Hay 24 CAPS y
+tres hospitales; 23 CAPS requieren confirmar vigencia, por lo que no mostramos
+disponibilidad de atención en tiempo real». Si está preparada la prueba aislada,
+mostrar el recorrido automatizado con un reporte ficticio, su código, actualización
+administrativa y cuentas ficticias. «La administración exige JWT, rol y confirmación
+de contraseña; desactivar o rotar revoca tokens y se protege la última cuenta».
+Si sólo está iniciado el comando habitual, mostrar formulario y login e indicar
+que envío, seguimiento y administración necesitan la API independiente: no intentar
+operaciones contra un servicio de finalidad desconocida ni usar credenciales reales.
+
+**6:15–7:00 — Estado y trabajo pendiente.** Mostrar la matriz y su evidencia.
+«Las pruebas actuales respaldan una demostración académica experimental local.
+El ciclo HTTP y SQLite descartable está comprobado; PostgreSQL/PostGIS y su
+concurrencia real siguen pendientes de un entorno autorizado. La matriz conserva
+15 funcionalidades completas, ocho parciales y tres bloqueadas. Faltan también
+confirmaciones institucionales y accesibilidad con lector de pantalla/dispositivo
+físico. Estos límites forman parte de lo que la tesis permite concluir».
+
+## 9. Lista de preparación de la demostración
+
+- [ ] Confirmar rama `entrenamiento-ML`, entornos/dependencias existentes y
+  artefactos autorizados íntegros. No regenerar faltantes ni reentrenar.
+- [ ] Ejecutar desde la raíz `npm.cmd --prefix frontend run dev`; esperar **Listo**
+  y abrir `http://127.0.0.1:5173/`. Vite 5173 y A/B 8765 deben escuchar sólo en
+  `127.0.0.1`. No abrir túneles, exponer el equipo ni cambiar los hosts para proyectar.
+- [ ] Ensayar mapa público, capas/semanas, selector, fuente y leyendas. El respaldo
+  estático aprobado funciona sin API 8000; no equivale a una publicación PostGIS activa.
+- [ ] Ensayar A/B, misma semana/radio, historial y métricas. La API local no precisa
+  tokens ni PostgreSQL y no incluye servicios ciudadanos o administrativos.
+- [ ] Ensayar prevención/directorio; preparar conectividad para teselas externas.
+  Si no cargan, distinguir fondo cartográfico de polígonos/datos; evitar el
+  geocodificador y cualquier ubicación personal durante la exposición.
+- [ ] Para demostrar operaciones ciudadanas/cuentas, ejecutar con Vite activo el
+  harness integral documentado en [frontend/README.md](../frontend/README.md).
+  Inicia una API en puerto loopback libre y SQLite ficticio, redirige únicamente
+  el navegador de prueba y limpia al cerrar. **No habilita esos servicios en un
+  navegador común** ni deja una cuenta disponible después. Sin esa preparación,
+  limitar la exposición al formulario/login y explicar la dependencia.
+- [ ] Para una futura demostración manual persistente, autorizar y preparar por
+  separado API habitual 8000, PostgreSQL/PostGIS descartable, migraciones, lote
+  público aprobado y bootstrap ficticio. Esto sigue pendiente; no usar Compose
+  ordinario con su volumen existente ni el PostgreSQL prohibido de 5432.
+- [ ] Ensayar Tab/Enter, foco, escritorio y viewport móvil; no afirmar prueba con
+  lector de pantalla o teléfono físico sin realizarla. Conservar los avisos científicos.
+- [ ] Revisar [evidencia de etapa 16](mvp-functional-status.md#etapa-16--preparación-académica)
+  y cerrar sesiones ficticias. Ctrl+C cierra los servicios que inició el coordinador;
+  no detiene una API previamente reutilizada ni procesos ajenos.
+
+**Condiciones que limitan o impiden la exposición:** puertos ocupados, dependencias
+ausentes o integridad inválida impiden iniciar A/B; no se eluden los bloqueos.
+Sin resultados autorizados, omitir ese recorrido. Sin API ciudadana preparada,
+no demostrar envíos ni cuentas como operación real. Sin PostGIS no afirmar
+integración geoespacial persistente. La falta de teselas afecta el fondo en línea.
+El estado es **preparado para demostración académica experimental**, no sistema
+completo y validado para utilización epidemiológica real.
