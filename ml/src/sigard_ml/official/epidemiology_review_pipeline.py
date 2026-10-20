@@ -103,6 +103,51 @@ def training_conditions():
         "template_signature_automatically_enables_training": False}
 
 
+def rule_status_addendum():
+    """Anexo documental de etapa 7; no completa decisiones institucionales."""
+    return """## 8. Clasificación de reglas para el validador — etapa 7
+
+Actualización documental: 20/10/2026. Respaldo: docs/epidemiological-data-quality-audit.md
+y docs/epidemiological-labeling-and-coverage-contract.md, C1–C4 y P1–P6.
+No se consultaron fuentes epidemiológicas adicionales ni se resolvieron decisiones.
+
+### Justificadas para comprobación automática de consistencia
+
+- Claves técnicas completas y no repetidas; una clave identifica una fila, no un episodio.
+- Categorías canónicas, correspondencia explícita versionada y estado de acreditación separado.
+  El literal confirmado no acredita el criterio; desconocido nunca implica negativo (C1/P1).
+- Fechas explícitas, campo de referencia y aproximación conservados; muestra y síntomas separados.
+  Calendario ar-snvs-2020-2026-v1, domingo–sábado y coherencia fecha/año/semana/límites (C3/P4).
+- Señales de repetición o identidad ausente pendientes, sin eliminación ni representante automático (C2/P2).
+- Consistencia con decide_observation: procedencia y versión de cobertura, parcialidad y pendientes;
+  sin cobertura suficiente la semana vacía conserva null. objetivo_valido significa conocido (C3/P3).
+- Coherencia entre estado geométrico, candidatos e incertidumbre; borde/múltiples radios sin candidato elegido (C3/P5).
+
+### Experimentales, diferenciadas de evidencia acreditada
+
+- Inclusión exploratoria de categorías registradas: mantiene elegibilidad provisional, sin acreditar casos.
+- Fechas alternativas, incluida toma de muestra: aproximaciones, sin reconstruir inicio real ni restar demoras.
+- Candidato espacial aproximado aceptado para investigación retrospectiva: no acredita domicilio o infección.
+- Cero declarado provisional y cero_asumido_experimental separados de desconocido y de ausencia verificada.
+  La autorización existente sólo cubre su alcance documentado; una referencia no acredita su contenido (C4).
+
+### Pendientes de evidencia o autorización del responsable
+
+- P1: definición histórica/evento y aplicación del criterio por fuente, especialmente la revisión de 2022.
+- P2: significado de identificadores, unidad de episodio y resoluciones del grupo completo con evidencia.
+- P3: exhaustividad/continuidad de extracción, vigilancia, territorio, fechas base, corte y respaldo aceptado.
+- P4: significado clínico de columnas, política temporal aplicable y revisión de contradicciones; sin imputaciones.
+- P5: rol/procedencia de ubicación, CRS, incertidumbre y validez territorial para atribución epidemiológica.
+- P6: disponibilidad histórica y maduración de etiquetas/contexto en cada origen temporal.
+- Integración en el procesamiento oficial y cualquier entrenamiento requieren una etapa posterior autorizada.
+
+El validador sólo informa valido, advertencia, invalido o pendiente_acreditacion, con ID,
+motivo y campo. valido significa consistencia técnica del control; nunca aprobación sanitaria.
+No abre respaldos ni acredita decisiones por una bandera o referencia. El dossier y la plantilla
+conservan sus decisiones pendientes; no se materializan etiquetas, negativos ni predicciones.
+"""
+
+
 def decision_document(report, inventory, template):
     lines = ["# SIGARD Fase 5B.1 — dossier privado de decisiones epidemiológicas", "",
         "Estado: diagnóstico completo, decisiones pendientes. No se entrenó, reclasificó, imputó ni materializó negativos.",
@@ -169,7 +214,7 @@ def decision_document(report, inventory, template):
         "6. Elegir alcance retrospectivo experimental u operativo, documentar sus condiciones y dar autorizaciones separadas para negativos y luego entrenamiento.",
         "Ningún dato externo faltante bloqueó este diagnóstico: lo no comprobable se identifica como pendiente. Plantilla no firmada, sin decisiones preseleccionadas ni períodos declarados automáticamente.", "",
         "Se preservaron fuentes, paneles, features, configuraciones y modelos anteriores. Salidas privadas excluidas de Git; sin frontend/backend, commit, push o publicación. Detención para revisión.", ""]
-    return "\n".join(lines)
+    return "\n".join(lines) + "\n" + rule_status_addendum()
 
 
 def run_review(root, options):
