@@ -1,10 +1,16 @@
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 async function apiRequest(path, options = {}) {
-  const response = await fetch(`${API_URL}${path}`, {
-    ...options,
-    headers: { 'Content-Type': 'application/json', ...options.headers },
-  })
+  let response
+  try {
+    response = await fetch(`${API_URL}${path}`, {
+      ...options, cache: 'no-store', credentials: 'omit',
+      headers: { 'Content-Type': 'application/json', ...options.headers },
+    })
+  } catch (error) {
+    if (error.name === 'AbortError') throw error
+    throw new Error('No pudimos conectar con el servicio. Revisá la conexión e intentá nuevamente.', { cause: error })
+  }
   const contentType = response.headers.get('content-type') || ''
   const body = contentType.includes('application/json') ? await response.json() : null
   if (!response.ok) {
@@ -27,38 +33,42 @@ export function createCitizenReport(payload, idempotencyKey) {
   })
 }
 
-export function getCitizenReportStatus(trackingCode) {
-  return apiRequest(`/api/v1/citizen-reports/status/${encodeURIComponent(trackingCode.trim())}`)
+export function getCitizenReportStatus(trackingCode, options = {}) {
+  return apiRequest(`/api/v1/citizen-reports/status/${encodeURIComponent(trackingCode.trim().toUpperCase())}`, options)
 }
 
-export function geocodeAddress(addressReference) {
+export function geocodeAddress(addressReference, options = {}) {
   return apiRequest('/api/v1/geocoding/address', {
-    method: 'POST',
+    ...options, method: 'POST',
     body: JSON.stringify({ address_reference: addressReference }),
   })
 }
 
-export function adminLogin(credentials) {
-  return apiRequest('/api/v1/admin/session', { method: 'POST', body: JSON.stringify(credentials) })
+export function adminLogin(credentials, options = {}) {
+  return apiRequest('/api/v1/admin/session', { ...options, method: 'POST', body: JSON.stringify(credentials) })
 }
 
 function adminHeaders(token) {
   return { Authorization: `Bearer ${token}` }
 }
 
-export function listAdminReports(token, filters = {}) {
+function filterQuery(filters) {
   const query = new URLSearchParams()
   Object.entries(filters).forEach(([key, value]) => value && query.set(key, value))
-  return apiRequest(`/api/v1/admin/citizen-reports?${query}`, { headers: adminHeaders(token) })
+  return query
 }
 
-export function getAdminReport(token, reportId) {
-  return apiRequest(`/api/v1/admin/citizen-reports/${reportId}`, { headers: adminHeaders(token) })
+export function listAdminReports(token, filters = {}, options = {}) {
+  return apiRequest(`/api/v1/admin/citizen-reports?${filterQuery(filters)}`, { ...options, headers: adminHeaders(token) })
 }
 
-export function updateAdminReport(token, reportId, changes) {
+export function getAdminReport(token, reportId, options = {}) {
+  return apiRequest(`/api/v1/admin/citizen-reports/${reportId}`, { ...options, headers: adminHeaders(token) })
+}
+
+export function updateAdminReport(token, reportId, changes, options = {}) {
   return apiRequest(`/api/v1/admin/citizen-reports/${reportId}`, {
-    method: 'PATCH', headers: adminHeaders(token), body: JSON.stringify(changes),
+    ...options, method: 'PATCH', headers: adminHeaders(token), body: JSON.stringify(changes),
   })
 }
 
@@ -84,16 +94,18 @@ export function rotateAdminPassword(token, id, payload) {
   })
 }
 
-export async function downloadAdminExport(token) {
-  const response = await fetch(`${API_URL}/api/v1/admin/citizen-reports/export.csv`, {
-    headers: adminHeaders(token),
+export async function downloadAdminExport(token, filters = {}, options = {}) {
+  const response = await fetch(`${API_URL}/api/v1/admin/citizen-reports/export.csv?${filterQuery(filters)}`, {
+    ...options, headers: adminHeaders(token), cache: 'no-store', credentials: 'omit',
   })
   if (!response.ok) {
     const error = new Error('No se pudo descargar la exportación.')
     error.status = response.status
     throw error
   }
-  const url = URL.createObjectURL(await response.blob())
+  const blob = await response.blob()
+  options.signal?.throwIfAborted()
+  const url = URL.createObjectURL(blob)
   const anchor = document.createElement('a')
   anchor.href = url
   anchor.download = 'sigard-reportes.csv'

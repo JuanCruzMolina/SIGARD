@@ -106,6 +106,15 @@
 .contact-list small a { display: inline; margin: 0; color: var(--teal-deep); font-size: inherit; font-weight: 600; text-decoration: underline; }
 .privacy-promise { margin: -10px 0 24px; }
 .report-form { padding: 30px; background: var(--paper); border-radius: 12px; box-shadow: var(--shadow-low); }
+.report-form fieldset:disabled, .report-edit-fields:disabled { opacity: .75; }
+.report-confirmation h3:focus, .report-confirmation output:focus-visible { outline: 2px solid var(--teal); outline-offset: 5px; }
+.status-result > strong { display: block; margin-bottom: 12px; color: #fff; overflow-wrap: anywhere; }
+.admin-filters { min-width: 0; padding: 0; border: 0; }
+.report-detail .admin-update { display: block; }
+.report-edit-fields { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.inbox-empty { padding: 20px 17px; color: var(--ink-soft); font-size: .8rem; line-height: 1.5; }
+.admin-page button:disabled { cursor: not-allowed; opacity: .65; }
+@media (max-width: 760px) { .report-edit-fields { grid-template-columns: 1fr; } }
 .report-form fieldset { margin: 0; padding: 0 0 32px; border: 0; }
 .report-form fieldset + fieldset { padding-top: 30px; border-top: 1px solid var(--line); }
 .report-form legend { margin-bottom: 16px; color: var(--navy-deep); font-size: 1rem; font-weight: 700; }
