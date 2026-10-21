@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { BrowserRouter, NavLink, Route, Routes, Link, useLocation } from 'react-router-dom'
+import { BrowserRouter, Navigate, NavLink, Route, Routes, Link, useLocation } from 'react-router-dom'
 import { DATA_ERROR_MESSAGE, formatDate, loadSigardData } from './services/sigardData'
+import { localResearchEnabled } from './services/experimentalResults'
 import Dashboard from './pages/Dashboard'
 import Mapa from './pages/Mapa'
 import Validacion from './pages/Validacion'
@@ -20,6 +21,7 @@ function AppContent() {
   const [selectedCutoffDate, setSelectedCutoffDate] = useState('')
   const [error, setError] = useState(null)
   const { pathname } = useLocation()
+  const localResearch = localResearchEnabled()
   const needsEpidemiologicalData = !pathname.startsWith('/prevencion') && !pathname.startsWith('/admin/')
 
   useEffect(() => {
@@ -32,12 +34,13 @@ function AppContent() {
 
   const shared = data ? { data, selectedCutoffDate, onCutoffChange: setSelectedCutoffDate } : null
   return <div className="app-shell">
-    <div className="privacy-bar"><span>Vista pública</span><p>Los datos epidemiológicos son agregados y las ubicaciones de reportes ciudadanos permanecen privadas.</p></div>
-    <header className="site-header"><Link to="/" className="brand" aria-label="SIGARD, inicio"><span className="brand-mark" aria-hidden="true">S</span><span><strong>SIGARD</strong><small>Vigilancia territorial del dengue</small></span></Link><nav className="main-nav" aria-label="Navegación principal"><NavLink to="/" end>Situación actual</NavLink><NavLink to="/mapa">Mapa público</NavLink><NavLink to="/prevencion">Prevención y ayuda</NavLink><NavLink to="/validacion">Validación</NavLink><NavLink to="/metodologia">Cómo funciona</NavLink></nav><span className="status-badge">Prototipo académico</span></header>
+    <div className="privacy-bar"><span>{localResearch ? 'Demostración local' : 'Vista pública'}</span><p>Los datos epidemiológicos son agregados y las ubicaciones de reportes ciudadanos permanecen privadas.</p></div>
+    <header className="site-header"><Link to="/" className="brand" aria-label="SIGARD, inicio"><span className="brand-mark" aria-hidden="true">S</span><span><strong>SIGARD</strong><small>Vigilancia territorial del dengue</small></span></Link><nav className="main-nav" aria-label="Navegación principal"><NavLink to={localResearch ? '/dashboard' : '/'} end>Situación actual</NavLink><NavLink to="/mapa">{localResearch ? 'Panel A/B y MVP' : 'Mapa público'}</NavLink><NavLink to="/prevencion">Prevención y ayuda</NavLink><NavLink to="/validacion">Validación</NavLink><NavLink to="/metodologia">Cómo funciona</NavLink></nav><span className="status-badge">Prototipo académico</span></header>
     <Routes>
       <Route path="/prevencion" element={<Prevencion />} />
       <Route path="/admin/reportes" element={<AdminReports />} />
-      <Route path="/" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />
+      <Route path="/" element={localResearch ? <Navigate to="/mapa" replace /> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />
+      {localResearch && <Route path="/dashboard" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />}
       <Route path="/mapa" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Mapa {...shared} />}</EpidemiologicalRoute>} />
       <Route path="/validacion" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{data && <Validacion data={data} />}</EpidemiologicalRoute>} />
       <Route path="/metodologia" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{data && <Metodologia data={data} />}</EpidemiologicalRoute>} />

@@ -6,7 +6,7 @@
   "scripts": {
     "security:check": "node security/public-assets.mjs",
     "test:security": "node --test security/public-assets.test.mjs",
-    "test:research": "node --test security/experimental-results.test.mjs security/experimental-analysis.test.mjs",
+    "test:research": "node --test security/experimental-results.test.mjs security/experimental-analysis.test.mjs security/local-entry.test.mjs",
     "test:public-map": "node --test security/public-map.test.mjs",
     "test:citizen": "node --test security/citizen-flow.test.mjs",
     "test:citizen:browser": "node scripts/citizen-flow.browser.mjs",

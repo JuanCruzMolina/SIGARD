@@ -37,8 +37,12 @@ npm.cmd --prefix frontend run dev
 Desde `frontend/` también se puede ejecutar `npm.cmd run dev`.
 El coordinador `scripts/dev.mjs` reutiliza `app.research_local` para iniciar
 FastAPI en **127.0.0.1:8765** y la configuración existente de Vite para servir
-React en **127.0.0.1:5173**. Abrir **http://127.0.0.1:5173/mapa** y seleccionar
-**Investigación local A/B**. No requiere Docker ni PostgreSQL.
+React en **127.0.0.1:5173**. Abrir **http://127.0.0.1:5173**: en desarrollo
+local autorizado, `/` redirige a `/mapa` con **Investigación local A/B**
+seleccionada. **MVP sintético y contexto** permite volver manualmente a la
+simulación original; **Situación actual** abre el dashboard en `/dashboard`.
+En producción, `/` conserva el dashboard y `/mapa` inicia en el MVP original.
+No requiere Docker ni PostgreSQL.
 
 Si ya existe una API en 8765, se verifica su catálogo, versión de contrato y
 restricción de acceso local antes de reutilizarla. Esa instancia permanece
@@ -87,7 +91,8 @@ operaciones de alta, seguimiento, revisión y CSV llegan al backend real del ens
 Recibos/capturas en `frontend/.tmp/citizen-flow/`, sin publicar fixtures. Ver
 [estado y límites](../docs/mvp-functional-status.md#mejoras-completadas-del-recorrido-ciudadano-y-administrativo).
 
-En `/mapa`, seleccionar **Investigación local A/B** para consultar el panel
+En `/mapa`, **Investigación local A/B** se selecciona inicialmente sólo en
+desarrollo y con el origen exacto `http://127.0.0.1:5173`, para consultar el panel
 **Análisis de modelos**, debajo del mapa. Permite comparar seis métricas
 congeladas por partición y consultar qué representa cada una. Seleccionar un
 radio en el mapa o en el selector conserva la comparación A/B al cambiar

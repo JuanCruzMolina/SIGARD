@@ -33,10 +33,16 @@ El coordinador Node.js `frontend/scripts/dev.mjs` reutiliza el launcher
 `app.research_local`, el entorno virtual existente y la configuración de Vite.
 Espera a que la API esté lista antes de abrir el servidor de desarrollo.
 
-Abrir **http://127.0.0.1:5173/mapa** y seleccionar **Investigación local A/B**.
+Abrir **http://127.0.0.1:5173**: `/` redirige a `/mapa` y selecciona
+**Investigación local A/B** automáticamente sólo en desarrollo con ese origen.
 El catálogo y los primeros scores se consultan automáticamente. Cambiar modelo
 y semana con los selectores; seleccionar un radio para comparar ambos scores.
-**MVP sintético y contexto** conserva la vista original.
+**MVP sintético y contexto** conserva la vista original y sigue accesible con
+el selector. **Situación actual** abre el dashboard original en `/dashboard`
+durante el desarrollo local autorizado. En producción, `/` sigue mostrando
+el dashboard y `/mapa` conserva la vista inicial del MVP, sin selector A/B.
+Si la API experimental no está disponible, se muestra su error y se permite
+reintentar; nunca se sustituyen sus scores por la simulación sintética.
 
 No se necesita `SECRET_KEY`, `DATABASE_URL`, `VITE_LOCAL_RESEARCH` ni pasar hashes
 por consola. El hash del registro se fija en memoria al iniciar y se verifica de
@@ -172,6 +178,19 @@ estas consultas; tampoco etiquetas observadas o registros individuales. No se
 generan pronósticos fuera de las semanas ya calculadas ni se modifica el MVP.
 
 ## Verificación
+
+Validación del inicio predeterminado (21/10/2026): `npm.cmd run dev` ejecutado
+desde `frontend/` reutilizó la API experimental existente, tras verificarla.
+En navegador se comprobó `/` → `/mapa`, A/B inicial, cambio de ambos modelos,
+20 semanas, scores, comparación, historial, seis métricas y sus particiones,
+acceso al MVP y al dashboard. Un fallo de conexión simulado mostró el error
+experimental sin datos sintéticos y el reintento recuperó la consulta. El build
+de producción conservó `/` en el dashboard y `/mapa` en el MVP sin selector A/B.
+Sin errores JavaScript. Se aprobaron 53 pruebas frontend (18 del coordinador,
+15 de investigación, 5 del mapa público y 15 de recursos públicos), lint, build,
+178 controles estáticos de seguridad y `git diff --check`. La prueba del cierre
+de procesos Windows requirió repetición fuera del sandbox y pasó. No se ejecutó
+entrenamiento ni se modificaron datos, modelos o predicciones; sin Docker/PostgreSQL.
 
 ```powershell
 .\backend\.venv\Scripts\python.exe -B -m pytest backend/tests -q -p no:cacheprovider --basetemp backend/.tmp/direct-access-pytest

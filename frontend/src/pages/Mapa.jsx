@@ -6,7 +6,7 @@ import { localResearchEnabled } from '../services/experimentalResults'
 
 export default function Mapa({ data, selectedCutoffDate, onCutoffChange }) {
   const [territorialView, setTerritorialView] = useState('simulation')
-  const [research, setResearch] = useState(false)
+  const [research, setResearch] = useState(localResearchEnabled)
   const selectedWeek = getSelectedWeek(data, selectedCutoffDate)
   getSelectedPrediction(data, selectedCutoffDate)
   const simulation = useMemo(() => getExperimentalCollection(data, selectedCutoffDate), [data, selectedCutoffDate])
