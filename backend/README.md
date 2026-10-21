@@ -88,6 +88,14 @@ devuelve texto, dirección ni coordenadas. Los
 endpoints administrativos requieren JWT y rol `admin`, responden con
 `Cache-Control: no-store` y registran cambios/exportaciones en auditoría.
 
+La bandeja y `GET /api/v1/admin/citizen-reports/export.csv` admiten los mismos
+filtros opcionales `category`, `status`, `neighborhood`, `date_from` y `date_to`.
+Las fechas mantienen días UTC inclusivos; un rango invertido devuelve 422.
+CSV exporta todos los resultados filtrados, sin paginación, y audita su cantidad;
+sin filtros conserva la exportación completa. Requiere JWT/rol administrador.
+El alta y la búsqueda de dirección validan longitud después de normalizar espacios;
+un texto vacío normalizado no se persiste ni se consulta al geocodificador.
+
 ## Verificación ficticia del importador territorial — sin Docker
 
 El importador vigente es `app/publication_import.py`, independiente de la

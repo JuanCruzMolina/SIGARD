@@ -67,9 +67,25 @@ no deben interpretarse como atención disponible en tiempo real.
 npm run test:dev
 npm run test:research
 npm run test:public-map
+npm run test:citizen
 npm run lint
 npm run build
 ```
+
+El cierre del recorrido ciudadano incluye validación/recuperación del formulario,
+código copiable y seguimiento sin resultados obsoletos; la bandeja administrativa
+ofrece reintento, filtros restablecibles y exportación de esos resultados. Son
+recorridos de la API independiente; el comando habitual de desarrollo no la inicia.
+
+`npm.cmd --prefix frontend run test:citizen:browser` verifica la interfaz real con
+la fixture existente `backend/tests/browser_admin_fixture.py`, SQLite descartable
+y Vite propio en 5174. Requiere Puppeteer ya instalado, resoluble normalmente o
+mediante `SIGARD_BROWSER_MODULE`; no instala dependencias. Rechaza 5174 ocupado,
+bloquea A/B/solicitudes externas, no usa PostgreSQL/Docker y cierra sus procesos.
+Sólo inyecta fallos/respuestas tardías explícitas sobre datos ficticios; las
+operaciones de alta, seguimiento, revisión y CSV llegan al backend real del ensayo.
+Recibos/capturas en `frontend/.tmp/citizen-flow/`, sin publicar fixtures. Ver
+[estado y límites](../docs/mvp-functional-status.md#mejoras-completadas-del-recorrido-ciudadano-y-administrativo).
 
 En `/mapa`, seleccionar **Investigación local A/B** para consultar el panel
 **Análisis de modelos**, debajo del mapa. Permite comparar seis métricas

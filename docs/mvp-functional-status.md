@@ -1,6 +1,6 @@
 # Estado funcional del MVP
 
-Consolidación del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo académico,
+Cierre funcional del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo académico,
 no sistema sanitario operativo. Esta matriz contrasta documentación con código;
 no toma los estados históricos del plan como prueba de implementación.
 
@@ -44,6 +44,53 @@ Estas comprobaciones no cambian las categorías funcionales ni habilitan datos r
 
 ## Matriz de cumplimiento
 
+### Mejoras completadas del recorrido ciudadano y administrativo
+
+Se completaron tres brechas del recorrido existente, sin crear módulos ni cambiar
+el alcance epidemiológico:
+
+1. **Alta y recuperación:** texto validado después de normalizar espacios tanto
+   en frontend como backend, punto dentro del área operativa existente, mapa que
+   sigue el marcador y rechazo de respuestas tardías de ubicación. El envío bloquea
+   ediciones simultáneas; un reintento idéntico conserva la clave de idempotencia,
+   mientras un contenido modificado o un reporte nuevo obtiene otra. Los errores
+   conservan el formulario y se limpian al corregirlo. No se guardan borradores
+   personales en almacenamiento del navegador.
+2. **Código y seguimiento:** copiar código con alternativa de selección manual,
+   foco visible en confirmación y salto al campo de seguimiento. Cambiar código
+   cancela la consulta anterior y retira el resultado viejo; la respuesta identifica
+   su código y conserva la proyección pública sin texto, dirección ni coordenadas.
+3. **Revisión y exportación:** carga, vacío, error con reintento y limpieza de
+   filtros; búsqueda con breve espera para evitar solicitudes por cada tecla;
+   selección de detalle más reciente y cancelación al salir. El guardado bloquea
+   cambios simultáneos. CSV aplica los mismos filtros que la bandeja (todas las
+   páginas), conserva auditoría y rechaza rangos de fechas invertidos.
+
+Verificados **177 backend aprobadas/seis omitidas PostgreSQL**, cuatro pruebas
+frontend focalizadas, 15 de seguridad de recursos y 18 del coordinador; lint y
+build aprobados. Navegador: siete grupos sobre React/FastAPI/SQLite descartables,
+sin errores JavaScript, con recuperación de respuesta perdida, 404/503, descarga
+real del CSV filtrado, actualización y cierre de sesión. Capturas de formulario,
+confirmación, seguimiento y bandeja revisadas a 1440/390 px, sin desbordamiento.
+No hubo geolocalización personal ni consulta al geocodificador: la respuesta
+tardía de ubicación es controlada y ficticia. No acredita lector de pantalla,
+dispositivo físico ni accesibilidad integral.
+
+Los intentos iniciales corrigieron el harness (preflight frente a GET y lectura
+de los bytes del Blob descargado). El cierre de procesos de Windows falló en
+sandbox y pasó fuera; sólo se cerraron árboles propios. Se conservan deprecaciones
+de dependencias y un aviso Proactor de Windows durante cancelaciones del ensayo.
+Los intentos fallidos no se cuentan como aprobados. Recibos/capturas ignorados
+en `frontend/.tmp/citizen-flow/` y `.tmp/mvp-functional/`.
+
+La API ciudadana/administrativa sigue siendo independiente de `npm.cmd --prefix
+frontend run dev`; el harness sólo la conecta en su propio navegador y elimina
+SQLite al terminar. No se publican fixtures ni se modifica la API A/B. Permanecen
+**15 completas, ocho parciales y tres bloqueadas** en el alcance global: estas
+mejoras cierran las interacciones académicas, no la operación persistente,
+vigencia institucional, elegibilidad epidemiológica o integración del importador
+con PostGIS. Docker sigue apagado y no se utilizó PostgreSQL 5432.
+
 | Requerimiento / referencia | Funcionalidad | Estado | Evidencia de implementación | Prioridad | Acción necesaria |
 | --- | --- | --- | --- | --- | --- |
 | Plan §6, etapa 4 (RF-01–05 agrupados) | Ingesta, normalización, calendario y trazabilidad offline | Completa | `ml/src/sigard_ml/official/`, contratos en `docs/official-*.md`, pruebas de calendario/validador/preflight/preparación | Alta | Mantener permisos por uso; no ejecutar nuevas ingestas en esta etapa. |
@@ -64,14 +111,14 @@ Estas comprobaciones no cambian las categorías funcionales ni habilitan datos r
 | MVP §5 | Metodología y advertencias | Completa | `pages/Metodologia.jsx`, avisos junto a mapas | Media | Mantener coherencia con contratos de cada circuito. |
 | MVP §6; plan etapa 10 (RF-19–20 agrupados); módulo §4 | Prevención, síntomas, fuentes y teléfonos | Completa | `pages/Prevencion.jsx`, `PreventionGuide`, `SymptomsAlert`, `prevention_content.json`, `services/preventionData.js` | Alta | Mantener revisión editorial; no se incorpora ni modifica consejo médico aquí. |
 | Módulo §5; MVP §6 | Directorio con búsqueda, filtros, mapa y listado de 24 CAPS/3 hospitales | Parcial | `HealthFacilitiesMap.jsx`, `health_facilities.geojson`; navegador: 27 marcadores, filtros 24 CAPS/3 hospitales y búsqueda vacía, con listado textual | Media | Funciona para demostración. Confirmar vigencia de 23 CAPS con organismo competente; no equivale a disponibilidad actual. |
-| Módulo §6; MVP §6 | Alta anónima y ubicación manual/opcional con código | Parcial | Etapa 17: formulario real → FastAPI → PostgreSQL, punto PostGIS generado y persistencia tras nueva instancia API, con datos ficticios | Alta | Integración descartable verificada; falta operación persistente. Geocodificador externo/geolocalización personal no utilizados. |
-| Módulo §6; MVP §6 | Seguimiento público sin texto ni ubicación | Parcial | Etapa 17: alta→código→estado→actualización mediante navegador/API/PostgreSQL; respuesta pública restringida | Alta | Recorrido con persistencia comprobado en entorno descartable; falta operación persistente, sin desarrollar otro módulo. |
-| Módulo §7; plan etapa 5 | Administración protegida de reportes, auditoría, exportación y retención | Parcial | Etapa 17: revisión/CSV en navegador con PostgreSQL; auditoría/purga y permisos en pruebas reales; ID de duplicado vacío corregido a NULL por FK | Alta | Integración descartable verificada; faltan operador autorizado y programación/supervisión de purga operativa. |
+| Módulo §6; MVP §6 | Alta anónima y ubicación manual/opcional con código | Parcial | Evidencia PostGIS histórica conservada; cierre actual con validación normalizada, ubicación coherente y reintento idempotente en React/API/SQLite ficticios | Alta | Interacciones académicas completas; falta operación persistente. Geocodificador externo/geolocalización personal no utilizados. |
+| Módulo §6; MVP §6 | Seguimiento público sin texto ni ubicación | Parcial | Código copiable, salto con foco, consultas cancelables y resultados vinculados al código; 404 y privacidad verificados en navegador | Alta | Recorrido académico completo y evidencia PostGIS histórica; falta operación persistente. |
+| Módulo §7; plan etapa 5 | Administración protegida de reportes, auditoría, exportación y retención | Parcial | Bandeja con carga/vacío/reintento, detalles sin carreras, guardado protegido y CSV filtrado/auditado; pruebas API/SQLite y navegador | Alta | Interacciones académicas completas; faltan operación autorizada y programación/supervisión de retención. Evidencia PostGIS anterior conservada. |
 | Plan etapa 5: ciclo de cuentas | Alta, desactivación y restablecimiento/rotación autorizada de administradores | Completa | Etapa 17: migración 04 reversible en PostgreSQL; JWT/roles/revocación, navegador y dos conexiones concurrentes; espera real del advisory lock observada | Media | Alcance académico con persistencia verificado. Operación/despliegue y recuperación del operador siguen fuera del ensayo; no hay recuperación por correo. |
 | Plan etapa 9 (RF-12–14, RN-06, CA-08 agrupados) | Alertas candidatas→aprobadas/rechazadas→publicadas | Bloqueada | Existe tabla histórica `alertas` en `backend/database/schema.sql`, sin máquina de estados, modelo ORM, router ni bandeja vigente; el plan exige reglas institucionales | Alta | Acordar condiciones, responsable y reglas de publicación antes de implementar; nunca generar alertas sanitarias con scores A/B. |
 | Plan etapa 10: gestión editorial | Editar, auditar y publicar contenido sanitario | Bloqueada | Lectura estática implementada; no hay modelo/editor/API editorial; responsable requerido por el plan | Media | Definir responsable editorial y política borrador/publicación; reutilizar contenido actual cuando se autorice ese alcance. |
 | Plan etapa 11; RNF y PRODUCT accesibilidad | Seguridad, responsive y accesibilidad integral | Parcial | Auditoría de 178 controles; Chromium Accessibility/CDP y contraste de muestras; teclado y viewports 1440/390; cinco defectos corregidos en etapa 15 | Alta | Falta lector de pantalla, dispositivo físico y auditoría completa; la muestra automatizada no acredita conformidad WCAG integral ni despliegue seguro. |
-| Plan etapa 0 y etapa 11 | Entorno reproducible, Docker y despliegue separado | Parcial | Etapa 17: ejecutor PostGIS con guardas/limpieza, 18 pruebas del coordinador; launcher habitual A/B intacto | Media | Entorno descartable verificado; pendientes despliegue y operación. Restitución de dos contenedores autoactivados por Docker pendiente de aprobación. |
+| Plan etapa 0 y etapa 11 | Entorno reproducible, Docker y despliegue separado | Parcial | Etapa 17 histórica; 18 pruebas del coordinador vigentes, launcher habitual A/B intacto y harness ciudadano SQLite independiente | Media | Pendientes despliegue y operación. Docker permanece apagado; estado individual de contenedores no comprobado, sin autorización pendiente para iniciarlo. |
 
 ## Selección de la única mejora de etapa 13
 
