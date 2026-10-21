@@ -97,6 +97,16 @@ La alineación exige coincidencia exacta de cutoff, inicio y fin de semana, y 26
 radios experimentales. Los artefactos legacy actuales se preservan hasta que
 React migre al nuevo contrato.
 
+La publicación persistente reutiliza `backend/app/publication_import.py` con
+estos seis contratos y exactamente 263 radios. Las geometrías deben representar
+longitud/latitud WGS84 (SRID 4326), sin reproyección implícita; se validan estructura,
+campos, números finitos, rangos existentes y alineación antes de persistir, y
+topología con PostGIS antes de publicar. Los metadatos/evaluación son objetos
+JSON de esquema abierto; el contrato no impone nuevas claves de procedencia.
+La [verificación ficticia aislada](../backend/README.md#verificación-ficticia-del-importador-territorial--sin-docker)
+documenta el hash/versionado, los límites geométricos y las garantías verificadas
+sin confundir este importador con la ingestión epidemiológica oficial.
+
 ## Productos territoriales de Iteración 9
 
 `territorial_context` contiene una fila por radio y geometría censal real. Su

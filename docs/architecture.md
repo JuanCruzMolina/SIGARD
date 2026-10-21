@@ -76,6 +76,15 @@ la simulación espacial experimental. Las geometrías censales se conservan una
 vez por radio y lote; los resultados semanales las referencian sin presentarlas
 como ubicaciones observadas.
 
+El importador offline existente es `backend/app/publication_import.py`:
+valida los seis contratos públicos, inserta un lote completo y lo publica en una
+transacción. Las consultas filtran por lote `published`; el contexto territorial
+y la simulación espacial permanecen separados. La
+[verificación con entrada ficticia](../backend/README.md#verificación-ficticia-del-importador-territorial--sin-docker)
+reutiliza ese flujo con SQLite temporal y un adaptador espacial limitado,
+sin cambiar la persistencia productiva ni consumir el pipeline oficial.
+La ejecución completa del importador contra PostGIS real permanece pendiente.
+
 ### API
 
 FastAPI expone resultados ya preparados desde el único lote marcado como
