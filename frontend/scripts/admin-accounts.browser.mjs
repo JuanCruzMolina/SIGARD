@@ -12,7 +12,10 @@ const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const output = resolve(root, 'frontend/.tmp')
 const integral = process.env.SIGARD_INTEGRAL_REVIEW === '1'
-const stage = integral ? '15' : '14'
+const postgis = process.env.SIGARD_POSTGIS_BROWSER === '1'
+const frontendOrigin = process.env.SIGARD_BROWSER_FRONTEND_URL || 'http://127.0.0.1:5173'
+assert.ok(['http://127.0.0.1:5173', 'http://127.0.0.1:5174'].includes(frontendOrigin))
+const stage = postgis ? '17' : integral ? '15' : '14'
 const fixture = spawn(resolve(root, 'backend/.venv/Scripts/python.exe'), ['-B', 'backend/tests/browser_admin_fixture.py', ...(integral ? ['--integral'] : [])], {cwd:root, stdio:['pipe','pipe','pipe'], windowsHide:true})
 const report = { checks: [], pageErrors: [], reactErrors: [], viewports: [1440,390], database: 'disposable SQLite', postgresql_verified: false }
 if(integral) Object.assign(report,{stage:15,defects:[],accessibility:[]})
@@ -34,6 +37,8 @@ try {
     fixture.once('exit', () => {clearTimeout(timeout);reject(new Error('Terminó la API ficticia antes de iniciar'))})
   })
   assert.equal(ready.fixture,'sigard-disposable-admin')
+  assert.equal(ready.postgis, postgis)
+  if(postgis) Object.assign(report,{database:'disposable PostgreSQL/PostGIS',postgresql_verified:true})
   const api = `http://127.0.0.1:${ready.port}`
   for (let i=0;i<50;i++) {
     try {if ((await fetch(api+'/health')).ok) break} catch { /* fixture starting */ }
@@ -55,10 +60,11 @@ try {
         return request.respond({status:rejectReportOperation==='export'?403:401,contentType:'application/json',headers:{'access-control-allow-origin':'http://127.0.0.1:5173'},body:JSON.stringify({detail:'Sesión ficticia revocada.'})})
       }
       if (failListing && url.pathname==='/api/v1/admin/users' && request.method()==='GET') {
-        return request.respond({status:503,contentType:'application/json',headers:{'access-control-allow-origin':'http://127.0.0.1:5173'},body:JSON.stringify({detail:'API ficticia temporalmente no disponible.'})})
+        return request.respond({status:503,contentType:'application/json',headers:{'access-control-allow-origin':frontendOrigin},body:JSON.stringify({detail:'API ficticia temporalmente no disponible.'})})
       }
       return request.continue({url:api+url.pathname+url.search})
     }
+    if(postgis && !['127.0.0.1','localhost'].includes(url.hostname) && url.protocol.startsWith('http')) return request.abort()
     return request.continue()
   })
   const check = async (name, run) => {await run();report.checks.push(name)}
@@ -110,6 +116,28 @@ try {
     for(const item of contrast) if(item.ratio<item.minimum) defect('contrast-'+item.selector,{context,...item})
   }
   let trackingCode
+  if(postgis) await check('formulario y seguimiento reales con PostgreSQL, geometría ficticia por API',async()=>{
+    await page.goto(frontendOrigin+'/prevencion',{waitUntil:'networkidle0'})
+    await page.focus('.report-map')
+    await page.keyboard.press('ArrowRight');await page.keyboard.press('Enter')
+    await page.waitForFunction(()=>document.querySelector('.coordinate-readout')?.textContent.includes('Punto seleccionado'))
+    await page.click('.report-form input[value="agua_acumulada"]')
+    await fill('.report-form textarea[name="description"]','Reporte completamente ficticio para comprobar persistencia, sin personas ni registros oficiales.')
+    await page.click('.report-form input[name="privacy_accepted"]')
+    await page.click('.submit-report')
+    await page.waitForSelector('.report-confirmation output')
+    trackingCode=await page.$eval('.report-confirmation output',e=>e.value||e.textContent)
+    await page.click('.report-confirmation a')
+    await page.click('.status-section button');await page.waitForSelector('.status-result')
+    assert.match(await page.$eval('.status-result',e=>e.textContent),/Recibido/)
+    const geometry=await page.evaluate(async()=>{
+      const response=await fetch('http://localhost:8000/api/v1/public/territorial-context')
+      return {status:response.status,body:await response.json()}
+    })
+    assert.equal(geometry.status,200)
+    assert.equal(geometry.body.features[0].properties.radio_id,'fictional-radio')
+    assert.equal(geometry.body.features[0].geometry.type,'Polygon')
+  })
   if(integral) {
     await check('API pública temporal, selección por teclado y capas/semanas alineadas',async()=>{
       await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
@@ -198,7 +226,7 @@ try {
       await page.setViewport({width:1440,height:1000})
     })
   }
-  await check('público y A/B sin tokens, 263 radios, historial y métricas',async()=>{
+  if(!postgis) await check('público y A/B sin tokens, 263 radios, historial y métricas',async()=>{
     await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
     await page.waitForSelector('.public-radio-control select')
     assert.equal(await page.$$eval('.leaflet-overlay-pane path.leaflet-interactive',n=>n.length),263)
@@ -215,14 +243,14 @@ try {
     assert.equal(await page.$$eval('.analysis-values tbody tr',n=>n.length),20)
   })
   await check('login protegido, estado inicial y último administrador',async()=>{
-    await page.goto('http://127.0.0.1:5173/admin/reportes',{waitUntil:'networkidle0'})
+    await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})
     assert.equal(await page.$('.admin-accounts'),null)
     await login('stage14-admin@example.test','fictitious-initial-password')
     await click('Gestionar cuentas');await accountLoaded()
     assert.equal(await page.$$eval('.account-list tbody tr',n=>n.length),1)
     assert.equal(await page.$eval('button[aria-label="Desactivar stage14-admin@example.test"]',e=>e.disabled),true)
   })
-  if(integral) await check('revisión administrativa del reporte, privacidad y sesión revocada',async()=>{
+  if(integral || postgis) await check('revisión administrativa del reporte, privacidad y sesión revocada',async()=>{
     await click('Volver a reportes')
     await page.waitForFunction(code=>[...document.querySelectorAll('.report-inbox button')].some(b=>b.textContent.includes(code)),{},trackingCode)
     await fill('.admin-filters input[placeholder="Buscar barrio"]','FICTICIO SIN RESULTADOS')
@@ -233,7 +261,9 @@ try {
     await page.waitForSelector('.admin-update select')
     await page.select('.admin-update select','en_revision')
     await fill('.admin-update textarea[maxlength="600"]','Reporte ficticio revisado en el entorno de prueba.')
+    const saved=page.waitForResponse(r=>r.request().method()==='PATCH' && /admin\/citizen-reports\//.test(r.url()))
     await page.click('.admin-update button[type="submit"], .admin-update .primary-button')
+    assert.equal((await saved).status(),200)
     await page.waitForFunction(()=>document.querySelector('.report-detail > header .status-chip')?.textContent==='En revisión')
     const publicStatus=await(await fetch(`${api}/api/v1/citizen-reports/status/${trackingCode}`)).json()
     assert.equal(publicStatus.status,'en_revision')
@@ -244,8 +274,8 @@ try {
     assert.equal(exported.status,200)
     assert.equal(exported.headers.get('cache-control'),'no-store')
     assert.ok((await exported.text()).includes(trackingCode))
-    await accessibility('admin-report-desktop')
-    for(const operation of ['detail','save','export']) {
+    if(integral) await accessibility('admin-report-desktop')
+    for(const operation of (postgis ? [] : ['detail','save','export'])) {
       rejectReportOperation=operation
       const rejected=page.waitForResponse(r=>[401,403].includes(r.status()) && /admin\/citizen-reports\//.test(r.url()))
       if(operation==='detail') await page.evaluate(code=>[...document.querySelectorAll('.report-inbox button')].find(b=>b.textContent.includes(code)).click(),trackingCode)
@@ -339,7 +369,7 @@ try {
   console.log(JSON.stringify(report))
   if(integral && process.env.SIGARD_EXPECT_STABLE==='1') assert.deepEqual(report.defects,[])
 } finally {
-  if(integral) {await mkdir(output,{recursive:true});await writeFile(resolve(output,'stage15-browser-result.json'),JSON.stringify(report,null,2))}
+  if(integral || postgis) {await mkdir(output,{recursive:true});await writeFile(resolve(output,`stage${stage}-browser-result.json`),JSON.stringify(report,null,2))}
   await browser?.close()
   fixture.stdin.end('stop\n')
   const cleanExit = await Promise.race([closed.then(()=>true),delay(5000).then(()=>false)])

@@ -279,12 +279,14 @@ def test_readiness_rejects_the_previous_account_schema(tmp_path):
 def test_postgresql_isolated_migration_integrity_revocation_and_concurrency(monkeypatch):
     """Real PostgreSQL only; strict endpoint/database guard prevents use of the installation."""
     from app import admin_accounts
+    from postgis_support import checked_engine, validate_url
     url = make_url(os.environ["SIGARD_TEST_POSTGRES_URL"])
+    validate_url(url)
     assert url.host == "127.0.0.1" and url.port not in (None, 5432, 5433)
     assert url.database == "sigard_stage15_test" and url.username == "sigard_stage15_test"
     assert url.password is None and not url.query
     url = url.update_query_dict({"options": "-c statement_timeout=15000 -c lock_timeout=10000"})
-    engine = create_engine(url)
+    engine = checked_engine(os.environ["SIGARD_TEST_POSTGRES_URL"])
     path = Path(__file__).parents[1] / "migrations/versions/20261020_04_admin_accounts.py"
     spec = importlib.util.spec_from_file_location("stage15_pg_migration", path)
     migration = importlib.util.module_from_spec(spec)
@@ -343,7 +345,9 @@ def test_postgresql_isolated_migration_integrity_revocation_and_concurrency(monk
                     db.commit()
                 sessions = [{"Authorization": "Bearer " + login(client, email, NEXT_PASSWORD).json()["access_token"]} for email in ("admin@example.test", "other@example.test")]
                 barrier = Barrier(2)
+                backend_pids = set()
                 def coordinated_lock(db):
+                    backend_pids.add(db.scalar(text("SELECT pg_backend_pid()")))
                     barrier.wait(timeout=5)  # Both requests are already authenticated.
                     original_lock(db)
                 monkeypatch.setattr(admin_accounts, "lock_account_changes", coordinated_lock)
@@ -353,6 +357,7 @@ def test_postgresql_isolated_migration_integrity_revocation_and_concurrency(monk
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     statuses = list(pool.map(deactivate, (0, 1)))
                 assert sorted(statuses) == ([200, 401] if cross else [200, 409])
+                assert len(backend_pids) == 2, "The concurrent requests must use independent PostgreSQL connections"
                 monkeypatch.setattr(admin_accounts, "lock_account_changes", original_lock)
                 with app.state.SessionLocal() as db:
                     assert db.scalar(select(func.count(User.id)).where(User.active.is_(True), User.rol == "admin")) == 1

@@ -7,6 +7,7 @@ the temporary SQLite store. Only fictitious credentials exist in this process.
 import asyncio
 from datetime import date, datetime, timezone
 import json
+import os
 from pathlib import Path
 import secrets
 import socket
@@ -66,11 +67,19 @@ def main():
     temporary_root = Path(__file__).resolve().parents[1] / ".tmp"
     temporary_root.mkdir(exist_ok=True)
     with TemporaryDirectory(prefix="stage14-browser-", dir=temporary_root) as directory:
+        postgis = os.environ.get("SIGARD_POSTGIS_BROWSER") == "1"
+        database_url = f"sqlite:///{Path(directory) / 'fixture.db'}"
+        if postgis:
+            from postgis_support import checked_engine, reset_schema
+            database_url = os.environ["SIGARD_POSTGIS_URL"]
+            verified = checked_engine(database_url)
+            reset_schema(verified)
+            verified.dispose()
         settings = config.Settings(
             _env_file=None, secret_key=secrets.token_urlsafe(48),
-            database_url=f"sqlite:///{Path(directory) / 'fixture.db'}",
-            auto_create_schema=True, admin_bootstrap_email=None, admin_bootstrap_password=None,
-            cors_origins="http://127.0.0.1:5173", admin_login_rate_limit=100,
+            database_url=database_url,
+            auto_create_schema=not postgis, admin_bootstrap_email=None, admin_bootstrap_password=None,
+            cors_origins=os.environ.get("SIGARD_BROWSER_FRONTEND_URL", "http://127.0.0.1:5173"), admin_login_rate_limit=100,
         )
         config.get_settings = lambda: settings
         from app.main import create_app
@@ -79,8 +88,12 @@ def main():
         from app.database import Base
 
         app = create_app()
-        Base.metadata.create_all(app.state.engine)
-        if "--integral" in sys.argv:
+        if postgis:
+            from test_postgis_integration import seed_geometry
+            seed_geometry(type("Fixture", (), {"app": app})())
+        else:
+            Base.metadata.create_all(app.state.engine)
+        if "--integral" in sys.argv and not postgis:
             seed_public_contract(app)
         with app.state.SessionLocal() as db:
             db.add(User(email="stage14-admin@example.test", password_hash=hash_password("fictitious-initial-password"), rol="admin"))
@@ -95,7 +108,7 @@ def main():
             async def stop_on_input():
                 await asyncio.to_thread(sys.stdin.readline)
                 server.should_exit = True
-            print(json.dumps({"port": listener.getsockname()[1], "fixture": "sigard-disposable-admin"}), flush=True)
+            print(json.dumps({"port": listener.getsockname()[1], "fixture": "sigard-disposable-admin", "postgis": postgis}), flush=True)
             await asyncio.gather(server.serve(sockets=[listener]), stop_on_input())
         try:
             asyncio.run(run())

@@ -19,6 +19,11 @@ from app.main import create_app  # noqa: E402
 
 @pytest.fixture
 def client(tmp_path):
+    if os.environ.get("SIGARD_POSTGIS_URL"):
+        from postgis_support import postgres_client
+        with postgres_client() as test_client:
+            yield test_client
+        return
     database_url = f"sqlite:///{tmp_path / 'test.db'}"
     app = create_app(database_url=database_url, auto_create_schema=True)
     with TestClient(app) as test_client:

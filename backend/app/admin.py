@@ -153,6 +153,8 @@ def update_report(
     changes = {}
     for field, value in payload.model_dump(exclude_unset=True).items():
         normalized = value.value if hasattr(value, "value") else value
+        if field == "possible_duplicate_of" and normalized == "":
+            normalized = None
         if field == "status" and normalized == "derivado" and not settings.municipal_receiver_confirmed:
             raise HTTPException(
                 status_code=409,

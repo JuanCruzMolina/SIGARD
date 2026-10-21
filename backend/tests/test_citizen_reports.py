@@ -124,6 +124,45 @@ def test_nearby_same_category_is_marked_as_possible_duplicate(client):
         assert reports[1].possible_duplicate_of == reports[0].id
 
 
+def test_admin_form_empty_duplicate_reference_is_stored_as_null(client):
+    """The full browser form sends an empty optional ID; PostgreSQL enforces its FK."""
+    from app.models import CitizenReport
+    with client.app.state.SessionLocal() as db:
+        db.add(User(email="form@example.test", password_hash=hash_password("fictitious-form-password"), rol="admin"))
+        db.commit()
+    token = client.post("/api/v1/admin/session", json={"email":"form@example.test", "password":"fictitious-form-password"}).json()["access_token"]
+    headers={"Authorization":"Bearer "+token}
+    client.post("/api/v1/citizen-reports",json=VALID_REPORT)
+    client.post("/api/v1/citizen-reports",json=VALID_REPORT)
+    with client.app.state.SessionLocal() as db:
+        report=db.scalars(select(CitizenReport).order_by(CitizenReport.created_at.desc())).first()
+        assert report.possible_duplicate_of is not None
+        report_id=report.id
+    response=client.patch(f"/api/v1/admin/citizen-reports/{report_id}",headers=headers,json={
+        "status":"en_revision","public_status_message":"Revisión ficticia.","internal_notes":"","possible_duplicate_of":""})
+    assert response.status_code==200
+    with client.app.state.SessionLocal() as db:
+        assert db.get(CitizenReport,report_id).possible_duplicate_of is None
+
+
+def test_report_access_errors_and_invalid_state_preserve_saved_report(client):
+    from test_admin_accounts import add_user, headers
+    admin = add_user(client)
+    user = add_user(client, email="citizen-role@example.test", role="user")
+    created=client.post("/api/v1/citizen-reports",json=VALID_REPORT).json()
+    base="/api/v1/admin/citizen-reports"
+    for auth,code in (({},401),(headers(user),403)):
+        assert client.get(base,headers=auth).status_code==code
+        assert client.patch(base+"/not-a-report",headers=auth,json={"status":"en_revision"}).status_code==code
+    assert client.get("/api/v1/citizen-reports/status/SGD-RPT-NOEXISTE").status_code==404
+    assert client.get(base+"/not-a-report",headers=headers(admin)).status_code==404
+    report_id=client.get(base,headers=headers(admin)).json()["items"][0]["id"]
+    assert client.patch(base+"/"+report_id,headers=headers(admin),json={"status":"invalid-state"}).status_code==422
+    assert client.patch(base+"/"+report_id,headers=headers(admin),json={"status":"derivado"}).status_code==409
+    saved=client.get("/api/v1/citizen-reports/status/"+created["tracking_code"]).json()
+    assert saved["status"]=="recibido"
+
+
 def test_retention_removes_only_expired_reports(client):
     from app.models import CitizenReport
 
