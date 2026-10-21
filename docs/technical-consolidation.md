@@ -1,4 +1,141 @@
-# SIGARD: consolidación técnica de las etapas 1 a 16
+# SIGARD: consolidación técnica de las etapas 1 a 17
+
+**Consolidación integral — 21/10/2026:** revisión de los 24 archivos pendientes
+iniciales y separación de responsabilidades: robustez A/B, preparación científica,
+integración descartable de persistencia, importador territorial y documentación.
+Las referencias científicas y decisiones pendientes se conservan; no se repitieron
+auditorías sobre datos privados. `AGENTS.md` centraliza arquitectura, comandos,
+protecciones, validación proporcional, autonomía y política de commits locales.
+
+Dos correcciones comprobables: el generador del informe de robustez contenía
+conclusiones fijas que podían contradecir otra entrada válida y fallar ante
+métricas no definidas; ahora la narrativa usa sus valores de entrada. Las barreras
+de identidad antes de TRUNCATE y aislamiento del contenedor usaban `assert`;
+ahora rechazan explícitamente una identidad/configuración incorrecta, incluso
+si Python desactiva assertions. No se ejecutó el runner Docker ni se accedió a
+PostgreSQL. No se regeneraron los informes privados ya congelados para aplicar
+el cambio de redacción; sus manifiestos y resultados históricos siguen intactos.
+
+Verificación actual: 50 pruebas ficticias de robustez y utilidades, 172 backend
+aprobadas/seis omitidas PostgreSQL (incluidas las 82 del importador), lint y build
+frontend aprobados. El primer intento de pruebas ML tuvo ocho errores de creación
+del directorio temporal padre; con el padre creado, la selección completa pasó.
+No fue un fallo de análisis científico ni se contó el intento como aprobado.
+Seguridad: 135 pruebas del repositorio y 33 del frontend (15 de recursos,
+13 de contratos A/B y cinco del mapa) aprobadas. La barrera de identidad se
+comprobó además con Python optimizado, sin base real. Los commits locales
+se agrupan por robustez, preparación científica, persistencia, importador,
+documentación y reglas permanentes; sin incluir datos/modelos ni hacer push.
+El cierre Git se registra con esta consolidación;
+recibos locales ignorados en `.tmp/consolidation/` y
+`.tmp/territorial-import-review/`. Las cifras siguientes son evidencia histórica.
+
+El importador completo con PostGIS real continúa pendiente; Docker permanece
+apagado. El próximo hito científico propuesto es resolver con el custodio/referente
+la definición del evento/episodio y el alcance de cobertura de un período candidato,
+mediante P1–P3 del dossier existente, antes de preparar nuevas etiquetas o entrenar.
+No se solicitó información ni se inició ese hito durante esta consolidación.
+
+**Verificación del importador territorial — 21/10/2026:** se reutilizó
+`backend/app/publication_import.py`, separado de la ingestión epidemiológica
+oficial. Se generaron seis contratos desde constantes: 263 polígonos ficticios
+(Polygon/MultiPolygon), IDs `TEST-*`, una semana de 2030, agregados arbitrarios y
+procedencia/versionado sintéticos explícitos. El contrato exige 263 radios y no
+se redujo para las pruebas. No se reutilizó cartografía, observaciones ni A/B.
+
+Se ejecutaron generación → validación → importador real → SQLite descartable →
+consultas públicas existentes con TestClient, sin servidor ni publicación en la
+aplicación principal. **82 pruebas focalizadas aprobadas**; **170 backend
+aprobadas y seis omitidas PostgreSQL** (las focalizadas están incluidas, no se
+suman). Verificados atributos/GeoJSON, metadatos/versiones/hash, alineación,
+rechazos de entradas inválidas y privadas, idempotencia, retiro del anterior,
+rollback tras insertar radios y ante rechazo geométrico inyectado, ausencia de
+filas parciales y exclusión de lotes no publicados. Seguridad: 135 pruebas del
+repositorio y 15 de recursos frontend aprobadas; auditoría estática de 178
+controles, diez recursos públicos conservados y cero candidatos sensibles.
+Persisten advertencias de deprecación de dependencias, sin fallos de pruebas.
+
+Se corrigieron validaciones incompletas de CRS, JSON no finito/ambiguo,
+estructura geométrica, campos obligatorios, tipos/rangos y objetos de metadatos.
+No se cambió esquema, migraciones, SQL de persistencia, contratos de salida,
+API A/B, elegibilidad ni arquitectura. La prueba inicial detectó 28 fallos y
+40 aprobaciones antes de corregir y ampliar la cobertura; no se presenta ese
+intento como exitoso. El
+[procedimiento y alcance exacto](../backend/README.md#verificación-ficticia-del-importador-territorial--sin-docker)
+son la referencia única de funcionamiento y reproducción. Recibos locales
+ignorados en `.tmp/territorial-import-review/`.
+
+**Integración parcial:** SQLite verifica transacciones y restricciones reales,
+con cuatro funciones de transporte/veredicto espacial limitadas a la fixture;
+no simula topología PostGIS. Shapely instalado confirmó por separado 263
+geometrías válidas y un control autointersectado inválido. La etapa 17 verificó
+PostGIS con carga directa y no ejecutó el importador completo. Quedan pendientes
+`import_publication` → conversión/SRID y validez topológica PostGIS reales →
+rollback → consulta GeoJSON en un entorno descartable autorizado. No se afirma
+integración PostgreSQL extremo a extremo ni se inicia esa fase.
+
+**Cierre de la incidencia Docker:** la revisión posterior encontró Desktop/motor
+apagados. No pudo comprobarse el estado individual de `sigard-lab-backend-1` y
+`sigard-lab-database-1`; no se detuvieron ni se reiniciaron para inspeccionarlos.
+El usuario decidió mantener Docker apagado y dio por terminada la verificación
+PostgreSQL/PostGIS anterior. En esta fase no se invocó Docker ni se accedió al
+PostgreSQL existente en 5432. No se cambiaron reinicios, volúmenes o configuración.
+Se conserva el entorno local SIGARD sin depender de Docker, sin iniciar frontend
+de producto, entrenar, recalcular predicciones ni acceder a datos epidemiológicos.
+Rama `entrenamiento-ML`, cambios previos conservados, sin commit/push.
+
+El contenido siguiente conserva la evidencia histórica de las etapas anteriores.
+
+**Integración PostgreSQL/PostGIS — etapa 17:** ensayo real autorizado en un único
+contenedor descartable `postgis/postgis:17-3.5` (PostgreSQL 17.5/PostGIS 3.5.2),
+exclusivamente `127.0.0.1:5435`, sin Compose ni volúmenes persistentes. Dos bases
+ficticias en tmpfs, credenciales en memoria, sin `.env`, originales ni artefactos ML.
+El [ejecutor y las barreras de aislamiento](../backend/README.md#ensayo-postgresqlpostgis-descartable--etapa-17)
+comprueban destino/identidad antes de migrar y bloquean 5432 y otros destinos.
+
+Se aplicaron por orden las cuatro migraciones, se revirtieron hasta base y
+reaplicaron; también la migración de cuentas con usuarios heredados ficticios.
+Se comprobaron tablas, índices, FK/NOT NULL/unicidad normalizada, sesiones JWT,
+rotación/restablecimiento y protección del último administrador. La concurrencia
+usa conexiones independientes y observa una espera real del advisory lock:
+200/409 en desactivación propia y 200/401 cruzada; revocación durante espera
+rechazada. PostGIS comprobó geometrías ficticias, SRID, punto generado, relaciones
+interior/borde, GiST y GeoJSON mediante rutas públicas; no cartografía oficial.
+
+**Corrección mínima:** `possible_duplicate_of=""`, enviado por el formulario,
+violaba una FK PostgreSQL. El backend lo normaliza a NULL; la prueba nueva
+comprueba que puede retirarse una referencia previa y persistir el cambio.
+No se modificaron frontend de producto, API, migraciones, dependencias o launcher.
+
+**Cierre técnico:** 56 pruebas seleccionadas PostgreSQL aprobadas; 87 backend de
+regresión aprobadas/seis omitidas (ya ejecutadas con clúster), más una focalizada
+posterior aprobada en SQLite; 135 de seguridad
+del repositorio, 15 de recursos frontend y 18 del coordinador aprobadas. Nueve
+grupos de navegador con API/PostgreSQL reales, sin errores JS/React, a 1440/390 px.
+Lint y recursos aprobados. Selecciones solapadas, sin total artificial ni pruebas
+ML. El build se conserva: no hubo cambios del frontend de producto.
+
+Los primeros intentos tuvieron errores del harness y un navegador falló por la
+FK antes de la corrección; el caso de terminación de procesos del coordinador
+falló en sandbox y pasó fuera. Se registran como intentos anteriores, no como
+éxitos. Recibos en `backend/.tmp/postgis-integration/` y
+`frontend/.tmp/stage17-browser-result.json`, sin credenciales ni datos reales.
+
+**Limpieza e incidencia:** contenedor/bases temporales eliminados y puertos propios
+libres. No hubo conexión al servidor 5432. Iniciar Docker Desktop reactivó por
+`unless-stopped` dos contenedores preexistentes (`sigard-lab-backend-1` y
+`sigard-lab-database-1`); no se ejecutó Compose ni se consultaron sus bases.
+Se informó y solicitó autorización para restituir su estado detenido, pendiente
+de respuesta. No se detienen ni eliminan recursos ajenos sin esa aprobación.
+El nuevo ejecutor exige Docker disponible y no inicia el motor automáticamente.
+
+Esto acredita integración de pruebas, no despliegue ni operación persistente.
+Importador completo/263 radios, datos operativos, retención programada, operación
+y los límites epidemiológicos/accesibilidad siguen pendientes. El arranque
+`npm.cmd --prefix frontend run dev` y los resultados A/B permanecen intactos.
+Rama `entrenamiento-ML`, cambios locales conservados, sin commit/push.
+
+Las secciones siguientes conservan sus resultados históricos.
 
 **Preparación de etapa 16 — 20/10/2026, `entrenamiento-ML`:** inicio nuevo con el
 comando habitual, frontend 5173 y A/B 8765 exclusivamente en `127.0.0.1`.

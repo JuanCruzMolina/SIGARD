@@ -7,6 +7,12 @@ reutilizar tablas epidemiológicas.
 La consulta retrospectiva A/B tiene un [launcher de investigación exclusivamente
 local](../docs/experimental-spatial-local.md). El arranque habitual no registra
 sus rutas; no habilitarla en Docker ni en despliegues públicos.
+
+**Integración descartable verificada (etapa 17):** PostgreSQL 17.5/PostGIS 3.5.2,
+cadena Alembic completa reversible, cuentas/concurrencia, reportes y geometrías
+ficticias. Ver [procedimiento y límites](#ensayo-postgresqlpostgis-descartable--etapa-17).
+Esto no despliega la API persistente ni modifica `npm.cmd --prefix frontend run dev`.
+
 El mapa local A/B consulta agregados sin autenticación, cookies ni diálogos de
 Windows. Su instancia FastAPI fija `127.0.0.1:8765`, sin base de datos ni claves,
 y sólo permite lectura desde Vite en `127.0.0.1:5173`. La administración habitual
@@ -81,6 +87,97 @@ servidor, nunca la IP del ciudadano. La consulta pública de estado nunca
 devuelve texto, dirección ni coordenadas. Los
 endpoints administrativos requieren JWT y rol `admin`, responden con
 `Cache-Control: no-store` y registran cambios/exportaciones en auditoría.
+
+## Verificación ficticia del importador territorial — sin Docker
+
+El importador vigente es `app/publication_import.py`, independiente de la
+ingestión epidemiológica oficial de `sigard_ml.official`. El recorrido productivo
+es: exportación offline (`sigard_ml.export.frontend_mvp`) → seis contratos →
+`load_and_validate` → `import_publication` → tablas de publicación → consultas
+de `app/public.py`. En este ensayo se genera la entrada desde constantes; no se
+ejecuta la exportación ni se leen sus fuentes, cartografía o productos A/B.
+
+Admite `available_weeks.json`, `temporal_predictions.json`,
+`territorial_context.geojson`, `experimental_spatial_history.geojson`,
+`model_evaluation.json` y `mvp_metadata.json`. Conserva el contrato de **263
+radios**, una predicción departamental por semana y simulaciones espaciales
+referenciadas al mismo radio/geometría y semana. No es un importador genérico
+de polígonos, no carga modelos A/B ni aplica elegibilidad epidemiológica oficial.
+
+Antes de abrir la base valida archivos, JSON legible sin claves duplicadas ni
+números no finitos, objetos/Features, campos obligatorios, identificadores
+textuales de hasta 32 caracteres, claves únicas, cobertura radio-semana y fechas
+alineadas. Valida conteos enteros sin truncamiento, población/hogares/viviendas
+no negativos, superficie positiva, percentiles entre 0 y 100, niveles admitidos
+y scores experimentales/predicciones no negativos. Los otros componentes deben
+ser finitos; no se agregan umbrales epidemiológicos ni rangos de score inexistentes.
+
+Admite Polygon/MultiPolygon no vacíos con anillos cerrados de al menos cuatro
+posiciones y coordenadas finitas dentro del rango WGS84. Sin `crs` rige el orden
+longitud/latitud de GeoJSON. Para el miembro legado `crs` acepta `EPSG:4326`,
+`urn:ogc:def:crs:EPSG::4326` y `urn:ogc:def:crs:OGC:1.3:CRS84`; rechaza otros
+CRS en colección, Feature o geometría. **No reproyecta.** En producción almacena
+con `ST_GeomFromGeoJSON`/`ST_SetSRID(...,4326)` y comprueba topología mediante
+`ST_IsValid` antes de publicar. La validación estructural Python no certifica
+autointersecciones, huecos o solapamientos internos.
+
+Conserva SHA-256 de nombres y bytes de los seis archivos, versión explícita o
+`mvp-<12 caracteres del hash>`, metadatos MVP/modelo y evaluación. Cambiar formato
+o metadatos cambia el hash. Metadatos y evaluación deben ser objetos JSON; el
+contrato no exige un esquema completo de procedencia ni una versión interna.
+Se preservan las propiedades territoriales admitidas; atributos adicionales de
+Features no se incorporan automáticamente a tablas o respuestas. La lista
+recursiva de campos privados prohibidos no certifica autorización epidemiológica.
+
+Una transacción retira el lote publicado anterior, crea el nuevo como `staged`,
+inserta semanas, predicciones, radios y simulaciones, verifica geometrías y lo
+marca `published`. Un error revierte esas operaciones. Repetir un hash publicado
+devuelve el mismo ID sin insertar; un hash existente `staged`/`retired` se rechaza
+y no se republica. Una versión usada con otro hash viola la unicidad y revierte.
+El importador no tiene una aprobación separada: **publica en su base de destino
+si termina correctamente**. Aquí el destino es exclusivamente SQLite descartable.
+
+Desde la raíz, con las dependencias ya instaladas:
+
+```powershell
+# Pruebas focalizadas del importador
+.\backend\.venv\Scripts\python.exe -B backend/tests/publication_isolated.py
+# Regresión backend con el mismo aislamiento
+.\backend\.venv\Scripts\python.exe -B backend/tests/publication_isolated.py --backend-regression
+```
+
+El ejecutor deshabilita `.env`, elimina destinos PostgreSQL heredados y bloquea
+conexiones SQLAlchemy distintas de SQLite y llamadas directas al ejecutable
+Docker. No usa el CLI del importador con configuración del entorno ni inicia
+servidores. `publication_fixture.py` genera 263 cuadrados ficticios (uno como
+MultiPolygon), IDs `TEST-0000` a `TEST-0262` y una semana de enero de 2030. Es la
+cantidad mínima compatible; no usa aleatoriedad ni cambia el universo productivo.
+Declara condición sintética, procedencia, período, unidad, CRS y versión de
+transformación. Los archivos se escriben sólo bajo el temporal de pytest; la
+base SQLite se elimina al finalizar cada prueba. No se escribe en `frontend/public`.
+
+El adaptador contiene cuatro funciones espaciales SQLite limitadas a transportar
+GeoJSON de las geometrías conocidas de la fixture e inyectar un veredicto de
+validez. Ejecuta **el importador real y transacciones/constraints/FK de SQLite**;
+no implementa PostGIS, ni acredita topología/SRID reales. Las consultas usan las
+funciones y el router público existentes con TestClient en memoria, sin publicar
+en la aplicación principal. Se comprueban lote válido e inválidos, idempotencia,
+retiro del anterior, rollback después de insertar radios y ante rechazo geométrico
+inyectado, ausencia de filas parciales, GeoJSON/atributos/versiones, errores
+404/422/503 y exclusión de lotes `staged`/`retired`.
+
+**Defectos corregidos:** CRS incompatibles ignorados, JSON ambiguo/no finito y
+validación incompleta de estructura geométrica, campos, tipos/rangos y objetos
+de metadatos. Ahora se rechazan con `ValueError` y contexto del campo antes de
+abrir la base. Se mantienen esquema, migraciones, SQL, API y arquitectura.
+
+**Pendiente:** ejecutar este mismo lote mediante `import_publication` en un
+PostGIS descartable autorizado: conversión/SRID, rechazo topológico real,
+rollback y lectura GeoJSON. La etapa 17 comprobó migraciones, GiST, SRID,
+geometrías y rutas cargadas directamente; no ejecutó este importador. Shapely
+instalado comprobó por separado 263 geometrías ficticias válidas y un control de
+autointersección inválido; no equivale a ejecutar PostGIS. Resultados y estado
+Docker en la [consolidación técnica](../docs/technical-consolidation.md).
 
 ## Cuentas administrativas y autenticación — etapa 14
 
@@ -163,93 +260,114 @@ opcional `test_postgresql_isolated_migration_integrity_revocation_and_concurrenc
 se omite sin `SIGARD_TEST_POSTGRES_URL`. Exige base vacía y rol
 `sigard_stage15_test`, host `127.0.0.1` y puerto distinto de 5432/5433. No crea ni
 inicia un servidor: requiere autorización previa para un clúster descartable.
-No se ejecutó en PostgreSQL en esta etapa; el servicio nativo existente no se
-utilizó. Ver el bloqueo y el alcance pendiente de PostGIS en la matriz del MVP.
+No se ejecutó en PostgreSQL en etapa 15; el servicio nativo existente no se
+utilizó. En etapa 17 se ejecutó mediante el entorno descartable de abajo.
+La prueba ahora exige exactamente 5435 y la identidad efímera del clúster;
+no ejecutarla configurando una URL manual de una instalación existente.
 
-### Ensayo PostgreSQL/PostGIS descartable — preparación de etapa 16
+<a id="ensayo-postgresqlpostgis-descartable--preparación-de-etapa-16"></a>
 
-**Procedimiento preparado, no ejecutado. Requiere autorización explícita antes
-de iniciar un clúster, contenedor o servicio.** Queda prohibido conectar a bases
-de `127.0.0.1:5432`; tampoco reutilizar 5433 ni el volumen `database_data` de
-Compose. No se inspeccionó el contenido de esas bases. Los puertos siguientes
-son propuestas: comprobar que estén libres y detener el procedimiento si no lo
-están, sin cerrar procesos ajenos ni sustituir destinos automáticamente.
+### Ensayo PostgreSQL/PostGIS descartable — etapa 17
 
-**Opción nativa administrativa:** están disponibles `initdb`, `pg_ctl`, `createdb`
-y `psql` de PostgreSQL 18 bajo `C:/Program Files/PostgreSQL/18/bin`. Reservar
-`127.0.0.1:5434` y un directorio nuevo `backend/.tmp/pg-stage16-disposable`;
-no registrar un servicio Windows. Después de autorizar, el operador puede usar
-`initdb -D <ruta-absoluta-nueva> -U sigard_stage15_test --auth=scram-sha-256 --pwprompt`
-con contraseña efímera ficticia y `pg_ctl -D <misma-ruta> -l <log-temporal>
--o "-h 127.0.0.1 -p 5434" -w start`. Verificar el listener y limitar `pg_hba.conf`
-a loopback. Crear con `createdb -h 127.0.0.1 -p 5434 -U sigard_stage15_test`
-la base vacía `sigard_stage15_test`. La contraseña se proporciona por prompt o
-`PGPASSWORD` efímero, nunca en la URL, documentación, logs o archivos del producto.
-El nombre conserva el contrato estricto de la prueba existente, no identifica
-una base operativa. Esta opción no comprueba geometrías: no se encontraron
-archivos de extensión PostGIS en esa instalación.
+Ejecutado con autorización específica, sólo con datos y geometrías ficticios.
+Se reutilizó la imagen local `postgis/postgis:17-3.5`: **PostgreSQL 17.5 y
+PostGIS 3.5.2**. Contenedor independiente `sigard-stage17-postgis`, sin Compose,
+publicación exclusiva `127.0.0.1:5435:5432`, `--rm`, reinicio `no` y `tmpfs` en
+`/var/lib/postgresql/data`, sin binds ni volúmenes compartidos.
+No se consultó ni utilizó el servidor existente de 5432.
 
-**Opción geoespacial:** reutilizar la imagen declarada por el proyecto
-`postgis/postgis:17-3.5`, con autorización adicional para Docker/descarga si
-corresponde. Crear un contenedor independiente llamado `sigard-stage16-postgis`,
-etiqueta `sigard.stage16=disposable`, publicación **127.0.0.1:5435:5432**, y
-`--tmpfs /var/lib/postgresql/data:rw`. No montar rutas del host, fuentes médicas,
-modelos ni volúmenes nombrados. Usar `--rm`, rol `sigard_stage15_test`, base
-inicial `sigard_stage16_schema` y contraseña efímera vía variable
-`POSTGRES_PASSWORD` heredada por el contenedor; no pasar su valor en el comando.
-La disponibilidad/descarga de la imagen y este arranque no están verificados.
-Confirmar listener loopback, identidad de rol/base y `SELECT postgis_version()`;
-crear la extensión en la base de esquema si aún no existe. Un fallo detiene el
-ensayo; nunca se recurre al servicio de 5432.
+Referencia del procedimiento ejecutado en etapa 17, no una autorización vigente:
+Docker debe permanecer apagado. Una repetición futura requiere autorización
+específica; estos comandos no se ejecutaron durante la consolidación actual.
+El ensayo requiere Docker ya disponible y los puertos 5435/5174 libres:
 
-**Dos bases separadas dentro del entorno autorizado:**
+```powershell
+.\backend\.venv\Scripts\python.exe -B backend/tests/postgis_disposable.py
+# Opcional: mismo ensayo más navegador, Vite temporal y API propia.
+.\backend\.venv\Scripts\python.exe -B backend/tests/postgis_disposable.py --browser
+```
 
-1. `sigard_stage16_schema`: ensayo de las cuatro migraciones con PostGIS. Con
-   API detenida, `AUTO_CREATE_SCHEMA=false`, configuración efímera de prueba y
-   `DATABASE_URL` explícito al puerto 5435, ejecutar desde `backend/`
-   `python -m alembic upgrade head`, `python -m alembic current`,
-   `python -m alembic downgrade base` y nuevamente `python -m alembic upgrade head`.
-   No usar secretos/bootstrap de la instalación ni cargar `.env` operativo;
-   el operador debe suministrar una configuración de pruebas aislada.
-   Confirmar revisión `20261020_04`, índices/FK/defaults, `POINT`/SRID 4326
-   calculado de un reporte ficticio y geometrías territoriales. Importar sólo
-   `frontend/public/data/` ya aprobado si se ensaya la publicación, nunca A/B
-   privados. Falta ejecutar esa integración: SQL offline no la acredita.
-2. `sigard_stage15_test`: base **vacía**, creada aparte, sin aplicar Alembic antes
-   de la prueba siguiente. Ésta construye usuarios heredados ficticios y aplica,
-   revierte y reaplica sólo la migración administrativa. El esquema completo
-   anterior la haría fallar deliberadamente. Ejemplo desde la raíz, únicamente
-   después de autorizar y verificar el destino:
+El navegador reutiliza Puppeteer instalado mediante `SIGARD_BROWSER_MODULE`
+si no está resoluble normalmente; no instala dependencias. El ejecutor no inicia
+Docker Desktop ni servicios existentes. Durante aquella revisión, iniciar Docker
+reactivó automáticamente dos contenedores preexistentes de SIGARD. La revisión
+posterior encontró el motor apagado y no pudo comprobar su estado individual;
+el usuario decidió conservar Docker apagado. No se consultaron sus bases ni se
+eliminaron recursos ajenos. Esta incidencia es distinta del aislamiento comprobado
+del contenedor de pruebas; no queda autorización pendiente para iniciar Docker.
 
-   ```powershell
-   $env:SIGARD_TEST_POSTGRES_URL = 'postgresql+psycopg2://sigard_stage15_test@127.0.0.1:5435/sigard_stage15_test'
-   .\backend\.venv\Scripts\python.exe -B -m pytest backend/tests/test_admin_accounts.py -k postgresql_isolated -q -p no:cacheprovider --basetemp backend/.tmp/stage16-pg-test
-   Remove-Item Env:SIGARD_TEST_POSTGRES_URL
-   ```
+**Barreras antes de migrar:** rama exacta, puerto libre, nombre inexistente,
+imagen local, identidad/etiqueta del contenedor, bind loopback y tmpfs exclusivo.
+Sólo admite `postgresql+psycopg2`, host literal `127.0.0.1`, puerto **5435**,
+rol ficticio `sigard_stage15_test` y las dos bases permitidas. Rechaza URL con
+contraseña/query y cualquier otro destino, incluido 5432/5433. Limpia variables
+libpq heredadas; contraseña y clave JWT se generan sólo en memoria/entorno de
+procesos propios. `Settings` no carga `.env`. Un guard intercepta conexiones
+PostgreSQL antes de abrir la red; después se comprueban usuario, base y
+`cluster_name` único. No usa auto-creación de esquema en PostgreSQL.
 
-   Para la opción nativa usar explícitamente 5434. `PGPASSWORD` sólo vive durante
-   el ensayo. La prueba exige identidad/base vacía antes de mutar y fija timeouts;
-   verifica unicidad normalizada, NOT NULL, FK, login, rotación y revocación de JWT.
-   Dos solicitudes ya autenticadas se sincronizan con barrera y compiten por
-   `pg_advisory_xact_lock(1397311297)` en conexiones distintas. En desactivación
-   propia se esperan 200/409; cruzada 200/401 por revalidación del actor tras
-   esperar. Siempre debe quedar exactamente un administrador activo. Guardar
-   recibo del motor/resultado antes de afirmar concurrencia PostgreSQL comprobada.
+Dos bases dentro de la misma instancia descartable:
 
-La reversión sólo de cuentas y sus consecuencias para auditoría/tokens están
-descritas arriba; no debe ejecutarse con la API recibiendo peticiones. Para
-repetir el ensayo administrativo se necesita otra base vacía del mismo contrato
-en un clúster nuevamente descartable, no reutilizar residuos de una ejecución.
+- `sigard_stage16_schema`: cuatro revisiones en orden `20260819_01` →
+  `20260923_02` → `20260924_03` → `20261020_04`; downgrade hasta base y
+  reaplicación. Nueve tablas de aplicación, índices, relaciones, defaults,
+  `token_version`, unicidad normalizada y auditoría. Las tablas auxiliares de
+  extensiones no se confunden con tablas de SIGARD.
+- `sigard_stage15_test`: vacía desde `template0`, sólo para la prueba existente
+  de cuentas heredadas ficticias, migración 04/reversión/reaplicación, NOT NULL,
+  unicidad y FK. No reutilizar bases con residuos.
 
-**Limpieza:** cerrar API/pytest y sus conexiones. Para el nativo, usar `pg_ctl -D
-<ruta-absoluta-verificada> -m fast -w stop`; confirmar cierre de 5434 y borrar sólo
-el directorio nuevo cuya ruta resuelta esté dentro de `backend/.tmp/`. Para el
-contenedor, verificar nombre/etiqueta/montajes antes de `docker stop
-sigard-stage16-postgis`: `--rm` y tmpfs eliminan contenedor/datos. Confirmar que no
-quedaron contenedor, listener 5435 ni volumen creado. Retirar las variables
-efímeras de contraseña/URL/clave y conservar sólo resultados sin secretos. No
-usar comandos globales de limpieza, detener el servicio existente ni borrar
-volúmenes del proyecto. Ninguna acción de este procedimiento se ejecutó en etapa 16.
+**Resultado final: 56 pruebas aprobadas, cero fallidas/omitidas.** Incluye siete
+destinos rechazados sin conexión, JWT vencido/firma inválida, roles, revocación,
+desactivación, rotación/restablecimiento y persistencia tras otra instancia de API.
+Desactivaciones concurrentes propias/cruzadas usan dos `pg_backend_pid()`
+diferentes y conservan un administrador activo: 200/409 en propias y 200/401
+en cruzadas. Otra prueba observa espera real mediante `pg_blocking_pids`, revoca
+al actor durante ella y obtiene 401 tras liberar el advisory lock.
+
+PostGIS: punto generado de reporte con SRID 4326, orden longitud/latitud;
+polígono ficticio mediante SQLAlchemy, interior/borde, `ST_Contains`/`ST_Covers`,
+rechazo de SRID incorrecto, restricción de población, índice GiST utilizado con
+exploración secuencial deshabilitada para ese ensayo y proyección GeoJSON en
+rutas públicas. No acredita rendimiento ni importación/integración completa
+de la cartografía oficial de 263 radios.
+
+**Nueve grupos de navegador aprobados**, sin excepciones JS/advertencias React,
+a 1440/390 px: formulario → HTTP/FastAPI → PostgreSQL → seguimiento, revisión/
+exportación y ciclo de cuentas. El harness redirige sus solicitudes a su API
+loopback propia y usa Vite temporal en 5174. Las respuestas de negocio provienen
+del backend real; sólo se conserva la inyección explícita de un error 503 para
+probar reintento. No comprueba A/B ni carga sus artefactos en este modo, y bloquea
+solicitudes externas. El frontend de producto y el comando habitual no cambian.
+
+Defecto real corregido: el formulario completo enviaba `possible_duplicate_of`
+vacío y PostgreSQL lo rechazaba por FK. `admin.update_report` normaliza únicamente
+ese vacío a NULL; una prueba elimina una referencia previa y comprueba persistencia.
+Sin cambios de contratos, dependencias o historial de migraciones.
+
+Regresión: 87 backend aprobadas y seis omitidas por no disponer del clúster en esa
+ejecución (cinco PostGIS y la prueba PostgreSQL existente, ejecutadas arriba);
+una prueba focalizada posterior de errores/permisos también aprobada en SQLite.
+Seguridad: 135 controles del repositorio y 15 de recursos frontend; 18 pruebas del
+coordinador. Lint y recursos aprobados. No sumar selecciones solapadas como casos
+únicos. El caso del árbol de procesos falló dentro del sandbox y pasó fuera sin
+cambiar código. Se conservan advertencias de deprecación; no se entrenó ML.
+
+Los intentos iniciales corrigieron el harness: representación tmpfs, sintaxis,
+alcance de introspección y conversión de resultados SQLAlchemy. El primer navegador
+expuso el defecto FK y falló antes de corregirlo. No se presentan esos intentos
+como aprobados. Recibos/JUnit sin secretos: `backend/.tmp/postgis-integration/`;
+navegador: `frontend/.tmp/stage17-browser-result.json`, excluidos de Git/Docker.
+
+**Limpieza propia comprobada:** Vite/API/navegador propios cerrados; contenedor
+identificado por ID/etiqueta eliminado junto a ambas bases en tmpfs. Puertos
+5435/5174 libres, sin volúmenes de datos creados. Credenciales retiradas del entorno
+propio, sin persistirlas. Sólo quedan pruebas, recibos y documentación; no se usan
+`prune`, limpiezas generales ni `.env` de la instalación. La restitución de los dos
+contenedores reactivados por Docker no pudo comprobarse individualmente con el
+motor apagado. La verificación anterior se dio por terminada conservando ese
+estado; no se afirma restauración global.
+
 
 ### Evidencia de etapa 14
 
