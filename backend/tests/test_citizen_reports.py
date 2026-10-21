@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta, timezone
+import json
 
 from fastapi.testclient import TestClient
 from sqlalchemy import func, select
+import pytest
 
 from app.main import create_app
 from app.models import User
@@ -34,6 +36,51 @@ VALID_REPORT = {
     "privacy_notice_version": PRIVACY_NOTICE_VERSION,
     "privacy_accepted": True,
 }
+
+
+@pytest.mark.parametrize("description", [" " * 20, "  demasiado   breve  ", 123])
+def test_report_description_is_validated_after_normalization(client, description):
+    response = client.post("/api/v1/citizen-reports", json={**VALID_REPORT, "description": description})
+    assert response.status_code == 422
+    from app.models import CitizenReport
+    with client.app.state.SessionLocal() as db:
+        assert db.scalar(select(func.count()).select_from(CitizenReport)) == 0
+
+
+def test_blank_geocoder_query_is_rejected_before_external_request(client, monkeypatch):
+    def forbidden(*_args, **_kwargs):
+        pytest.fail("Blank address must not contact a geocoder")
+    monkeypatch.setattr("app.geocoding.httpx.Client", forbidden)
+    assert client.post("/api/v1/geocoding/address", json={"address_reference": " " * 4}).status_code == 422
+
+
+def test_admin_export_matches_filters_and_invalid_dates_do_not_export(client):
+    import csv
+    import io
+    from app.models import CitizenReportAudit
+    from test_admin_accounts import add_user, headers
+    admin = add_user(client)
+    first = client.post("/api/v1/citizen-reports", json={**VALID_REPORT, "neighborhood": "Zona Ficticia Uno"}).json()
+    second = client.post("/api/v1/citizen-reports", json={**VALID_REPORT, "category": "microbasural", "neighborhood": "Zona Ficticia Dos"}).json()
+    auth = headers(admin)
+    base = "/api/v1/admin/citizen-reports"
+    params = {"neighborhood": "Ficticia Uno", "category": "agua_acumulada", "status": "recibido"}
+    listing = client.get(base, headers=auth, params=params).json()
+    exported = client.get(base + "/export.csv", headers=auth, params=params)
+    rows = list(csv.DictReader(io.StringIO(exported.text)))
+    assert {row["codigo"] for row in rows} == {row["tracking_code"] for row in listing["items"]} == {first["tracking_code"]}
+    assert second["tracking_code"] not in exported.text
+    assert exported.headers["cache-control"] == "no-store"
+    empty = client.get(base + "/export.csv", headers=auth, params={"neighborhood": "NO-RESULTADOS-FICTICIOS"})
+    assert len(list(csv.DictReader(io.StringIO(empty.text)))) == 0
+    assert client.get(base + "/export.csv").status_code == 401
+    for endpoint in (base, base + "/export.csv"):
+        response = client.get(endpoint, headers=auth, params={"date_from": "2030-01-02", "date_to": "2030-01-01"})
+        assert response.status_code == 422
+        assert "Desde" in response.json()["detail"]
+    with client.app.state.SessionLocal() as db:
+        audits = db.scalars(select(CitizenReportAudit).where(CitizenReportAudit.action == "export_csv")).all()
+        assert [json.loads(row.changes_json)["count"] for row in audits] == [1, 0]
 
 
 def test_anonymous_report_and_public_status_do_not_expose_location(client):

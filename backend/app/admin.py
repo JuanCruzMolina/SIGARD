@@ -53,6 +53,8 @@ def filtered_query(
     date_from: date | None = None,
     date_to: date | None = None,
 ):
+    if date_from and date_to and date_from > date_to:
+        raise HTTPException(status_code=422, detail="La fecha Desde no puede ser posterior a Hasta")
     query = select(CitizenReport)
     if category:
         query = query.where(CitizenReport.category == category)
@@ -94,10 +96,18 @@ def list_reports(
 
 @router.get("/citizen-reports/export.csv")
 def export_reports(
+    category: str | None = None,
+    report_status: str | None = Query(default=None, alias="status"),
+    neighborhood: str | None = None,
+    date_from: date | None = None,
+    date_to: date | None = None,
     db: Session = Depends(get_db),
     admin: User = Depends(get_current_admin),
 ):
-    reports = db.scalars(select(CitizenReport).order_by(CitizenReport.created_at.desc())).all()
+    reports = db.scalars(
+        filtered_query(category, report_status, neighborhood, date_from, date_to)
+        .order_by(CitizenReport.created_at.desc())
+    ).all()
     stream = io.StringIO()
     writer = csv.writer(stream)
     writer.writerow([

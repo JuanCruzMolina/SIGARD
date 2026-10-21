@@ -11,6 +11,8 @@ PRIVACY_NOTICE_VERSION = "2026-08-19"
 def clean_anonymous_text(value: str | None) -> str | None:
     if value is None:
         return None
+    if not isinstance(value, str):
+        raise ValueError("El texto debe ser una cadena de caracteres")
     cleaned = " ".join(value.split())
     if re.search(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b", cleaned):
         raise ValueError("No incluyas correos electrónicos: el reporte debe ser anónimo")
@@ -50,7 +52,7 @@ class CitizenReportCreate(BaseModel):
     privacy_notice_version: str
     privacy_accepted: bool
 
-    @field_validator("description", "address_reference", "neighborhood")
+    @field_validator("description", "address_reference", "neighborhood", mode="before")
     @classmethod
     def reject_direct_contact_data(cls, value: str | None) -> str | None:
         return clean_anonymous_text(value)
@@ -74,7 +76,7 @@ class CitizenReportCreated(BaseModel):
 class AddressLookupRequest(BaseModel):
     address_reference: str = Field(min_length=4, max_length=200)
 
-    @field_validator("address_reference")
+    @field_validator("address_reference", mode="before")
     @classmethod
     def reject_direct_contact_data(cls, value: str) -> str:
         return clean_anonymous_text(value) or ""
