@@ -209,66 +209,69 @@ Salvo los README indicados, las fuentes están en `docs/`. Las variables de A/B 
 
 ## 8. Guion académico de siete minutos
 
-**0:00–0:45 — Problema y objetivo.** Abrir la pantalla inicial.
-«SIGARD estudia cómo integrar información temporal y territorial sobre dengue
-en La Rioja Capital, organizarla de forma reproducible y explorar modelos para
-la semana siguiente. Es un prototipo de tesis: distingue información observada,
-simulación y resultados experimentales; no es una herramienta sanitaria validada».
+**0:00–0:45 — Presentación y alcance.** Ejecutar `npm.cmd run dev` desde
+`frontend` y abrir `http://127.0.0.1:5173/`: ingresa directamente al panel A/B.
+«SIGARD es un prototipo de tesis para explorar información territorial y modelos
+experimentales de presencia provisional en la semana siguiente. Estamos
+consultando resultados retrospectivos congelados, sin generar predicciones
+nuevas ni habilitar decisiones sanitarias». Señalar la advertencia y abrir
+**Recorrido para explorar y presentar el panel** si hace falta orientación.
 
-**0:45–1:30 — Arquitectura y preparación.** Abrir **Cómo funciona**.
-«Python realiza la preparación y scikit-learn los experimentos fuera del servidor.
-FastAPI entrega resultados ya calculados; React/Vite y Leaflet permiten consultarlos.
-PostgreSQL/PostGIS está previsto para persistencia y geometrías del circuito público.
-La unidad de análisis es radio censal–semana epidemiológica. Se conservan fuentes,
-procedencia, incertidumbre y calendario argentino; la cartografía comprende 263 radios.
-Los validadores distinguen una estructura correcta de una etiqueta acreditada».
+**0:45–2:00 — Misma semana, modelos A y B.** Elegir una semana objetivo y
+**Modelo A** en **Vista del mapa**; después cambiar a **Modelo B**.
+«La semana se conserva. A usa variables territoriales y temporales; B añade
+antecedentes experimentales de dengue de las cuatro semanas anteriores y sus
+indicadores de faltantes. Ambos se entrenaron con etiquetas epidemiológicas
+provisionales: A también aprendió de esas etiquetas. El violeta representa
+intervalos fijos del score [0,1], iguales en ambas vistas. No son probabilidades
+clínicas calibradas ni categorías de riesgo sanitario».
 
-**1:30–2:30 — Consulta pública.** Ir a **Mapa público**, elegir un código con el
-selector, cambiar semana y alternar contexto/simulación.
-«El contexto censal describe el territorio. La simulación es una distribución
-sintética para comprobar el flujo, no domicilios ni casos reales por radio. Los
-colores son niveles relativos, no umbrales sanitarios». Señalar leyenda, detalle
-agregado y fuente técnica del pie. El resumen temporal agregado y la clasificación
-A/B son objetivos diferentes: no interpretar sus magnitudes como equivalentes.
+**2:00–3:15 — Diferencia territorial y consulta del radio.** Elegir
+**Diferencia B − A**, manteniendo la semana. Seleccionar un polígono o usar
+**Radio censal** con el teclado; señalar el contorno y el selector sincronizados.
+«Azul significa que B tiene un score menor, ocre mayor y blanco igualdad.
+Gris significa que no hay dos resultados disponibles, nunca cero ni ausencia
+de casos. Sólo se restan dos scores congelados del mismo radio y semana; no es
+un aumento de incidencia o riesgo sanitario». Mostrar identificación, semana,
+ambos scores, signo de la resta y disponibilidad. No elegir ejemplos por
+supuesto riesgo ni presentar ubicaciones reales de casos.
 
-**2:30–4:15 — Modelos A/B.** Elegir **Investigación local A/B**, Modelo A, una semana
-y un radio. Cambiar a B conservando radio/semana; abrir **Ver evolución temporal**.
-«Ambos son Random Forest de clasificación de presencia experimental en t+1.
-A usa siete entradas de territorio y calendario: superficie, población, densidad,
-vecinos, semana de origen y su seno/coseno. B conserva esas siete y añade cuatro
-rezagos de presencia y cuatro indicadores de faltantes: 15 entradas. Desconocido
-no se convierte en cero. La interfaz lee resultados congelados; no está entrenando
-ni generando un pronóstico nuevo». Mostrar los dos scores, las 20 semanas y los
-huecos, sin interpolarlos ni presentar un ganador.
+**3:15–4:00 — Evolución temporal.** Seguir **Consultar evolución de este radio**
+y pulsar **Ver evolución temporal**. «El historial pertenece al radio seleccionado;
+la línea vertical marca la semana elegida. Los huecos son semanas/valores sin
+resultado, incluidas las purgadas; no se interpolan». Abrir **Consultar valores
+por semana**; en móvil mostrar su desplazamiento interno. Cambiar radio y
+comprobar que título y valores acompañan la selección.
 
-**4:15–5:15 — Evaluación y límites científicos.** Mostrar **Análisis de modelos** y
-cambiar partición. «Se evaluaron retrospectivamente con positivos provisionales
-y negativos experimentales asumidos, con cortes temporales y semanas de separación.
-Entrenamiento, validación y prueba ya fueron examinados. Precisión y sensibilidad
-describen acuerdo con esas etiquetas; Brier menor representa menor error contra
-ellas. Ni las métricas ni un score alto acreditan casos, riesgo clínico calibrado
-o superioridad de B. Faltan cobertura negativa y disponibilidad histórica acreditadas,
-definiciones institucionales y evaluación futura independiente». Mantener visibles
-los avisos de uso no sanitario.
+**4:00–5:15 — Desempeño y límites.** En **Análisis de modelos**, comparar
+entrenamiento, validación y prueba ya examinadas. «Precisión, sensibilidad,
+F1, Average Precision y ROC-AUC se interpretan en dirección mayor-mejor;
+Brier, menor-mejor. La síntesis se construye con las métricas de esta partición
+y describe compromisos, sin declarar un ganador general si se contradicen.
+Se conserva el umbral experimental 0,5; no se recalculan métricas. El baseline
+y la robustez no están disponibles en este contrato». Abrir **Metodología y
+limitaciones de A/B**: positivos provisionales, negativos asumidos, cobertura
+no acreditada y disponibilidad histórica incompleta/no acreditada. La prueba
+ya examinada no acredita evaluación futura independiente.
 
-**5:15–6:15 — Prevención y circuito ciudadano/administrativo.** Ir a **Prevención
-y ayuda**, mostrar contenidos, búsqueda y filtros del directorio. «Hay 24 CAPS y
-tres hospitales; 23 CAPS requieren confirmar vigencia, por lo que no mostramos
-disponibilidad de atención en tiempo real». Si está preparada la prueba aislada,
-mostrar el recorrido automatizado con un reporte ficticio, su código, actualización
-administrativa y cuentas ficticias. «La administración exige JWT, rol y confirmación
-de contraseña; desactivar o rotar revoca tokens y se protege la última cuenta».
-Si sólo está iniciado el comando habitual, mostrar formulario y login e indicar
-que envío, seguimiento y administración necesitan la API independiente: no intentar
-operaciones contra un servicio de finalidad desconocida ni usar credenciales reales.
+**5:15–6:15 — Separación del MVP y arquitectura.** Volver arriba y elegir
+**MVP sintético y contexto**; alternar contexto territorial y simulación.
+«El contexto describe el territorio censal; la simulación espacial anterior es
+sintética y tiene otro objetivo. No corresponde a los scores A/B ni a casos
+observados por radio». El menú **Situación actual** conserva el dashboard.
+En **Cómo funciona**, explicar que Python prepara/entrena offline, FastAPI
+lee resultados guardados y React/Vite/Leaflet los presenta. Vercel aloja sólo
+frontend; la demostración A/B local no precisa Docker ni PostgreSQL.
 
-**6:15–7:00 — Estado y trabajo pendiente.** Mostrar la matriz y su evidencia.
-«Las pruebas actuales respaldan una demostración académica experimental local.
-El ciclo HTTP y SQLite descartable está comprobado; PostgreSQL/PostGIS y su
-concurrencia real siguen pendientes de un entorno autorizado. La matriz conserva
-15 funcionalidades completas, ocho parciales y tres bloqueadas. Faltan también
-confirmaciones institucionales y accesibilidad con lector de pantalla/dispositivo
-físico. Estos límites forman parte de lo que la tesis permite concluir».
+**6:15–7:00 — Evidencia y siguiente paso.** Mostrar el estado funcional.
+«El panel se verificó con pruebas de contratos/presentación, navegador de
+escritorio y móvil, errores y respuestas tardías. La operación persistente,
+el importador completo con PostGIS y la acreditación epidemiológica siguen
+fuera de esta demostración. No se atribuye evidencia actual a pruebas históricas».
+Cerrar con una prioridad: obtener decisiones y evidencia institucional sobre
+etiquetas, cobertura y disponibilidad histórica antes de nuevos estudios o usos.
+No iniciar entrenamientos ni mostrar el circuito ciudadano/administrativo como
+activo con el comando habitual: esa API sigue siendo independiente.
 
 ## 9. Lista de preparación de la demostración
 

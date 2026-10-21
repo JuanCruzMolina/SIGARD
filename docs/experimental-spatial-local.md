@@ -35,8 +35,9 @@ Espera a que la API esté lista antes de abrir el servidor de desarrollo.
 
 Abrir **http://127.0.0.1:5173**: `/` redirige a `/mapa` y selecciona
 **Investigación local A/B** automáticamente sólo en desarrollo con ese origen.
-El catálogo y los primeros scores se consultan automáticamente. Cambiar modelo
-y semana con los selectores; seleccionar un radio para comparar ambos scores.
+El catálogo y los primeros scores se consultan automáticamente. **Vista del mapa**
+ofrece Modelo A, Modelo B y Diferencia B − A. Cambiar vista conserva semana y radio;
+seleccionar un radio permite consultar ambos scores y su resta cuando existen.
 **MVP sintético y contexto** conserva la vista original y sigue accesible con
 el selector. **Situación actual** abre el dashboard original en `/dashboard`
 durante el desarrollo local autorizado. En producción, `/` sigue mostrando
@@ -142,6 +143,20 @@ establece superioridad de B. El acceso local no autoriza publicación ni uso san
 
 ## Panel de análisis de modelos
 
+El panel comienza con una orientación desplegable y las variables de ambos
+modelos: A usa territorio/calendario; B añade antecedentes experimentales de las
+cuatro semanas previas. Ambos se entrenaron con etiquetas epidemiológicas
+provisionales. La advertencia inicial resume negativos asumidos, cobertura no
+acreditada, disponibilidad histórica incompleta y evaluación ya examinada.
+
+El mapa reutilizable mantiene intervalos violetas idénticos para A/B. Diferencia
+B − A usa azul para valores negativos, blanco para cero y ocre para positivos,
+en escala fija [−1,1]; gris es ausencia de ambos scores comparables. El detalle
+explica si falta un score o falló su consulta, sin tratar ninguno como cero.
+La leyenda queda debajo del mapa para no taparlo en móvil. La resta se calcula
+en memoria a partir de las colecciones validadas; no es predicción nueva,
+incidencia, cantidad de casos ni aumento real del riesgo sanitario. No se guarda.
+
 En **Investigación local A/B**, el panel **Análisis de modelos** aparece debajo
 del mapa actual. Los nombres principales son **Modelo A** y **Modelo B**; sus
 identificadores y versiones técnicos se consultan en un detalle secundario.
@@ -151,6 +166,8 @@ y prueba ya examinada. Presenta precisión, sensibilidad, F1, Average Precision,
 ROC-AUC y Brier mediante valores y barras en escala fija de 0 a 1. Cada fila
 explica la métrica y su dirección: menor Brier es mejor; las demás tienen
 dirección mayor-mejor. Ninguna basta por sí sola para declarar superioridad.
+La síntesis de la partición elegida se construye desde esas métricas, conserva
+empates/faltantes y explicita los compromisos cuando favorecen modelos distintos.
 Average Precision es el resumen guardado de precisión–sensibilidad, no un área
 trapezoidal recalculada. Precisión, sensibilidad y F1 usan el umbral congelado 0,5.
 

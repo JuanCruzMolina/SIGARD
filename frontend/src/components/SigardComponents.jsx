@@ -3,7 +3,7 @@ import { GeoJSON, MapContainer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import { formatDate, formatDateRange, formatNumber, levelColors, levelLabel } from '../services/sigardData'
 import 'leaflet/dist/leaflet.css'
-import { experimentalColor } from '../services/experimentalContract.mjs'
+import { differenceColor, experimentalColor } from '../services/experimentalContract.mjs'
 
 // Same city center as HealthFacilitiesMap and CitizenReportForm; independent of rural polygon extents.
 const researchInitialView = { center: [-29.418, -66.856], zoom: 13 }
@@ -29,15 +29,15 @@ function ResetView({ bounds, initialView }) {
 
 function tooltipHtml(props, view) { const value = view === 'context' ? `Percentil territorial: ${formatNumber(props.percentile, 1)}` : `Índice espacial experimental: ${formatNumber(props.experimental_spatial_score, 6)}<br/>Percentil relativo: ${formatNumber(props.percentile, 2)}`; return `<strong>Radio ${props.radio_id}</strong><br/>${value}<br/>Nivel relativo: ${levelLabel(props.relative_level)}` }
 
-function PublicRadioFocus({ feature }) {
+function PublicRadioFocus({ geometry }) {
   const map = useMap()
   useEffect(() => {
-    if (feature) map.fitBounds(L.geoJSON(feature).getBounds(), { padding: [24, 24], maxZoom: 15, animate: false })
-  }, [feature, map])
+    if (geometry) map.fitBounds(L.geoJSON(geometry).getBounds(), { padding: [24, 24], maxZoom: 15, animate: false })
+  }, [geometry, map])
   return null
 }
 
-export function TerritorialMap({ geojson, view, disclaimer, compact = false, collectionKey = '', selectedRadio, onRadioSelect, researchDetails, showData = true, statusMessage = 'Consultando scores experimentales…' }) {
+export function TerritorialMap({ geojson, view, disclaimer, compact = false, collectionKey = '', selectedRadio, onRadioSelect, researchDetails, researchMode = 'A', showData = true, statusMessage = 'Consultando scores experimentales…' }) {
   const [selected, setSelected] = useState(null)
   const controlId = useId()
   const bounds = useMemo(() => geojson ? L.geoJSON(geojson).getBounds() : null, [geojson])
@@ -57,18 +57,18 @@ export function TerritorialMap({ geojson, view, disclaimer, compact = false, col
       <MapContainer {...(initialView || { bounds })} zoomAnimation={false} scrollWheelZoom={false} className="leaflet-map">
         {!initialView && <FitBounds bounds={bounds} />}
         <ResetView bounds={bounds} initialView={initialView} />
-        {showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, fillColor: view === 'research' ? experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => {
-          layer.bindTooltip(view === 'research' ? researchTooltip(feature.properties) : tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' })
+        {showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, fillColor: view === 'research' ? researchMode === 'difference' ? differenceColor(feature.properties.difference) : experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => {
+          layer.bindTooltip(view === 'research' ? researchTooltip(feature.properties, researchMode) : tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' })
           // These views have a textual selector; avoid 263 tooltip-only tab stops.
           if (!compact) layer.on('add', () => layer.getElement()?.setAttribute('tabindex', '-1'))
           layer.on({ mouseover: (e) => e.target.setStyle({ weight: 2.5, fillOpacity: .96 }), mouseout: (e) => e.target.setStyle({ weight: 1, fillOpacity: .82 }), click: () => selectRadio(feature.properties.radio_id) })
         }} />}
-        {publicSelection && selectedFeature && <>
-          <PublicRadioFocus feature={selectedFeature} />
+        {!compact && selectedFeature && <>
+          <PublicRadioFocus geometry={selectedFeature.geometry} />
           <GeoJSON key={`selection-${selectionKey}-${selectedProps.radio_id}`} data={selectedFeature} interactive={false} style={{ color: '#123a3d', weight: 3, dashArray: '6 4', fill: false }} />
         </>}
       </MapContainer>
-      {view === 'research' ? <ResearchLegend /> : <LevelLegend view={view} />}
+      {view === 'research' ? <ResearchLegend mode={researchMode} /> : <LevelLegend view={view} />}
     </div>
     {!compact && <aside className="map-side-panel">
       {publicSelection && <div className="public-radio-control week-control">
@@ -79,8 +79,8 @@ export function TerritorialMap({ geojson, view, disclaimer, compact = false, col
         </select>
         <small id={`${controlId}-help`}>{radios.length} radios disponibles. Podés elegir un código con el teclado o seleccionar su polígono en el mapa.</small>
       </div>}
-      <div id={`${controlId}-details`} aria-live={publicSelection ? 'polite' : undefined} aria-atomic={publicSelection ? true : undefined}>
-        {!showData ? <p role="status" className="empty-panel">{statusMessage}</p> : selectedProps ? view === 'research' ? <div className="radio-details"><h2>Radio {selectedProps.radio_id}</h2><p>Score experimental: <strong>{selectedProps.score_status === 'available' ? formatNumber(selectedProps.experimental_score, 6) : 'Sin resultado disponible'}</strong></p><p>Rezagos conocidos: {selectedProps.data_availability.known_lag_count === null ? 'No utilizados por A' : `${selectedProps.data_availability.known_lag_count}/4 (retrospectivos)`}</p>{researchDetails}<p className="muted">{disclaimer}</p></div> : <RadioDetails props={selectedProps} view={view} disclaimer={disclaimer} /> : <div className="empty-panel"><svg className="empty-map-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="m3 7 8-3 10 3 8-3v21l-8 3-10-3-8 3Z" /><path d="M11 4v21M21 7v21" /></svg><strong>Seleccioná un radio</strong><p>{publicSelection ? 'Elegí un código en el selector o un polígono en el mapa para consultar los datos agregados de esta capa.' : 'Hacé clic sobre un radio para consultar los datos agregados de esta capa.'}</p></div>}
+      <div id={`${controlId}-details`} aria-live="polite" aria-atomic="true">
+        {!showData ? <p role="status" className="empty-panel">{statusMessage}</p> : selectedProps ? view === 'research' ? <div className="radio-details"><h2>Radio {selectedProps.radio_id}</h2>{researchDetails}</div> : <RadioDetails props={selectedProps} view={view} disclaimer={disclaimer} /> : <div className="empty-panel"><svg className="empty-map-icon" viewBox="0 0 32 32" aria-hidden="true"><path d="m3 7 8-3 10 3 8-3v21l-8 3-10-3-8 3Z" /><path d="M11 4v21M21 7v21" /></svg><strong>Seleccioná un radio</strong><p>{publicSelection ? 'Elegí un código en el selector o un polígono en el mapa para consultar los datos agregados de esta capa.' : 'Elegí un radio en el selector o hacé clic en el mapa para comparar A/B y consultar su historial.'}</p></div>}
       </div>
     </aside>}
   </div>
@@ -94,11 +94,24 @@ export function TopRadios({ geojson }) { const sorted = [...geojson.features].so
 
 export function BacktestChart({ rows }) { const series=[['official_cases','Oficial','real'],['rf_minimal_climate_log_delta_prediction','Random Forest','pred'],['persistence_baseline_prediction','Persistencia','base']]; const max=Math.max(...rows.flatMap((row)=>series.map(([key])=>row[key])),1); const points=(key)=>rows.map((row,i)=>`${54+i*(620/Math.max(rows.length-1,1))},${205-(row[key]/max)*165}`).join(' '); return <div className="chart-wrap"><div className="chart-legend">{series.map(([,label,cls])=><span key={label}><i className={`line-${cls}`} />{label}</span>)}</div><svg viewBox="0 0 720 245" role="img" aria-label="Comparación temporal entre casos oficiales, Random Forest y persistencia"><line x1="48" y1="205" x2="690" y2="205" stroke="currentColor" opacity=".2" />{series.map(([key,,cls])=><polyline key={key} points={points(key)} className={`${cls}-line`} fill="none" />)}{rows.map((row,i)=><text key={row.cutoff_date} x={54+i*(620/Math.max(rows.length-1,1))} y="230" textAnchor="middle">{formatDate(row.cutoff_date).slice(0,5)}</text>)}</svg></div> }
 
-function researchTooltip(props) {
+function researchTooltip(props, mode) {
   const element = document.createElement('span')
-  element.textContent = `Radio ${props.radio_id} · Score experimental: ${props.score_status === 'available' ? formatNumber(props.experimental_score, 6) : 'Sin resultado disponible'}`
+  const value = mode === 'difference' ? props.difference : props.experimental_score
+  const available = mode === 'difference' ? value !== null : props.score_status === 'available'
+  const label = mode === 'difference' ? 'Diferencia B − A' : `Score ${mode}`
+  element.textContent = `Radio ${props.radio_id} · ${label}: ${available ? `${value > 0 && mode === 'difference' ? '+' : ''}${formatNumber(value, 6)}` : 'Sin resultado disponible'}`
   return element
 }
-function ResearchLegend() {
-  return <div className="risk-legend" aria-label="Escala de score experimental"><strong>Score experimental bruto</strong>{[0, .25, .5, .75].map((v, i) => <span key={v}><i style={{ backgroundColor: experimentalColor(v) }} />{v}–{(i + 1) / 4}{i === 3 ? ' (incluye 1)' : ''}</span>)}<span><i style={{ backgroundColor: experimentalColor(null) }} />Sin resultado disponible</span><small>Intervalos fijos de amplitud 0,25 sobre el score [0,1]; el límite superior pasa al intervalo siguiente. No son umbrales sanitarios ni probabilidades reales de infección. Sin resultado no significa ausencia de casos.</small></div>
+function ResearchLegend({ mode }) {
+  const difference = mode === 'difference'
+  const levels = difference
+    ? [[-.75, '−1 a <−0,5'], [-.25, '−0,5 a <0'], [0, '0 · iguales'], [.25, '>0 a 0,5'], [.75, '>0,5 a 1']]
+    : [[0, '0 a <0,25'], [.25, '0,25 a <0,5'], [.5, '0,5 a <0,75'], [.75, '0,75 a 1']]
+  const color = difference ? differenceColor : experimentalColor
+  return <div className="risk-legend research-legend" aria-label={difference ? 'Escala divergente de diferencia B menos A' : 'Escala de score experimental'}>
+    <strong>{difference ? 'Diferencia B − A · escala fija −1 a +1' : `Score del Modelo ${mode} · escala fija 0 a 1`}</strong>
+    {levels.map(([value, label]) => <span key={value}><i style={{ backgroundColor: color(value) }} />{label}</span>)}
+    <span><i style={{ backgroundColor: color(null) }} />Sin resultado disponible</span>
+    <small>{difference ? 'Negativo: B menor · positivo: B mayor. Sólo resta de scores; no es un cambio sanitario.' : 'Mismos intervalos en A y B. Scores sin calibración epidemiológica; no son umbrales sanitarios.'} Ausencia de resultado no significa cero ni ausencia de casos.</small>
+  </div>
 }

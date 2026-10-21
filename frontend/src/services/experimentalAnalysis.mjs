@@ -11,6 +11,31 @@ export const metricDefinitions = [
 
 export const partitionNames = { train: 'Entrenamiento', validation: 'Validación ya examinada', test: 'Prueba ya examinada' }
 export const formatScore = value => value === null || value === undefined ? 'No disponible' : new Intl.NumberFormat('es-AR', { minimumFractionDigits: 3, maximumFractionDigits: 4 }).format(value)
+export function formatDifference(value) {
+  if (value === null || value === undefined) return 'No disponible'
+  if (value !== 0 && Math.abs(value) < .000001) return `${value > 0 ? '+' : '−'}<0,000001`
+  return new Intl.NumberFormat('es-AR', { minimumFractionDigits: 6, maximumFractionDigits: 6, signDisplay: 'exceptZero' }).format(value)
+}
+
+export function summarizeMetrics(partition) {
+  const a = partition.models.find(m => m.model_id === 'A')?.metrics
+  const b = partition.models.find(m => m.model_id === 'B')?.metrics
+  const favored = { A: [], B: [] }, tied = [], missing = []
+  for (const metric of metricDefinitions) {
+    const av = a?.[metric.key], bv = b?.[metric.key]
+    if (!Number.isFinite(av) || !Number.isFinite(bv)) { missing.push(metric.label); continue }
+    if (av === bv) { tied.push(metric.label); continue }
+    const id = (metric.key === 'brier' ? av < bv : av > bv) ? 'A' : 'B'
+    favored[id].push(metric.label)
+  }
+  const parts = ['Síntesis de la partición seleccionada.']
+  for (const id of ['A', 'B']) if (favored[id].length) parts.push(`Los valores favorecen a ${id} en ${favored[id].join(', ')}.`)
+  if (favored.A.length && favored.B.length) parts.push('Hay un compromiso entre métricas: no hay un ganador general.')
+  if (tied.length) parts.push(`Igualdad en ${tied.join(', ')}.`)
+  if (missing.length) parts.push(`Sin comparación disponible en ${missing.join(', ')}.`)
+  parts.push('Esto describe acuerdo con etiquetas experimentales, sin acreditar superioridad epidemiológica ni calibración.')
+  return parts.join(' ')
+}
 function check(value) { if (!value) throw new Error('Contrato de análisis incompatible; consulta bloqueada.') }
 function keys(value, expected) { check(value && Object.keys(value).sort().join('|') === [...expected].sort().join('|')) }
 

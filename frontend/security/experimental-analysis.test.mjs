@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { metricDefinitions, validateEvaluation, validateHistory, scoreSegments, formatScore } from '../src/services/experimentalAnalysis.mjs'
+import { metricDefinitions, validateEvaluation, validateHistory, scoreSegments, formatScore, formatDifference, summarizeMetrics } from '../src/services/experimentalAnalysis.mjs'
 
 const schema = 'sigard-retrospective-spatial-score/1'
 const versions = { A: ['spatial_rf_05c_v1', 'official-spatial-rf-research-0.5c.0'], B: ['spatial_rf_B_05f_v1', 'official-spatial-rf-B-research-0.5f.0'] }
@@ -10,6 +10,27 @@ const weeks = starts.map((day, i) => ({ target_week_start: new Date(Date.UTC(202
   evaluation_partition: i < 8 ? 'train' : i < 16 ? 'validation' : 'test' }))
 const models = ['A', 'B'].map(id => ({ model_id: id, experiment_id: versions[id][0], training_version: versions[id][1], weeks }))
 const catalog = { schema_version: schema, models }
+
+test('metric synthesis follows each direction, preserves missing metrics and describes tradeoffs', () => {
+  const partition = evaluation().partitions[0]
+  const original = structuredClone(partition)
+  assert.match(summarizeMetrics(partition), /favorecen a A en Brier/)
+  assert.match(summarizeMetrics(partition), /favorecen a B en/)
+  assert.match(summarizeMetrics(partition), /no hay un ganador general/)
+  assert.deepEqual(partition, original)
+  partition.models[1].metrics = { ...partition.models[0].metrics }
+  assert.match(summarizeMetrics(partition), /Igualdad/)
+  assert.doesNotMatch(summarizeMetrics(partition), /favorecen/)
+  partition.models[1].metrics.precision = null
+  assert.match(summarizeMetrics(partition), /Sin comparación disponible en Precisión/)
+  partition.models[1].metrics.recall = .1
+  assert.match(summarizeMetrics(partition), /favorecen a A en Sensibilidad/)
+  assert.equal(formatDifference(null), 'No disponible')
+  assert.equal(formatDifference(0), '0,000000')
+  assert.equal(formatDifference(.5), '+0,500000')
+  assert.equal(formatDifference(-.5), '-0,500000')
+  assert.equal(formatDifference(-1e-9), '−<0,000001')
+})
 function evaluation() {
   return { schema_version: 'sigard-retrospective-spatial-evaluation/1', calendar_version: 'ar-snvs-2020-2026-v1', coverage_scenario: 'spatial_assumed_2024_v1',
     coverage_verified: false, retrospective: true, previously_examined: true, operational_use_authorized: false, publication_authorized: false,

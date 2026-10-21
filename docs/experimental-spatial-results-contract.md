@@ -173,13 +173,31 @@ retrospective_only_no_operational_forecast
    Las únicas geometrías permitidas en una capa separada son polígonos censales
    aprobados y versionados; nunca unir residencias o puntos sanitarios individuales.
 
-## Presentación relativa futura
+## Presentación territorial y comparación local
 
 La primera interfaz usa **intervalos fijos del score bruto**, no percentiles:
 [0;0,25), [0,25;0,50), [0,50;0,75), [0,75;1]. Los colores violetas no corresponden
 a las categorías sanitarias ni a los niveles de la simulación del MVP. Gris indica
 score no calculado; nunca ausencia de casos. Se mantiene el valor bruto en el
 detalle y se explican los intervalos en la leyenda.
+
+El panel ofrece un único mapa con modos A, B y **Diferencia B − A**. Carga las
+colecciones autorizadas de ambos modelos para la misma semana, valida identidad,
+calendario y partición contra el catálogo y une por radio canónico. El detalle
+del radio reutiliza esas mismas filas; no necesita otra consulta de comparación.
+El cambio de vista conserva semana y selección. Las respuestas de semanas
+anteriores se cancelan e ignoran; un fallo de B no oculta un score válido de A.
+
+La diferencia sólo se calcula si ambos scores están disponibles y validados.
+No se imputa cero. Escala divergente fija y simétrica: azul intenso [-1;−0,5),
+azul claro [−0,5;0), blanco para cero, ocre claro (0;0,5] y ocre intenso (0,5;1].
+Gris distingue score ausente, modelo/semana no disponible o consulta bloqueada,
+con la causa en el panel. El signo positivo indica B mayor; negativo, B menor.
+La resta es una transformación visual en memoria, sin endpoint nuevo, persistencia,
+exportación ni publicación. No es una predicción nueva, incidencia, cantidad de
+casos ni cambio del riesgo sanitario. La síntesis de desempeño compara únicamente
+las seis métricas congeladas de la partición elegida y respeta sus direcciones;
+no recalcula métricas ni selecciona un ganador general.
 
 El score no es cantidad de casos, incidencia, probabilidad calibrada de dengue
 ni nivel de riesgo sanitario. Mantener visible el valor bruto y la advertencia

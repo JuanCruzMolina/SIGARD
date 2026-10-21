@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { experimentalColor, isLocalResearchContext, validateCatalog, validateScores, validateComparison, joinExperimentalGeometry } from '../src/services/experimentalContract.mjs'
+import { differenceColor, scoreDifference, joinComparisonGeometry, experimentalColor, isLocalResearchContext, validateCatalog, validateScores, validateComparison, joinExperimentalGeometry } from '../src/services/experimentalContract.mjs'
 
 const schema = 'sigard-retrospective-spatial-score/1'
 const models = ['A', 'B'].map(id => ({ model_id: id,
@@ -56,6 +56,20 @@ test('A/B comparison requires equivalent identities and two available scores', (
   validateComparison(value, { models }, '000001', '2024-01-07')
   value.results[1].target_week_start = '2024-01-14'
   assert.throws(() => validateComparison(value, { models }, '000001', '2024-01-07'))
+})
+
+test('calendar and partition metadata must match before comparing frozen scores', () => {
+  const meta = { target_week_start: '2024-01-07', target_week_end: '2024-01-13', target_epidemiological_year: 2024, target_epidemiological_week: 2, evaluation_partition: 'train' }
+  const model = { ...models[0], weeks: [meta] }
+  const value = { ...collection(), ...meta }
+  validateScores(value, model, meta.target_week_start, ['000001'])
+  for (const field of ['target_week_end', 'target_epidemiological_year', 'target_epidemiological_week', 'evaluation_partition']) {
+    assert.throws(() => validateScores({ ...value, [field]: 'incompatible' }, model, meta.target_week_start, ['000001']))
+  }
+  const catalog = { schema_version: schema, models: models.map(m => ({ ...m, weeks: Array.from({ length: 20 }, (_, i) => ({ ...meta, target_week_start: `2024-01-${String(i + 1).padStart(2, '0')}` })) })) }
+  validateCatalog(catalog)
+  catalog.models[1].weeks[0].evaluation_partition = 'test'
+  assert.throws(() => validateCatalog(catalog))
 })
 
 test('map joins by canonical radio and updates scores and target when the selection changes', () => {
@@ -212,6 +226,8 @@ test('experimental selectors and radio comparison work after automatic catalog l
   state.scores = async (model, week, ids) => {
     state.calls.push(`${model.model_id}/${week}`)
     assert.deepEqual(ids, radios)
+    if (state.pauseScores) await new Promise(resolve => state.pending.push({ week, model: model.model_id, resolve }))
+    if (state.failModel === model.model_id) throw Error('Error ficticio de scores')
     return { ...collection(model.model_id, model.model_id === 'A' ? .2 : .4), target_week_start: week,
       rows: ids.map(id => ({ ...collection(model.model_id).rows[0], radio_censal: id,
         experimental_score: model.model_id === 'A' ? .2 : .4 })) }
@@ -304,13 +320,72 @@ test('experimental selectors and radio comparison work after automatic catalog l
     }
     find(n => n.type === 'map').props.onRadioSelect(radios[2])
     await settle()
-    assert.equal(state.calls.at(-1), `/comparison/${weeks.at(-1).target_week_start}/${radios[2]}`)
-    const details = JSON.stringify(find(n => n.type === 'map').props.researchDetails)
-    assert.ok(details.includes('Modelo ') && details.includes('0.2') && details.includes('0.4'))
+    const count = state.calls.length
+    assert.equal(find(n => n.props?.id === 'research-radio').props.value, radios[2])
+    let details = find(n => n.type === 'map').props.researchDetails
+    assert.equal(details.props.feature.properties.model_a.experimental_score, .2)
+    assert.equal(details.props.feature.properties.model_b.experimental_score, .4)
+    for (const mode of ['difference', 'B', 'A', 'difference']) {
+      find(n => n.props?.id === 'research-model').props.onChange({ target: { value: mode } })
+      await settle()
+      assert.equal(find(n => n.props?.id === 'research-week').props.value, weeks.at(-1).target_week_start)
+      assert.equal(find(n => n.type === 'map').props.geojson.features[2].properties.difference, .2)
+    }
+    find(n => n.props?.id === 'research-radio').props.onChange({ target: { value: radios[1] } })
+    await settle()
+    assert.equal(find(n => n.type === 'map').props.selectedRadio, radios[1])
+    assert.equal(state.calls.length, count, 'mode and radio reuse the validated weekly collections')
+
+    // Resolve superseded requests after the latest ones; the stub deliberately ignores abort.
+    state.pauseScores = true; state.pending = []
+    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[0].target_week_start } })
+    await settle()
+    assert.equal(find(n => n.type === 'map').props.showData, false)
+    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[1].target_week_start } })
+    await settle()
+    assert.equal(state.pending.length, 4)
+    state.pending.slice(2).forEach(p => p.resolve())
+    await settle()
+    assert.equal(find(n => n.type === 'map').props.showData, true)
+    state.pending.slice(0, 2).forEach(p => p.resolve())
+    await settle()
+    assert.ok(find(n => n.type === 'map').props.geojson.features.every(f => f.properties.target_week_start === weeks[1].target_week_start))
+
+    state.pauseScores = false; state.failModel = 'B'
+    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[2].target_week_start } })
+    await settle()
+    const partial = find(n => n.type === 'map').props.geojson.features[1].properties
+    assert.equal(partial.model_a.experimental_score, .2)
+    assert.equal(partial.model_b, undefined)
+    assert.equal(partial.difference, null)
+    assert.ok(find(n => n.props?.role === 'alert'))
+    state.failModel = null
+    find(n => n.type === 'button' && n.props.children === 'Reintentar scores').props.onClick()
+    await settle()
+    assert.equal(find(n => n.type === 'map').props.geojson.features[1].properties.difference, .2)
+    assert.equal(find(n => n.props?.role === 'alert'), undefined)
     assert.ok(!JSON.stringify(tree).match(/Autorizar|Windows|contraseña|token|Desconectar/))
     assert.ok(!state.calls.some(path => path.includes('/session')))
   } finally {
     for (const slot of state.slots) slot?.cleanup?.()
     delete globalThis.__sigardExperimentalFlow
   }
+})
+
+test('difference has fixed divergent signs, real zero and missing values; source rows stay intact', () => {
+  const row = value => ({ score_status: value === null ? 'not_computed' : 'available', experimental_score: value })
+  for (const [a, b, expected] of [[.25, .75, .5], [.75, .25, -.5], [0, 0, 0], [1, 0, -1], [0, 1, 1], [null, 0, null], [1, null, null]]) {
+    assert.equal(scoreDifference(row(a), row(b)), expected)
+  }
+  assert.equal(scoreDifference(undefined, row(0)), null)
+  assert.equal(new Set([differenceColor(-1), differenceColor(-.5), differenceColor(0), differenceColor(.5), differenceColor(1), differenceColor(null)]).size, 6)
+  assert.equal(differenceColor(-.5), differenceColor(-.001))
+  assert.equal(differenceColor(.5), differenceColor(.001))
+  const geometry = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Polygon', coordinates: [] }, properties: { radio_id: '000001' } }] }
+  const values = { A: { value: collection('A', 0) }, B: { value: collection('B', null) } }
+  const before = structuredClone({ geometry, values })
+  const joined = joinComparisonGeometry(geometry, values, '2024-01-07', 'difference')
+  assert.equal(joined.features[0].properties.difference, null)
+  assert.deepEqual({ geometry, values }, before)
+  assert.equal(joinComparisonGeometry(geometry, values, '2024-01-07', 'A').features[0].properties.experimental_score, 0)
 })

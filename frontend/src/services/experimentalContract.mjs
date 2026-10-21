@@ -10,11 +10,17 @@ export function isLocalResearchContext(env, origin) {
 export function validateCatalog(catalog) {
   check(catalog?.schema_version === schema && Array.isArray(catalog.models) && catalog.models.length > 0 && catalog.models.length <= 2)
   check(new Set(catalog.models.map(m => m.model_id)).size === catalog.models.length)
+  const calendar = new Map()
   for (const m of catalog.models) {
     check(versions[m.model_id]?.[0] === m.experiment_id && versions[m.model_id]?.[1] === m.training_version)
     check(Array.isArray(m.weeks) && m.weeks.length === 20)
     check(new Set(m.weeks.map(w => w.target_week_start)).size === 20)
-    for (const w of m.weeks) check(/^2024-\d{2}-\d{2}$/.test(w.target_week_start) && Number.isInteger(w.target_epidemiological_week))
+    for (const w of m.weeks) {
+      check(/^2024-\d{2}-\d{2}$/.test(w.target_week_start) && Number.isInteger(w.target_epidemiological_week))
+      const previous = calendar.get(w.target_week_start)
+      if (previous) for (const key of ['target_week_end', 'target_epidemiological_year', 'target_epidemiological_week', 'evaluation_partition']) check(previous[key] === w[key])
+      calendar.set(w.target_week_start, w)
+    }
   }
   return catalog
 }
@@ -22,6 +28,8 @@ export function validateCatalog(catalog) {
 export function validateScores(collection, model, week, radios) {
   check(collection?.schema_version === schema && collection.model_id === model.model_id && collection.experiment_id === model.experiment_id && collection.training_version === model.training_version)
   check(collection.target_week_start === week && collection.calendar_version === 'ar-snvs-2020-2026-v1' && collection.territory_version === 'capital-census-2022-public-v1')
+  const metadata = model.weeks?.find(w => w.target_week_start === week)
+  if (metadata) for (const key of ['target_week_end', 'target_epidemiological_year', 'target_epidemiological_week', 'evaluation_partition']) check(collection[key] === metadata[key])
   check(collection.data_kind === 'official_experimental_retrospective' && collection.score_semantics === 'raw_class_1_score_uncalibrated')
   check(collection.retrospective === true && collection.operational_use_authorized === false && collection.publication_authorized === false && collection.coverage_verified === false && collection.previously_examined === true)
   check(collection.coverage_scenario === 'spatial_assumed_2024_v1' && Array.isArray(collection.interpretation_limitations) && collection.interpretation_limitations.length === 10)
@@ -39,6 +47,37 @@ export function validateScores(collection, model, week, radios) {
 export function experimentalColor(score) {
   if (score === null || score === undefined) return '#aab2ba'
   return ['#e2dcf2', '#b29fd6', '#8160b3', '#543583'][Math.min(3, Math.floor(score * 4))]
+}
+
+// Presentation only: consume validated frozen rows, never impute an absent score.
+export function scoreDifference(a, b) {
+  return a?.score_status === 'available' && b?.score_status === 'available'
+    && Number.isFinite(a.experimental_score) && Number.isFinite(b.experimental_score)
+    ? b.experimental_score - a.experimental_score : null
+}
+
+export function differenceColor(value) {
+  if (value === null || value === undefined) return '#aab2ba'
+  if (value === 0) return '#fffefa'
+  if (value < 0) return value < -.5 ? '#236b88' : '#b4d8e8'
+  return value > .5 ? '#99501b' : '#efc391'
+}
+
+export function joinComparisonGeometry(geometry, collections, week, mode) {
+  const maps = Object.fromEntries(['A', 'B'].map(id => [id,
+    new Map((collections[id]?.value?.rows || []).map(row => [row.radio_censal, row]))]))
+  return { type: 'FeatureCollection', features: geometry.features.map(feature => {
+    const id = feature.properties.radio_id
+    const a = maps.A.get(id), b = maps.B.get(id)
+    const difference = scoreDifference(a, b)
+    const row = mode === 'difference' ? null : maps[mode].get(id)
+    return { type: 'Feature', geometry: feature.geometry, properties: {
+      radio_id: id, target_week_start: week, research_mode: mode,
+      experimental_score: row?.score_status === 'available' ? row.experimental_score : null,
+      score_status: row?.score_status || 'not_computed', difference,
+      model_a: a, model_b: b,
+    } }
+  }) }
 }
 
 export function validateComparison(value, catalog, radio, week) {

@@ -4,6 +4,65 @@ Cierre funcional del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo aca
 no sistema sanitario operativo. Esta matriz contrasta documentación con código;
 no toma los estados históricos del plan como prueba de implementación.
 
+## Panel territorial A/B y demostración académica — 21/10/2026
+
+Se amplió la interfaz existente, sin nuevos modelos ni cambios del backend:
+
+- Un solo mapa con **Modelo A**, **Modelo B** y **Diferencia B − A**. A/B usan
+  los mismos intervalos [0,1]; la resta usa una escala divergente fija [−1,1],
+  cero independiente y gris para ausencia. Sólo se restan scores validados de
+  la misma semana/radio; la diferencia existe en memoria y no se guarda/exporta.
+- Selección compartida entre mapa y selector textual, foco/contorno del polígono,
+  semana conservada entre vistas y detalle con ambos scores, resta, disponibilidad
+  y contexto. Las colecciones semanales alimentan mapa y detalle sin otra petición
+  por radio. Cancelación y claves de consulta impiden mostrar respuestas obsoletas.
+  Si falla un modelo se conserva el resultado válido del otro; se ofrece reintento.
+- Seis métricas congeladas por partición, direcciones de interpretación y síntesis
+  construida desde los valores disponibles, con empates, faltantes y compromisos.
+  Brier menor es mejor; las restantes mayor es mejor. Sin ganador general cuando
+  se contradicen, sin baseline inventado, umbral nuevo o métricas recalculadas.
+- Orientación desplegable, controles, mapa/detalle, desempeño, evolución y
+  metodología/procedencia. Se aclaran variables de A/B y el uso de etiquetas
+  provisionales por ambos. Los límites esenciales quedan visibles al inicio.
+  El MVP sintético/contexto sigue accesible; producción conserva su entrada pública.
+
+**Comprobado:** 18 pruebas de investigación/presentación, 5 del mapa público,
+15 de recursos públicos, 18 del coordinador, lint/build y auditoría estática de
+seguridad. Backend aislado: **177 aprobadas, 6 omitidas de PostgreSQL**;
+se conservan avisos de deprecación existentes. `git diff --check` aprobado.
+La prueba Windows de cierre de procesos necesitó repetición fuera del sandbox;
+pasó y se cerró el árbol propio del intento fallido. Ese intento no se cuenta
+como aprobado. El cierre del coordinador también necesitó limpieza fuera del
+sandbox: se cerró exclusivamente su API propia y se comprobaron libres 5173,
+5174 y 8765 al terminar.
+
+Chromium comprobó el inicio real con `npm.cmd run dev` desde `frontend`, los tres
+modos, misma semana/radio, historial, métricas/particiones, MVP y dashboard.
+En una pestaña separada con geometrías/IDs/scores enteramente ficticios se
+verificaron signos, cero, faltantes, error parcial de API, reintentos, catálogo y
+métricas ausentes, respuestas tardías de semanas/historial y selección por teclado.
+Panel real y ficticio revisados a **1440/390 px**, sin desbordamiento horizontal
+ni leyenda superpuesta; gráfico y tabla temporal permiten desplazamiento interno.
+Capturas ficticias y recibo técnico ignorados en `frontend/.tmp/research-panel/`.
+El preview de producción mantuvo dashboard/mapa público sin controles ni peticiones
+A/B. No se guardaron respuestas o diferencias de los resultados reales.
+El inventario protegido de 745 archivos mantuvo tamaños y fechas; los diez
+recursos públicos conservaron sus hashes aprobados. La API aplicó sus controles
+de integridad habituales durante las lecturas autorizadas.
+
+**Límites:** no acredita lector de pantalla, móvil físico, epidemiología ni PostGIS
+actual. Los recursos externos se bloquearon en el navegador de prueba; no se
+verificó disponibilidad de fuentes remotas. No se inició Docker, no se accedió
+a 5432, no se entrenó ni ejecutó inferencia o auditoría científica. No se
+modificaron artefactos, cartografía ni recursos públicos. Se conserva el alcance
+global de 15 completas, ocho parciales y tres bloqueadas.
+
+El recorrido reproducible está en `frontend/scripts/research-panel.browser.mjs`:
+con el coordinador activo y Puppeteer existente, ejecutar desde la raíz
+`node frontend/scripts/research-panel.browser.mjs`; si no se resuelve el módulo,
+indicar su ruta mediante `SIGARD_BROWSER_MODULE`. No instala dependencias,
+usa puertos fijos locales y cierra su navegador/preview, sin detener el coordinador.
+
 ## Referencias y criterio
 
 El plan cita `SIGARD_Requerimientos_LineaBase_v0.1.md` y

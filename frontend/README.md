@@ -100,6 +100,21 @@ modelo o semana; **Ver evolución temporal** muestra sus scores ya calculados,
 con una tabla desplegable de valores y huecos en semanas sin resultado.
 Los identificadores técnicos quedan en un detalle secundario.
 
+**Vista del mapa** permite alternar A, B y **Diferencia B − A**, conservando
+semana y radio. La diferencia sólo resta dos scores disponibles y validados:
+azul es B menor, ocre B mayor, blanco igualdad y gris ausencia. No se guarda ni
+equivale a casos/incidencia/riesgo sanitario. El detalle y el mapa comparten los
+scores; las respuestas tardías se descartan. La síntesis de desempeño sigue las
+métricas de cada partición, sus direcciones y compromisos, sin un ganador fijo.
+
+Recorrido de navegador del panel, desde la raíz con `npm run dev` ya activo:
+`node frontend/scripts/research-panel.browser.mjs`. Requiere Puppeteer existente
+(o su ruta en `SIGARD_BROWSER_MODULE`), sin instalar dependencias. Comprueba el
+panel real y una pestaña separada con polígonos/scores ficticios, errores,
+respuestas tardías, teclado y 1440/390 px. Capturas exclusivamente ficticias y
+recibo en `frontend/.tmp/research-panel/`; también verifica preview en 5174 y lo
+cierra al terminar. No inicia Docker ni accede a PostgreSQL.
+
 El panel es exclusivo de la API local: no agrega resultados experimentales a
 `public/` ni al build estático. Sin métricas autorizadas, muestra su ausencia
 y mantiene disponible el mapa. Son scores sin calibración clínica y evaluación
