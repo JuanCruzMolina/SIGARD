@@ -58,7 +58,81 @@ reportes ciudadanos y administración del puerto 8000 sigue siendo independiente
 Este comando sólo coordina desarrollo: build, preview y producción conservan
 su comportamiento. Ver también la [guía experimental](../docs/experimental-spatial-local.md).
 
-Copiar `.env.example` a `.env` y configurar `VITE_API_URL`. Para producción, la
+### Demostración integral descartable
+
+Desde `frontend/`:
+
+```powershell
+npm run dev:demo
+```
+
+Desde la raíz: `npm.cmd --prefix frontend run dev:demo`. Requiere las mismas
+dependencias del inicio habitual; no instala otras ni modifica producción.
+Coordina Vite **127.0.0.1:5173**, investigación A/B **127.0.0.1:8765** y una
+segunda FastAPI ciudadana/administrativa en **127.0.0.1:8766**. Comprueba los
+puertos y requisitos antes de iniciar. Sólo puede reutilizar la API A/B tras
+verificar su contrato y protección local. Nunca reutiliza 8766 ni detiene un
+servicio desconocido. `npm run dev` conserva únicamente Vite + A/B.
+
+Abrir **http://127.0.0.1:5173/**. La franja **Demo integral** enlaza al reporte y
+seguimiento en `/prevencion` y a `/admin/reportes`. El usuario y la contraseña
+de administrador se generan nuevamente por sesión y se muestran una sola vez
+en la terminal local. Copiarlos al login sin guardarlos, fotografiarlos ni
+incluirlos en grabaciones/informes. No hay contraseña predeterminada ni acceso
+sin autenticación; se mantienen permisos, revocación y límites existentes.
+
+El proceso `app/demo_local.py` reutiliza `app.main`, modelos y contratos de la
+fixture SQLite existente; no crea otro circuito de reportes. Arranca con Python
+aislado, configuración sólo por parámetros internos, sin leer `.env`, secretos
+guardados o `DATABASE_URL` heredada. Un guard rechaza otros drivers/archivos antes
+de crear el engine y otro impide conexiones SQLAlchemy ajenas al SQLite propio.
+No conecta a PostgreSQL. La base comienza vacía, con una sola cuenta inventada,
+en `backend/.tmp/sigard-demo-*/demo.sqlite3`, excluida de Git.
+
+Sólo este coordinador activa la marca interna de demo y la URL ciudadana 8766.
+El MVP/contexto usa directamente el respaldo estático aprobado, sin consultar
+otra API pública; A/B mantiene sus solicitudes protegidas e integridad habitual.
+Los reportes no alimentan modelos ni aparecen en el mapa A/B. Los centros de
+salud conservan sus fuentes/límites de vigencia y son contexto público, no datos
+ficticios. No se cargan modelos serializados ni se recalculan scores/métricas.
+
+La demo deshabilita geocodificación y geolocalización; elegí un punto manual
+ficticio con clic o Tab/flechas/Enter sobre el mapa. El servidor también bloquea
+la ruta del geocodificador. Se omiten teselas y la fuente tipográfica remotas
+únicamente durante esta sesión; polígonos, marcadores, listado y selector manual
+funcionan sin Internet. Los enlaces externos voluntarios conservan sus destinos.
+
+**Recorrido:** mapa/semana/radio A/B → prevención/directorio → reporte inventado
+→ código de seguimiento → login demo → revisar/actualizar → consultar el mismo
+código y ver el mensaje público. Sólo la administración ve el detalle privado.
+
+**Ctrl+C** cierra los procesos propios, espera al cierre de SQLite y elimina su
+directorio, también ante fallos de inicio. Una API A/B previamente reutilizada
+permanece activa. Al reiniciar cambian cuenta, contraseña y clave de tokens; los
+reportes anteriores no existen. La eliminación se garantiza en el cierre
+coordinado; una caída del sistema o terminación forzada del coordinador puede
+dejar un directorio temporal ignorado. Nunca se recupera/reutiliza como sesión.
+No abrir dos demos ni ejecutar sus pruebas simultáneamente: comparten puertos.
+
+Pruebas reproducibles, con los puertos libres:
+
+```powershell
+npm run test:demo
+npm run build
+npm run test:demo:browser
+```
+
+La prueba de navegador requiere Puppeteer ya disponible (o su ruta en
+`SIGARD_BROWSER_MODULE`). Inicia las API reales y Vite, comprueba A/B, reporte,
+seguimiento, administración, reinicio vacío, cierre, ruta del inicio habitual
+y preview de producción. No simula respuestas HTTP ni guarda credenciales,
+códigos, reportes o resultados A/B. Sólo conserva capturas de la interfaz vacía
+y un recibo de comprobaciones en `frontend/.tmp/demo-ui/`. La selección aislada
+`backend/tests/demo_isolated.py` prueba configuración hostil, guards SQLite,
+autenticación y geocodificador bloqueado. No usa Docker ni evalúa ML.
+
+Copiar `.env.example` a `.env` y configurar `VITE_API_URL` **para el modo habitual
+o producción; no es necesario en `dev:demo`**. Para producción, la
 SPA puede desplegarse en Vercel y debe apuntar a una API FastAPI servida por
 HTTPS. Los datos sanitarios estáticos se cargan desde `public/data/` y se
 validan antes de mostrarse. El directorio contiene 24 CAPS públicos y 3

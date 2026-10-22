@@ -14,6 +14,10 @@ Estas reglas se aplican a todo el repositorio.
   sin pedir confirmación; ante un bloqueo, continuar partes independientes.
 - Desarrollo local: `npm.cmd --prefix frontend run dev`. No iniciar frontend,
   modelos o servicios si no son necesarios para el objetivo.
+- Demo integral: `npm.cmd --prefix frontend run dev:demo` agrega API ciudadana
+  ficticia en 127.0.0.1:8766 con SQLite temporal y cuenta generada por sesión.
+  Ctrl+C elimina sus datos; `dev` conserva sólo frontend + A/B. No ejecutar demos
+  y pruebas de demo simultáneamente; no guardar las credenciales de terminal.
 - Backend aislado, sin `.env` ni PostgreSQL:
   `.\backend\.venv\Scripts\python.exe -B backend/tests/publication_isolated.py`;
   agregar `--backend-regression` para la regresión backend.

@@ -209,104 +209,104 @@ Salvo los README indicados, las fuentes están en `docs/`. Las variables de A/B 
 
 ## 8. Guion académico de siete minutos
 
-**0:00–0:45 — Presentación y alcance.** Ejecutar `npm.cmd run dev` desde
-`frontend` y abrir `http://127.0.0.1:5173/`: ingresa directamente al panel A/B.
-«SIGARD es un prototipo de tesis para explorar información territorial y modelos
-experimentales de presencia provisional en la semana siguiente. Estamos
-consultando resultados retrospectivos congelados, sin generar predicciones
-nuevas ni habilitar decisiones sanitarias». Señalar la advertencia y abrir
-**Recorrido para explorar y presentar el panel** si hace falta orientación.
+**0:00–0:30 — Inicio y alcance.** Ejecutar `npm run dev:demo` desde `frontend`
+y abrir `http://127.0.0.1:5173/`. Esperar **Listo**; conservar la cuenta de sesión
+sólo en la terminal, fuera de capturas, grabaciones e informes. «SIGARD es un
+prototipo académico. A/B consulta resultados retrospectivos congelados de
+presencia provisional en t+1; no genera predicciones nuevas ni habilita decisiones
+sanitarias. Los reportes y cuentas de esta sesión son inventados y temporales».
 
-**0:45–2:00 — Misma semana, modelos A y B.** Elegir una semana objetivo y
-**Modelo A** en **Vista del mapa**; después cambiar a **Modelo B**.
-«La semana se conserva. A usa variables territoriales y temporales; B añade
-antecedentes experimentales de dengue de las cuatro semanas anteriores y sus
-indicadores de faltantes. Ambos se entrenaron con etiquetas epidemiológicas
-provisionales: A también aprendió de esas etiquetas. El violeta representa
-intervalos fijos del score [0,1], iguales en ambas vistas. No son probabilidades
-clínicas calibradas ni categorías de riesgo sanitario».
+**0:30–2:00 — Mapa A/B y radio.** Elegir una semana objetivo, alternar **Modelo A**,
+**Modelo B** y **Diferencia B − A**. Seleccionar un radio por polígono o selector;
+conservar la misma semana/radio. «A usa territorio y calendario; B añade cuatro
+antecedentes experimentales y sus indicadores de faltantes. Ambos aprendieron
+de etiquetas provisionales. Violeta usa intervalos fijos del score [0,1], no
+probabilidades clínicas calibradas. En la resta, azul indica B menor, ocre mayor,
+blanco igualdad y gris ausencia, nunca cero ni ausencia de casos». Mostrar ambos
+scores sin elegir ejemplos por supuesto riesgo ni guardar resultados privados.
 
-**2:00–3:15 — Diferencia territorial y consulta del radio.** Elegir
-**Diferencia B − A**, manteniendo la semana. Seleccionar un polígono o usar
-**Radio censal** con el teclado; señalar el contorno y el selector sincronizados.
-«Azul significa que B tiene un score menor, ocre mayor y blanco igualdad.
-Gris significa que no hay dos resultados disponibles, nunca cero ni ausencia
-de casos. Sólo se restan dos scores congelados del mismo radio y semana; no es
-un aumento de incidencia o riesgo sanitario». Mostrar identificación, semana,
-ambos scores, signo de la resta y disponibilidad. No elegir ejemplos por
-supuesto riesgo ni presentar ubicaciones reales de casos.
+**2:00–2:45 — Historial y métricas.** Abrir **Ver evolución temporal**, señalar
+los huecos sin interpolación y consultar valores por semana. En **Análisis de
+modelos**, recorrer entrenamiento, validación y prueba ya examinadas. «Brier
+menor es mejor; las otras cinco métricas se interpretan en dirección mayor-mejor.
+Son métricas guardadas, con umbral experimental 0,5 y sin ganador general cuando
+hay compromisos. No acreditan evaluación futura ni epidemiología». Mantener
+visibles límites de cobertura y disponibilidad histórica; no inventar baselines.
 
-**3:15–4:00 — Evolución temporal.** Seguir **Consultar evolución de este radio**
-y pulsar **Ver evolución temporal**. «El historial pertenece al radio seleccionado;
-la línea vertical marca la semana elegida. Los huecos son semanas/valores sin
-resultado, incluidas las purgadas; no se interpolan». Abrir **Consultar valores
-por semana**; en móvil mostrar su desplazamiento interno. Cambiar radio y
-comprobar que título y valores acompañan la selección.
+**2:45–3:15 — Separar dominios.** Mostrar **MVP sintético y contexto** y volver
+a A/B. «El contexto censal describe el territorio; la simulación del MVP es
+sintética y tiene otro objetivo. Los reportes ciudadanos que crearemos no son
+casos de dengue, no alimentan modelos y no se publican en este mapa». FastAPI
+lee resultados existentes; Python prepara/entrena offline. Vercel aloja sólo
+frontend. La demo usa dos API independientes y SQLite, sin Docker/PostgreSQL.
 
-**4:00–5:15 — Desempeño y límites.** En **Análisis de modelos**, comparar
-entrenamiento, validación y prueba ya examinadas. «Precisión, sensibilidad,
-F1, Average Precision y ROC-AUC se interpretan en dirección mayor-mejor;
-Brier, menor-mejor. La síntesis se construye con las métricas de esta partición
-y describe compromisos, sin declarar un ganador general si se contradicen.
-Se conserva el umbral experimental 0,5; no se recalculan métricas. El baseline
-y la robustez no están disponibles en este contrato». Abrir **Metodología y
-limitaciones de A/B**: positivos provisionales, negativos asumidos, cobertura
-no acreditada y disponibilidad histórica incompleta/no acreditada. La prueba
-ya examinada no acredita evaluación futura independiente.
+**3:15–4:00 — Prevención y directorio.** Ir a **Prevención y ayuda**; explorar
+recomendaciones, filtro/listado de centros y un marcador. «Son fuentes públicas
+de contexto, no establecimientos inventados ni disponibilidad actual acreditada.
+El aviso de vigencia permanece. El mapa no necesita teselas externas en demo».
+No activar teléfonos ni enlaces remotos durante la exposición.
 
-**5:15–6:15 — Separación del MVP y arquitectura.** Volver arriba y elegir
-**MVP sintético y contexto**; alternar contexto territorial y simulación.
-«El contexto describe el territorio censal; la simulación espacial anterior es
-sintética y tiene otro objetivo. No corresponde a los scores A/B ni a casos
-observados por radio». El menú **Situación actual** conserva el dashboard.
-En **Cómo funciona**, explicar que Python prepara/entrena offline, FastAPI
-lee resultados guardados y React/Vite/Leaflet los presenta. Vercel aloja sólo
-frontend; la demostración A/B local no precisa Docker ni PostgreSQL.
+**4:00–5:00 — Reporte y seguimiento.** Usar **Crear reporte ficticio**, elegir
+una categoría, inventar descripción/barrio y marcar un punto manual con clic o
+Tab/flechas/Enter sobre el mapa. «No usamos datos personales ni hechos reales;
+geocodificación externa y geolocalización están deshabilitadas». Aceptar el aviso,
+enviar y usar el enlace al código de seguimiento. Consultarlo: sólo aparecen
+estado, fechas y mensaje público; descripción, barrio y coordenadas quedan privados.
+El código se usa en la sesión y no se incorpora a informes ni artefactos.
 
-**6:15–7:00 — Evidencia y siguiente paso.** Mostrar el estado funcional.
-«El panel se verificó con pruebas de contratos/presentación, navegador de
-escritorio y móvil, errores y respuestas tardías. La operación persistente,
-el importador completo con PostGIS y la acreditación epidemiológica siguen
-fuera de esta demostración. No se atribuye evidencia actual a pruebas históricas».
-Cerrar con una prioridad: obtener decisiones y evidencia institucional sobre
-etiquetas, cobertura y disponibilidad histórica antes de nuevos estudios o usos.
-No iniciar entrenamientos ni mostrar el circuito ciudadano/administrativo como
-activo con el comando habitual: esa API sigue siendo independiente.
+**5:00–6:15 — Administración existente.** Entrar por **Administración demo** con
+la cuenta generada en terminal, sin proyectar ni registrar las credenciales.
+Localizar el reporte, revisar el detalle, cambiar a **En revisión** y escribir
+un mensaje público ficticio. Guardar y recargar para comprobar persistencia
+durante esta sesión. Cerrar sesión; volver a seguimiento e ingresar el mismo
+código. «El cambio público ya aparece; la nota interna y ubicación siguen
+restringidas. Se conserva autenticación, permisos y revocación, sin acceso libre».
+
+**6:15–7:00 — Cierre y evidencia.** Ctrl+C en la terminal cierra Vite y las API
+propias y elimina la base inventada; una API A/B previa, verificada y reutilizada
+queda activa. Reiniciar `npm run dev:demo` y comprobar que el código anterior ya
+no existe; cuenta, contraseña y clave de tokens son nuevas. Cerrar nuevamente.
+«Esta evidencia demuestra el circuito técnico con SQLite descartable, no
+PostGIS actual ni capacidad epidemiológica acreditada. No se entrenó ni recalculó
+ML». Próxima prioridad académica: ensayar la exposición completa con el equipo
+de tesis y registrar sólo hallazgos de usabilidad, sin credenciales ni resultados
+privados. El comando habitual `npm run dev` conserva únicamente frontend + A/B.
 
 ## 9. Lista de preparación de la demostración
 
-- [ ] Confirmar rama `entrenamiento-ML`, entornos/dependencias existentes y
-  artefactos autorizados íntegros. No regenerar faltantes ni reentrenar.
-- [ ] Ejecutar desde la raíz `npm.cmd --prefix frontend run dev`; esperar **Listo**
-  y abrir `http://127.0.0.1:5173/`. Vite 5173 y A/B 8765 deben escuchar sólo en
-  `127.0.0.1`. No abrir túneles, exponer el equipo ni cambiar los hosts para proyectar.
-- [ ] Ensayar mapa público, capas/semanas, selector, fuente y leyendas. El respaldo
-  estático aprobado funciona sin API 8000; no equivale a una publicación PostGIS activa.
-- [ ] Ensayar A/B, misma semana/radio, historial y métricas. La API local no precisa
-  tokens ni PostgreSQL y no incluye servicios ciudadanos o administrativos.
-- [ ] Ensayar prevención/directorio; preparar conectividad para teselas externas.
-  Si no cargan, distinguir fondo cartográfico de polígonos/datos; evitar el
-  geocodificador y cualquier ubicación personal durante la exposición.
-- [ ] Para demostrar operaciones ciudadanas/cuentas, ejecutar con Vite activo el
-  harness integral documentado en [frontend/README.md](../frontend/README.md).
-  Inicia una API en puerto loopback libre y SQLite ficticio, redirige únicamente
-  el navegador de prueba y limpia al cerrar. **No habilita esos servicios en un
-  navegador común** ni deja una cuenta disponible después. Sin esa preparación,
-  limitar la exposición al formulario/login y explicar la dependencia.
-- [ ] Para una futura demostración manual persistente, autorizar y preparar por
-  separado API habitual 8000, PostgreSQL/PostGIS descartable, migraciones, lote
-  público aprobado y bootstrap ficticio. Esto sigue pendiente; no usar Compose
-  ordinario con su volumen existente ni el PostgreSQL prohibido de 5432.
-- [ ] Ensayar Tab/Enter, foco, escritorio y viewport móvil; no afirmar prueba con
-  lector de pantalla o teléfono físico sin realizarla. Conservar los avisos científicos.
-- [ ] Revisar [evidencia de etapa 16](mvp-functional-status.md#etapa-16--preparación-académica)
-  y cerrar sesiones ficticias. Ctrl+C cierra los servicios que inició el coordinador;
-  no detiene una API previamente reutilizada ni procesos ajenos.
+- [ ] Confirmar rama `entrenamiento-ML`, dependencias ya instaladas y artefactos
+  A/B autorizados íntegros. No regenerar faltantes ni reentrenar.
+- [ ] Liberar 5173/8766 sin detener servicios desconocidos. Una API en 8765 sólo
+  se reutiliza tras verificar contrato y restricción local. No abrir dos demos
+  ni ejecutar pruebas de demo mientras la sesión está abierta.
+- [ ] Ejecutar `npm run dev:demo` desde `frontend`; esperar **Listo** y abrir
+  `http://127.0.0.1:5173/`. Los tres listeners usan sólo `127.0.0.1`; no abrir
+  túneles ni cambiar hosts para proyectar. Docker permanece apagado, sin 5432.
+- [ ] Comprobar aviso de demo y enlaces a reporte, seguimiento y administración.
+  Reservar un medio local privado para copiar las credenciales al login; no
+  grabar/fotografiar la terminal o formulario con credenciales.
+- [ ] Ensayar A/B, misma semana/radio, diferencias, historial y seis métricas.
+  Los límites científicos permanecen visibles. El MVP usa su respaldo estático
+  aprobado, sin afirmar una publicación territorial PostGIS activa.
+- [ ] Ensayar prevención/directorio sin conexión; las teselas/fuentes externas
+  se omiten sólo en demo. Inventar todo el reporte y seleccionar ubicación
+  manual. No usar geolocalización real, direcciones personales ni datos de salud.
+- [ ] Crear, seguir y administrar el reporte ficticio contra la API SQLite de esta
+  sesión; recargar para comprobar el cambio. No es necesario ejecutar el harness
+  de navegador ni preparar manualmente una segunda API.
+- [ ] Cerrar con Ctrl+C; comprobar que desaparece `backend/.tmp/sigard-demo-*`
+  de esta sesión. Reiniciar y comprobar código anterior inexistente; cerrar.
+  Una caída del sistema/terminación forzada puede dejar temporales ignorados;
+  nunca se recuperan como sesión ni se publican.
+- [ ] Ensayar teclado y escritorio/móvil. Las pruebas a 1440/390 px no acreditan
+  lector de pantalla ni teléfono físico. La integración completa PostGIS y las
+  decisiones científicas/institucionales siguen pendientes fuera de esta demo.
+- [ ] Revisar la [evidencia integral](mvp-functional-status.md#entorno-integral-de-demostración-descartable--21102026)
+  y cerrar todas las sesiones inventadas al terminar.
 
-**Condiciones que limitan o impiden la exposición:** puertos ocupados, dependencias
-ausentes o integridad inválida impiden iniciar A/B; no se eluden los bloqueos.
-Sin resultados autorizados, omitir ese recorrido. Sin API ciudadana preparada,
-no demostrar envíos ni cuentas como operación real. Sin PostGIS no afirmar
-integración geoespacial persistente. La falta de teselas afecta el fondo en línea.
-El estado es **preparado para demostración académica experimental**, no sistema
-completo y validado para utilización epidemiológica real.
+**Condiciones que limitan o impiden la exposición:** puertos ocupados,
+dependencias ausentes o integridad inválida bloquean el inicio; no se eluden los
+controles ni se detienen procesos ajenos. Sin resultados autorizados no mostrar
+A/B como operativo. Sin PostGIS no afirmar integración persistente geoespacial.
+El estado es **entorno integral de demostración académica con datos ciudadanos
+ficticios**, sin validación para utilización epidemiológica real.

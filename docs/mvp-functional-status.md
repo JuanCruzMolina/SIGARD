@@ -4,6 +4,55 @@ Cierre funcional del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo aca
 no sistema sanitario operativo. Esta matriz contrasta documentación con código;
 no toma los estados históricos del plan como prueba de implementación.
 
+## Entorno integral de demostración descartable — 21/10/2026
+
+`npm run dev:demo` desde `frontend` coordina Vite 5173, investigación A/B 8765
+y FastAPI ciudadana/administrativa 8766, exclusivamente en `127.0.0.1`.
+Reutiliza los módulos y esquema de la fixture SQLite, con configuración interna
+aislada y doble guard contra otros drivers/archivos. Genera una cuenta inventada
+por sesión, mantiene autenticación/permisos/revocación y bloquea geocodificación.
+No necesita Docker, PostgreSQL ni servicios externos; en este modo se omiten
+teselas/fuentes remotas y se usa ubicación ficticia manual. La franja de demo
+separa reportes temporales de A/B retrospectivo, MVP sintético y contexto público.
+
+El inicio habitual `npm run dev` sigue coordinando sólo frontend e investigación;
+producción conserva sus rutas/endpoints y no incorpora el modo ni el endpoint
+8766 en su JavaScript. Los modelos/etiquetas/predicciones y la cartografía no se
+modificaron ni recalcularon. El MVP usa su respaldo aprobado; la base temporal no
+simula una publicación territorial ni reemplaza la integración PostGIS pendiente.
+
+**Comprobado en navegador real:** selección de semana/radio, tres vistas A/B,
+historial y seis métricas por partición; prevención/27 centros; alta ficticia,
+seguimiento sin campos privados; login temporal, revisión, cambio de estado,
+recarga administrativa con el cambio persistido y mensaje público actualizado.
+Ctrl+C eliminó SQLite y liberó los listeners propios. Una segunda sesión no
+encontró el reporte y rechazó el token anterior; volvió a limpiarse. Se comprobó
+la ruta real del coordinador habitual sin API ciudadana, y preview de producción
+sin aviso/control demo ni peticiones A/B/8766. Sin simulación de respuestas HTTP,
+sin solicitudes externas en la demo y sin guardar credenciales/reportes/scores.
+Aviso y navegación revisados a 1440/390 px, sin desbordamiento horizontal.
+
+**Pruebas:** 11 nuevas de demo, incluidas verificaciones Python aisladas; 18 del
+coordinador original, 18 de investigación, cinco del mapa público, cuatro del
+cliente ciudadano y 15 de recursos públicos. Backend aislado: 177 aprobadas y
+seis omitidas de PostgreSQL; avisos de deprecación existentes. Lint, build,
+178 controles estáticos de seguridad y `git diff --check` aprobados. La prueba de
+procesos y Chromium requirieron permisos fuera del sandbox de Windows para
+cerrar sus procesos propios; los intentos fallidos no cuentan como aprobados.
+El navegador detectó una consulta heredada a Google Fonts: se corrigió sólo para
+la demo y se añadió regresión. Una ejecución simultánea de las pruebas y el
+comando demo rechazó correctamente los puertos ocupados; se verifican por separado.
+
+**Límites:** SQLite actual, sin comprobación PostGIS ni evaluación científica
+nueva; no acredita vigencia sanitaria, lector de pantalla ni teléfono físico.
+La limpieza cubre salida/fallo coordinado; una caída del sistema o terminación
+forzada puede dejar temporales ignorados, nunca reutilizados como nueva sesión.
+Recorrido y comandos en [frontend/README.md](../frontend/README.md) y
+[guion académico](SIGARD-resumen-desarrollo.md#8-guion-académico-de-siete-minutos).
+El estado global de requisitos sanitarios permanece condicionado; completar una
+demo técnica no habilita operación epidemiológica ni modifica los bloqueos de
+la matriz histórica que sigue.
+
 ## Panel territorial A/B y demostración académica — 21/10/2026
 
 Se amplió la interfaz existente, sin nuevos modelos ni cambios del backend:
