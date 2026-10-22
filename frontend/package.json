@@ -13,6 +13,9 @@
     "test:accounts:browser": "node scripts/admin-accounts.browser.mjs",
     "test:dev": "node --test scripts/dev.test.mjs",
     "dev": "node scripts/dev.mjs",
+    "dev:demo": "node scripts/dev-demo.mjs",
+    "test:demo": "node --test scripts/dev-demo.test.mjs",
+    "test:demo:browser": "node scripts/demo-flow.browser.mjs",
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview"

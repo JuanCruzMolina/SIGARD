@@ -3,6 +3,7 @@ import L from 'leaflet'
 import { MapContainer, Marker, TileLayer, useMap } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import { PhoneIcon, PinIcon, SearchIcon } from './InfoIcons'
+import { demoMode } from '../services/demoMode'
 
 const center = [-29.418, -66.856]
 const normalize = (value) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -50,7 +51,7 @@ export default function HealthFacilitiesMap({ collection }) {
     <div className="facility-explorer">
       <div className="facility-map-wrap" aria-label="Mapa de establecimientos de salud">
         <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="facility-map">
-          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          {!demoMode && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />}
           {filtered.map((feature) => <Marker
             key={feature.properties.id}
             position={[feature.geometry.coordinates[1], feature.geometry.coordinates[0]]}

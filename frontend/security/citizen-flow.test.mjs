@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises'
 import { insideReportArea, normalizeReportText, REPORT_BOUNDS } from '../src/services/citizenReportValidation.mjs'
 
 const source = (await readFile(new URL('../src/services/citizenReports.js', import.meta.url), 'utf8'))
+  .replace("import { demoMode } from './demoMode'", 'const demoMode = false')
   .replaceAll('import.meta.env.VITE_API_URL', 'undefined')
 const api = await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`)
 

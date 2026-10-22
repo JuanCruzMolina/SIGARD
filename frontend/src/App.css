@@ -441,3 +441,6 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
   .timeline-key > span:last-child { margin-left: 0; width: 100%; }
   .timeline-scroll-hint { display: block; font-size: .8rem; color: var(--ink-soft); }
 }
+.demo-notice { padding: 1rem max(1rem, calc((100% - 1440px) / 2)); background: #fff4d6; color: #493b16; border-bottom: 1px solid #cbbb8b; }
+.demo-notice p { margin: .4rem 0; max-width: 75ch; }
+.demo-notice a { color: #493b16; text-decoration: underline; text-underline-offset: .2em; }

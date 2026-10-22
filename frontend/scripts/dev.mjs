@@ -44,13 +44,16 @@ export async function identifyApi(base = api) {
 }
 
 export function spawnOwned(command, args, options = {}) {
+  const { input = false, silent = false, ...spawnOptions } = options
   // Separate process group/console: Ctrl+C is handled by the coordinator, so
   // Windows' venv launcher and its Python child can be stopped together.
   const child = spawn(command, args, {
-    ...options, detached: true, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'], shell: false,
+    ...spawnOptions, detached: true, windowsHide: true, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], shell: false,
   })
-  child.stdout.pipe(process.stdout)
-  child.stderr.pipe(process.stderr)
+  if (!silent) {
+    child.stdout.pipe(process.stdout)
+    child.stderr.pipe(process.stderr)
+  }
   const exited = new Promise(resolve => {
     child.once('error', error => resolve({ error }))
     child.once('exit', (code, signal) => resolve({ code, signal }))
@@ -58,6 +61,9 @@ export function spawnOwned(command, args, options = {}) {
   let stopping
   return {
     exited,
+    stdin: child.stdin,
+    stdout: child.stdout,
+    stderr: child.stderr,
     stop() {
       stopping ??= (async () => {
         if (!child.pid || child.exitCode !== null || child.signalCode !== null) return
@@ -88,7 +94,7 @@ export function spawnOwned(command, args, options = {}) {
   }
 }
 
-const defaults = {
+export const developmentRuntime = {
   portAvailable,
   identifyApi,
   async ensurePython() {
@@ -107,8 +113,8 @@ const defaults = {
   log: message => console.log(`[SIGARD] ${message}`),
 }
 
-export async function startDevelopment(runtime = defaults) {
-  let ownedApi, vite, stopping, stopped = false
+export async function startDevelopment(runtime = developmentRuntime) {
+  let ownedApi, companion, vite, stopping, stopped = false
   const wasRaw = process.stdin.isRaw
   let finish, finishStartup
   const closed = new Promise(resolve => { finish = resolve })
@@ -118,7 +124,7 @@ export async function startDevelopment(runtime = defaults) {
     stopping ??= (async () => {
       // Finish any in-flight creation/listen before closing its resources.
       await startupFinished
-      const results = await Promise.allSettled([vite?.close(), ownedApi?.stop()])
+      const results = await Promise.allSettled([vite?.close(), companion?.stop(), ownedApi?.stop()])
       process.off('SIGINT', interrupt)
       process.off('SIGTERM', interrupt)
       if (process.stdin.isTTY) {
@@ -149,6 +155,8 @@ export async function startDevelopment(runtime = defaults) {
     if (!await runtime.portAvailable(5173)) {
       throw new Error('El puerto 127.0.0.1:5173 está ocupado. Cerrá el frontend anterior antes de iniciar SIGARD.')
     }
+    await runtime.checkRequirements?.()
+    checkStopped()
     if (!await runtime.portAvailable(8765)) {
       if (!await runtime.identifyApi()) {
         throw new Error('El puerto 127.0.0.1:8765 está ocupado y no responde como la API experimental válida. Revisá ese proceso; SIGARD no lo detendrá.')
@@ -175,12 +183,24 @@ export async function startDevelopment(runtime = defaults) {
       }
     }
     checkStopped()
+    if (runtime.startCompanion) {
+      companion = runtime.startCompanion()
+      companion.exited.then(() => {
+        if (!stopped) {
+          runtime.log('La API de demostración terminó; se cierra la sesión local.')
+          void stop(1)
+        }
+      })
+      await companion.ready
+      checkStopped()
+    }
     vite = await runtime.createVite()
     checkStopped()
     await vite.listen()
     checkStopped()
     vite.printUrls()
     runtime.log(`Listo: ${origin}/mapa · Ctrl+C cierra únicamente lo iniciado por este comando.`)
+    runtime.announce?.()
     finishStartup()
     return { stop, closed }
   } catch (error) {

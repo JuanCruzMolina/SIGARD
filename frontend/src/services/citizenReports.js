@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
+import { demoMode } from './demoMode'
+
+const API_URL = (demoMode ? 'http://127.0.0.1:8766' : import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 async function apiRequest(path, options = {}) {
   let response

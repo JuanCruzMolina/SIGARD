@@ -38,6 +38,7 @@ const replacements = {
     export const Navigate=({to,replace})=>React.createElement('div',{'data-redirect':to,'data-replace':String(replace)});
   `),
   './services/experimentalResults': url('export const localResearchEnabled=()=>globalThis.__sigardLocalEntry.enabled;'),
+  './services/demoMode': url('export const demoMode=false;'),
   './services/sigardData': url('export const DATA_ERROR_MESSAGE="fixture error",formatDate=String,loadSigardData=()=>{};'),
   '../services/sigardData': url('export const getSelectedWeek=()=>({}),getSelectedPrediction=()=>({}),getExperimentalCollection=()=>({}),getDisclaimer=()=>"fictional";'),
   '../components/SigardComponents': url('export const MethodNotice=({children})=>children,PageIntro=({title})=>title,TemporalControls=()=>"simulation controls",TerritorialMap=()=>"simulation map";'),

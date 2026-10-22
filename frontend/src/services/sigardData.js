@@ -1,3 +1,5 @@
+import { demoMode } from './demoMode'
+
 const DATA_ROOT = '/data'
 const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 export const DATA_ERROR_MESSAGE = 'No fue posible cargar los datos del prototipo.'
@@ -76,7 +78,7 @@ export async function loadSigardData() {
   try {
     let loaded
     try {
-      loaded = await loadFromApi()
+      loaded = demoMode ? await loadFromStaticFallback() : await loadFromApi()
     } catch {
       loaded = await loadFromStaticFallback()
     }
