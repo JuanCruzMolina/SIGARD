@@ -8,6 +8,25 @@ from sigard_ml.official.observed_settings import CLASSIFICATIONS
 from sigard_ml.official.normalization import normalize_text
 
 
+CONFIRMED_RECORD_TARGET = "principal-confirmed-records-1"
+EXPERIMENTAL_2022_TARGET = "principal-operational-records-2022-1"
+
+
+def provisional_record_positive(classification, epidemiological_year, *, target_definition):
+    """Definiciones descriptivas separadas; nunca acredita episodios ni P1.
+
+    El año es epidemiológico, no el rótulo de la entrega. No cambia la
+    clasificación registrada. Aplicar sólo sobre agregados autorizados.
+    """
+    if target_definition not in {CONFIRMED_RECORD_TARGET, EXPERIMENTAL_2022_TARGET}:
+        raise ValueError("Definición provisional desconocida")
+    if classification not in CLASSIFICATIONS or type(epidemiological_year) is not int:
+        raise ValueError("Se requiere clasificación canónica y año epidemiológico")
+    return classification == "confirmado" or (
+        target_definition == EXPERIMENTAL_2022_TARGET
+        and epidemiological_year == 2022 and classification in {"sospechoso", "probable"})
+
+
 def classification_key(value):
     text = normalize_text(value)
     return unicodedata.normalize("NFKC", text).casefold() if text else None

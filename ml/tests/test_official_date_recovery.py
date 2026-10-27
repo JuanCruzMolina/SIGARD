@@ -10,7 +10,7 @@ from openpyxl import load_workbook
 from sigard_ml.official.date_recovery_pipeline import run_date_recovery
 from sigard_ml.official.observed_comparison import compare_scenarios
 from sigard_ml.official.observed_dates import (
-    DATE_HIERARCHY, assign_record_weeks, identify_reference_header, parse_reference_date,
+    DATE_HIERARCHY, PRINCIPAL_DATE_HIERARCHY, assign_record_weeks, identify_reference_header, parse_reference_date,
 )
 from sigard_ml.official.observed_pipeline import observed_output, run_observed_pipeline, validate_options
 from sigard_ml.official.observed_reading import read_event_references
@@ -51,6 +51,42 @@ def test_first_valid_date_and_provenance(values, kind, approximate):
     assert bool(result.semana_potencialmente_afectada_por_retraso) == approximate
     assert result.fecha_referencia == result.reference_date == next(v for v in values if v is not None)
     assert result.reference_date_usable
+
+
+@pytest.mark.parametrize("onset,sample,kind", [
+    (date(2024, 1, 5), date(2024, 1, 7), "inicio_sintomas"),
+    (None, date(2024, 1, 7), "toma_muestra"),
+    ("31/02/2024", date(2024, 1, 7), "toma_muestra"),
+    (None, None, None),
+    ("31/02/2024", "fecha inválida", None),
+])
+def test_principal_counts_policy_only_onset_then_sample(onset, sample, kind):
+    # Consulta/notificación válidas nunca rescatan esta política del proyecto.
+    values = [onset, date(2024, 1, 6), sample, date(2024, 1, 8)]
+    result = assign(values, hierarchy=PRINCIPAL_DATE_HIERARCHY)
+    assert result.tipo_fecha_referencia == kind
+    assert result.reference_date_usable == (kind is not None)
+    assert result.fecha_aproximada == (kind == "toma_muestra")
+    if kind is None:
+        assert result.week_start is None
+
+
+def test_principal_policy_keeps_original_dates_and_does_not_repair_sequence():
+    frame = temporal_frame([date(2024, 1, 8), None, date(2024, 1, 6), None])
+    before = frame.copy(deep=True)
+    result = assign_record_weeks(frame, field="symptom_onset", hierarchy=PRINCIPAL_DATE_HIERARCHY,
+                                period_start=date(2024, 1, 1), period_end=date(2024, 12, 31),
+                                as_of=date(2025, 1, 1), version="fictional-principal-dates-v1").iloc[0]
+    pd.testing.assert_frame_equal(frame, before)
+    assert result.reference_date == date(2024, 1, 8)
+    assert result.tipo_fecha_referencia == "inicio_sintomas"
+
+
+@pytest.mark.parametrize("onset", [date(2019, 12, 31), date(2026, 1, 1)])
+def test_principal_policy_does_not_replace_interpretable_onset_to_fit_window(onset):
+    result = assign([onset, None, date(2024, 1, 7), None], hierarchy=PRINCIPAL_DATE_HIERARCHY)
+    assert not result.reference_date_usable
+    assert result.week_start is None
 
 
 @pytest.mark.parametrize("invalid, status", [

@@ -1,8 +1,9 @@
 import { isLocalResearchContext, validateCatalog, validateScores } from './experimentalContract.mjs'
 import { validateEvaluation, validateHistory } from './experimentalAnalysis.mjs'
+import { demoMode } from './demoMode'
 
 export function localResearchEnabled() {
-  return isLocalResearchContext({ DEV: import.meta.env.DEV }, window.location.origin)
+  return !demoMode && isLocalResearchContext({ DEV: import.meta.env.DEV }, window.location.origin)
 }
 
 export async function researchRequest(path, signal) {

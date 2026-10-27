@@ -109,3 +109,48 @@ def audit_cartography(radios, *, reference=None, expected_count=EXPECTED_RADIOS)
 
 def read_radios(path: Path):
     return gpd.read_parquet(path) if path.suffix.lower() == ".parquet" else gpd.read_file(path)
+
+
+def compare_locality_boundary(radios, locality, *, expected_count=EXPECTED_RADIOS):
+    """Diagnóstico de radios completos contra UNA localidad previamente identificada.
+
+    No selecciona por nombre, repara, recorta el maestro, distribuye población o
+    acredita ubicaciones. Interiores = covered_by; parciales = área positiva sin
+    cobertura completa; exteriores = área cero, aun si hay contacto de borde.
+    Las superficies usan el CRS métrico existente, con su control de escala.
+    """
+    validate_radios(radios, expected_count=expected_count)
+    if (not isinstance(locality, gpd.GeoDataFrame) or not hasattr(locality, "geometry")
+            or locality.crs is None or len(locality) != 1
+            or locality.geometry.isna().any() or locality.geometry.is_empty.any()
+            or not locality.geometry.is_valid.all()
+            or not locality.geometry.geom_type.isin(["Polygon", "MultiPolygon"]).all()):
+        raise ValueError("Se requiere una localidad poligonal única, válida y con CRS")
+    radio_scale = validate_metric_extent(radios)
+    locality_scale = validate_metric_extent(locality)
+    metric = radios.to_crs(METRIC_CRS)
+    boundary = locality.to_crs(METRIC_CRS).geometry.iloc[0]
+    intersection = metric.geometry.intersection(boundary)
+    outside = metric.geometry.difference(boundary)
+    covered = metric.geometry.covered_by(boundary)
+    result = metric[["radio_id"]].copy()
+    result["radio_area_m2"] = metric.geometry.area
+    result["intersection_area_m2"] = intersection.area
+    result["outside_area_m2"] = outside.area
+    result["intersection_fraction_raw"] = result.intersection_area_m2 / result.radio_area_m2
+    # Sólo acota ruido de cocientes (p.ej. 1+1e-15), sin umbral de selección.
+    result["intersection_fraction"] = result.intersection_fraction_raw.clip(0, 1)
+    result["relation"] = "outside"
+    result.loc[result.intersection_area_m2.gt(0), "relation"] = "partial"
+    result.loc[covered, "relation"] = "inside"
+    result["boundary_only_contact"] = metric.geometry.touches(boundary)
+    counts = result.relation.value_counts()
+    report = {"transformation_version": "locality-radio-comparison-1", "metric_crs": METRIC_CRS,
+              "radio_scale_check": radio_scale, "locality_scale_check": locality_scale,
+              "classification": "covered_by / positive intersection area / zero intersection area; no tolerance",
+              "counts": {key: int(counts.get(key, 0)) for key in ("inside", "partial", "outside")},
+              "boundary_only_contacts": int(result.boundary_only_contact.sum()),
+              "locality_area_m2": boundary.area,
+              "locality_outside_radio_union_m2": boundary.difference(metric.geometry.union_all()).area,
+              "geometry_modified": False, "population_or_cases_allocated": False}
+    return result.sort_values("radio_id").reset_index(drop=True), report

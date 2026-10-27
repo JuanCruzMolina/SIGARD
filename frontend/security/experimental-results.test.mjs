@@ -125,6 +125,7 @@ test('research map uses the city view, retains all radios and stays mounted whil
     'leaflet/dist/leaflet.css': moduleUrl('export {}'),
     '../services/sigardData': moduleUrl('export const formatDate=String,formatDateRange=String,formatNumber=String,levelColors={},levelLabel=String'),
     '../services/experimentalContract.mjs': new URL('../src/services/experimentalContract.mjs', import.meta.url).href,
+    '../services/predictivePresentation.mjs': new URL('../src/services/predictivePresentation.mjs', import.meta.url).href,
   }
   try {
     const source = await readFile(new URL('../src/components/SigardComponents.jsx', import.meta.url), 'utf8')
@@ -164,6 +165,7 @@ test('research requests read aggregates directly without cookies, tokens or appr
   const { readFile } = await import('node:fs/promises')
   let source = await readFile(new URL('../src/services/experimentalResults.js', import.meta.url), 'utf8')
   source = source.replace('import.meta.env.DEV', 'true')
+    .replace("import { demoMode } from './demoMode'", 'const demoMode = false')
     .replace("'./experimentalContract.mjs'", JSON.stringify(new URL('../src/services/experimentalContract.mjs', import.meta.url).href))
     .replace("'./experimentalAnalysis.mjs'", JSON.stringify(new URL('../src/services/experimentalAnalysis.mjs', import.meta.url).href))
   const previousFetch = globalThis.fetch, previousWindow = globalThis.window

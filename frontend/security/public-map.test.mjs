@@ -21,6 +21,7 @@ const replacements = {
   'leaflet/dist/leaflet.css': url(''),
   '../services/sigardData': url(dataSource.replace('import.meta.env.VITE_API_URL', 'undefined').replace("import { demoMode } from './demoMode'", 'const demoMode = false')),
   '../services/experimentalContract.mjs': new URL('../src/services/experimentalContract.mjs', import.meta.url).href,
+  '../services/predictivePresentation.mjs': new URL('../src/services/predictivePresentation.mjs', import.meta.url).href,
 }
 const source = await readFile(new URL('../src/components/SigardComponents.jsx', import.meta.url), 'utf8')
 const transformed = await transformWithOxc(source, 'SigardComponents.jsx', { jsx: { runtime: 'automatic' } })

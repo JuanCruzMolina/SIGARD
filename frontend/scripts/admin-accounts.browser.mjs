@@ -141,6 +141,7 @@ try {
   if(integral) {
     await check('API pública temporal, selección por teclado y capas/semanas alineadas',async()=>{
       await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
+      await click('MVP sintético y contexto')
       await page.waitForSelector('.public-radio-control select')
       assert.match(await page.$eval('.site-footer',e=>e.textContent),/API stage15-test-publication/)
       // A tooltip focus listener made Chromium tab through every polygon.
@@ -173,7 +174,7 @@ try {
         await page.screenshot({path:resolve(output,`stage15-public-${width}.png`),fullPage:true})
       }
       await page.setViewport({width:1440,height:1000})
-      for(const route of ['/','/validacion','/metodologia','/mapa']) {
+      for(const route of ['/dashboard','/validacion','/metodologia','/mapa']) {
         await page.click(`.main-nav a[href="${route}"]`)
         await page.waitForFunction(route=>location.pathname===route,{},route)
         await page.waitForSelector('.page-intro h1')
@@ -228,6 +229,7 @@ try {
   }
   if(!postgis) await check('público y A/B sin tokens, 263 radios, historial y métricas',async()=>{
     await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
+    await click('MVP sintético y contexto')
     await page.waitForSelector('.public-radio-control select')
     assert.equal(await page.$$eval('.leaflet-overlay-pane path.leaflet-interactive',n=>n.length),263)
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('sigard_admin_token')),null)

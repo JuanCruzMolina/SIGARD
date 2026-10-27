@@ -20,7 +20,6 @@ ml/artifacts/official/
 !frontend/public/data/mvp_prediction.geojson
 !frontend/public/data/mvp_prediction_summary.json
 !frontend/public/data/mvp_backtest.json
-*.csv
 *.xlsx
 *.xls
 
@@ -64,15 +63,6 @@ ml/__pycache__/
 **/.azure/**
 **/.kube/**
 **/.docker/**
-**/*.[gG][eE][oO][jJ][sS][oO][nN]
-**/*.[gG][pP][kK][gG]
-**/*.[sS][hH][pP]
-**/*.[sS][hH][xX]
-**/*.[dD][bB][fF]
-**/*.[pP][rR][jJ]
-**/*.[kK][mM][lL]
-**/*.[kK][mM][zZ]
-**/*.[gG][pP][xX]
 **/.env
 **/.env.*
 **/*.env
@@ -110,8 +100,6 @@ ml/__pycache__/
 **/*.parquet
 **/*.feather
 **/*.arrow
-**/*.csv
-**/*.tsv
 **/*.joblib
 **/*.pkl
 **/*.pickle
@@ -170,8 +158,6 @@ ml/models/
 **/*.[pP][aA][rR][qQ][uU][eE][tT]
 **/*.[fF][eE][aA][tT][hH][eE][rR]
 **/*.[aA][rR][rR][oO][wW]
-**/*.[cC][sS][vV]
-**/*.[tT][sS][vV]
 **/*.[jJ][oO][bB][lL][iI][bB]
 **/*.[pP][kK][lL]
 **/*.[pP][iI][cC][kK][lL][eE]
@@ -188,3 +174,17 @@ ml/models/
 
 # Configuracion de registro que puede contener tokens.
 **/.yarnrc.yml
+
+# Fuentes y derivados: protección por ruta, independientemente del formato.
+/data/raw/**
+!/data/raw/.gitkeep
+/data/interim/official/
+/data/processed/official/
+/ml/artifacts/official/
+/reports/private/
+/docs/private/
+/docs/individual_locations.geojson
+/config/local/
+/backend/instance/
+# Figuras reales generadas: el renderizador escribe sólo en almacenamiento privado.
+/docs/figures/validacion-predictiva-*.svg

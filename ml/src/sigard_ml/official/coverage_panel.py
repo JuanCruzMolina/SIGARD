@@ -1,12 +1,101 @@
 """Deriva cobertura y ceros sin cambiar registros, fechas ni asignaciones de Fase 4.1."""
 
+from numbers import Integral
+
 import pandas as pd
 
 from sigard_ml.official.calendar import weeks_between
+from sigard_ml.official.calendar_rules import DEFAULT_CALENDAR
+from sigard_ml.official.classification import CONFIRMED_RECORD_TARGET
 from sigard_ml.official.coverage_policy import coverage_map, decide_observation
 from sigard_ml.official.coverage_settings import COVERAGE_VERSION
 from sigard_ml.official.observed_panel import pending_counts
 from sigard_ml.official.weekly_targets import attach_next_week_target
+
+
+def principal_provisional_counts(panel, classification_inventory, *, territory_ids,
+                                 territory_version, source_versions, extraction_date):
+    """Proyecta positivos históricos agregados sin reconstruir P2/P3/P5.
+
+    Sin IO ni grilla nueva. Devuelve también celdas exteriores para conciliarlas.
+    No permite inferir clasificación/fuente desde resúmenes incompatibles.
+    La autorización y verificación de huellas pertenecen al llamador.
+    """
+    from datetime import date
+
+    ids = list(territory_ids)
+    if (territory_version != "la-rioja-46014010-256-v1" or len(ids) != 256
+            or len(set(ids)) != 256 or not all(isinstance(x, str) and x for x in ids)):
+        raise ValueError("Se requiere el universo operativo de 256 radios verificado")
+    if type(extraction_date) is not date:
+        raise ValueError("La extracción declarada requiere fecha explícita")
+    required = {"radio_censal", "anio_epidemiologico", "semana_epidemiologica",
+                "fecha_inicio_semana", "fecha_fin_semana", "casos_observados",
+                "fuentes_con_registros", "ventana_semanal_parcial", "estado_cobertura",
+                "cobertura_declarada", "cobertura_comprobada", "registros_pendientes_posibles",
+                "registros_asignacion_incierta", "version_fecha"}
+    if not required <= set(panel) or panel.duplicated(["radio_censal", "fecha_inicio_semana"]).any():
+        raise ValueError("Panel agregado incompleto o duplicado")
+    counts = panel.casos_observados.dropna()
+    if not counts.map(lambda x: isinstance(x, Integral) and not isinstance(x, bool) and x >= 0).all():
+        raise ValueError("Los registros deben ser enteros no negativos")
+    inventory_fields = {"source_id", "canonical_category", "included_provisional"}
+    if not inventory_fields <= set(classification_inventory):
+        raise ValueError("Falta inventario agregado de clasificación")
+    inventory_counts = classification_inventory.included_provisional
+    if not inventory_counts.map(lambda x: isinstance(x, Integral) and not isinstance(x, bool) and x >= 0).all():
+        raise ValueError("Inventario de inclusión inválido")
+    eligible = classification_inventory[inventory_counts.gt(0)]
+    if not eligible.canonical_category.eq("confirmado").all():
+        raise ValueError("El inventario no acredita clasificación homogénea de los incluidos")
+    expected = eligible.groupby("source_id").included_provisional.sum().to_dict()
+    actual, rows = {}, []
+    for row in panel.loc[panel.casos_observados.gt(0).fillna(False)].itertuples():
+        sources = list(row.fuentes_con_registros)
+        if len(sources) != 1 or sources[0] not in source_versions:
+            raise ValueError("Fuente mixta o sin versión: no repartir conteos")
+        source = sources[0]
+        version = source_versions[source]
+        if not isinstance(version, str) or not version.strip():
+            raise ValueError("Falta versión de fuente")
+        if any(not isinstance(x, Integral) or isinstance(x, bool)
+               for x in (row.anio_epidemiologico, row.semana_epidemiologica)):
+            raise ValueError("Año y semana deben ser enteros")
+        year, week = int(row.anio_epidemiologico), int(row.semana_epidemiologica)
+        start, end = DEFAULT_CALENDAR.week_bounds(year, week)
+        if (row.fecha_inicio_semana != start or row.fecha_fin_semana != end
+                or bool(row.ventana_semanal_parcial) or end > extraction_date):
+            raise ValueError("Semana incompatible con calendario oficial o extracción")
+        if not isinstance(row.radio_censal, str) or not row.radio_censal:
+            raise ValueError("Radio candidato no utilizable")
+        count = int(row.casos_observados)
+        uncertain = row.registros_asignacion_incierta
+        pending = row.registros_pendientes_posibles
+        if any(not isinstance(x, Integral) or isinstance(x, bool) or x < 0 for x in (uncertain, pending)) or uncertain > count:
+            raise ValueError("Estados agregados de incertidumbre inválidos")
+        actual[source] = actual.get(source, 0) + count
+        rows.append(dict(epidemiological_year=year, epidemiological_week=week,
+            week_start=start, week_end=end, radio_id=row.radio_censal,
+            territory_version=territory_version,
+            territory_status="included" if row.radio_censal in ids else "outside",
+            provisional_positive_records=count, classification="confirmado",
+            target_definition=CONFIRMED_RECORD_TARGET, count_unit="provisional_record_count",
+            data_kind="epidemiological_provisional_records", maturity="unknown",
+            accredited_episode_count=None, P2_status="unknown_or_unresolved",
+            P3_status="not_accredited", coverage_state=row.estado_cobertura,
+            declared_coverage=row.cobertura_declarada, verified_coverage=row.cobertura_comprobada,
+            possible_pending_record_mentions=int(pending), pending_mentions_not_additive=True,
+            P5_status="provisional_approximate_attribution_not_accredited",
+            uncertain_assignment_records=int(uncertain), source_id=source, source_version=version,
+            extraction_date=extraction_date, available_on=None, date_policy_version=row.version_fecha,
+            calendar_version=DEFAULT_CALENDAR.version,
+            transformation_version="principal-provisional-record-projection-1",
+            training_eligible=False))
+    if actual != expected:
+        raise ValueError("Panel e inventario de incluidos no concilian por fuente")
+    if not rows:
+        raise ValueError("No hay positivos agregados que proyectar")
+    return pd.DataFrame(rows).sort_values(["radio_id", "week_start"]).reset_index(drop=True)
 
 
 def build_coverage_panel(base, audit, options, *, date_panel, scenario, period_start, period_end, repo_root=None):

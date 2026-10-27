@@ -50,6 +50,11 @@ export function adminLogin(credentials, options = {}) {
   return apiRequest('/api/v1/admin/session', { ...options, method: 'POST', body: JSON.stringify(credentials) })
 }
 
+export function demoWorkspaceRequest(token, path, options = {}) {
+  if (!demoMode) return Promise.reject(new Error('Este espacio ficticio sólo funciona con npm run dev:demo.'))
+  return apiRequest(`/api/v1/admin/demo${path}`, { ...options, headers: adminHeaders(token) })
+}
+
 function adminHeaders(token) {
   return { Authorization: `Bearer ${token}` }
 }

@@ -7,6 +7,7 @@ import os
 from pathlib import Path
 import subprocess
 import sys
+from uuid import uuid4
 
 root = Path(__file__).resolve().parents[2]
 os.chdir(root)
@@ -42,5 +43,5 @@ label = 'backend' if '--backend-regression' in sys.argv else 'importer'
 output = root / '.tmp/territorial-import-review'
 output.mkdir(parents=True, exist_ok=True)
 raise SystemExit(pytest.main(selection + ['-q', '-p', 'no:cacheprovider', '--tb=short',
-    '--basetemp', str(output / f'pytest-{label}'),
+    '--basetemp', str(output / f'pytest-{label}-{uuid4().hex}'),
     '--junitxml', str(output / f'{label}.xml')]))

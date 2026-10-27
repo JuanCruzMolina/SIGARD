@@ -8,6 +8,8 @@
     "test:security": "node --test security/public-assets.test.mjs",
     "test:research": "node --test security/experimental-results.test.mjs security/experimental-analysis.test.mjs security/local-entry.test.mjs",
     "test:public-map": "node --test security/public-map.test.mjs",
+    "build:predictive-viewer": "node scripts/build-predictive-viewer.mjs",
+    "test:predictive-viewer": "node scripts/predictive-viewer.browser.mjs",
     "test:citizen": "node --test security/citizen-flow.test.mjs",
     "test:citizen:browser": "node scripts/citizen-flow.browser.mjs",
     "test:accounts:browser": "node scripts/admin-accounts.browser.mjs",

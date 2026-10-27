@@ -1,4 +1,4 @@
-// Real FastAPI + SQLite + existing A/B reader. No response simulations or seeds.
+// Real FastAPI + SQLite with generated fixtures. Never starts or queries private A/B.
 // Credentials, report codes and research responses stay only in process memory.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
@@ -7,12 +7,13 @@ import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
 import { demoRuntime } from './dev-demo.mjs'
-import { identifyApi, portAvailable, startDevelopment } from './dev.mjs'
+import { portAvailable, startDevelopment } from './dev.mjs'
+import { measure, measurements, conditions, exerciseWorkspace } from './thesis-workspace.browser.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const output = resolve(root, 'frontend/.tmp/demo-ui')
+const output = resolve(root, 'frontend/.tmp/thesis-closure-ui')
 const origin = 'http://127.0.0.1:5173'
 const api = 'http://127.0.0.1:8766'
 const checks = []
@@ -32,7 +33,7 @@ const checkClosed = async directory => {
   assert.ok(await portAvailable(5173)); assert.ok(await portAvailable(8766))
   if (directory) await assert.rejects(access(directory), { code: 'ENOENT' })
   if (ownsResearch) assert.ok(await portAvailable(8765))
-  else assert.ok(await identifyApi())
+  else assert.equal(await portAvailable(8765), false)
 }
 try {
   await mkdir(output, { recursive: true })
@@ -47,7 +48,7 @@ try {
   page.on('request', request => {
     const url = new URL(request.url())
     if (['data:', 'blob:'].includes(url.protocol)
-      || url.hostname === '127.0.0.1' && ['5173', '5174', '8765', '8766'].includes(url.port)) return request.continue()
+      || url.hostname === '127.0.0.1' && ['5173', '5174', '8766'].includes(url.port)) return request.continue()
     if (demoRequests) unexpectedRequests.push(`${url.protocol}//${url.hostname}:${url.port}`)
     return request.abort()
   })
@@ -56,30 +57,28 @@ try {
     await page.keyboard.down('Control'); await page.keyboard.press('KeyA'); await page.keyboard.up('Control')
     await page.keyboard.press('Backspace'); if (value) await page.type(selector, value)
   }
-  const clickText = text => page.evaluate(text => [...document.querySelectorAll('button')].find(button => button.textContent === text).click(), text)
-  await page.setViewport({ width: 1440, height: 1000 })
-  await page.goto(origin, { waitUntil: 'networkidle0' })
-  await page.waitForFunction(() => document.querySelector('.research-availability')?.textContent.includes('radios con'))
-  assert.equal(new URL(page.url()).pathname, '/mapa')
-  assert.ok(await page.$('.demo-notice'))
-  assert.equal(await page.$$eval('#research-model option', nodes => nodes.length), 3)
-  const week = await page.$eval('#research-week', element => element.options[1].value)
-  await page.select('#research-week', week)
-  await page.waitForFunction(() => !document.querySelector('.research-availability [role="status"]'))
-  const radio = await page.$eval('#research-radio', element => element.options[1].value)
-  await page.select('#research-radio', radio)
-  await page.waitForSelector('.radio-difference')
-  for (const mode of ['B', 'difference', 'A']) {
-    await page.select('#research-model', mode)
-    assert.equal(await page.$eval('#research-week', element => element.value), week)
-    assert.equal(await page.$eval('#research-radio', element => element.value), radio)
+  const clickText = async text => {
+    await page.waitForFunction(text => [...document.querySelectorAll('button')].some(button => button.textContent === text && !button.disabled), {}, text)
+    await page.evaluate(text => [...document.querySelectorAll('button')].find(button => button.textContent === text && !button.disabled).click(), text)
   }
-  await page.waitForSelector('.metric-comparison tbody tr')
-  assert.equal(await page.$$eval('.metric-comparison tbody tr', nodes => nodes.length), 6)
-  for (const partition of ['train', 'validation', 'test']) await page.select('#analysis-partition', partition)
-  await clickText('Ver evolución temporal')
-  await page.waitForSelector('.radio-timeline svg')
-  checkpoint('Real A/B: selected week, three views, shared radio, six frozen metrics and temporal history')
+  await page.setViewport({ width: 1440, height: 1000 })
+  await measure('public_map_first_navigation', async () => {
+    await page.goto(origin + '/mapa', { waitUntil: 'domcontentloaded' })
+    await page.waitForSelector('.public-radio-control select option:nth-child(264)')
+    await page.waitForSelector('.leaflet-overlay-pane path')
+  })
+  assert.ok(await page.$('.demo-notice'))
+  assert.equal(await page.$('.research-spatial'), null)
+  const publicRadios = await page.$$eval('.public-radio-control select option', nodes => nodes.slice(1, 6).map(node => node.value))
+  for (const radio of publicRadios) await measure('public_map_radio_selection', async () => {
+    await page.select('.public-radio-control select', radio)
+    await page.waitForFunction(radio => document.querySelector('.radio-details h2')?.textContent.includes(radio), {}, radio)
+  })
+  for (const [route, selector] of [['/', '.public-home'], ['/validacion', '.validation-panel'], ['/metodologia', '.content-wrap']]) {
+    await page.click(`.main-nav a[href="${route}"]`); await page.waitForSelector(selector)
+  }
+  assert.equal((await fetch(`${api}/api/v1/admin/demo/catalog`)).status, 401)
+  checkpoint('Public map with 263 approved radios, keyboard selection and module navigation; private A/B is excluded')
 
   await page.click('.main-nav a[href="/prevencion"]')
   await page.waitForSelector('.report-form')
@@ -119,6 +118,8 @@ try {
   await fill('.admin-login input[type="password"]', service.credentials.password)
   await clickText('Ingresar')
   await page.waitForSelector('.report-inbox > div button')
+  await exerciseWorkspace({ page, fill, clickText, checkpoint, output })
+  await page.waitForSelector('.report-inbox > div button')
   assert.equal(await page.$$eval('.report-inbox > div button', nodes => nodes.length), 1)
   await page.click('.report-inbox > div button')
   await page.waitForSelector('.private-details')
@@ -150,6 +151,9 @@ try {
   checkpoint('Session admin authenticated, report updated and reload persisted; logout cleared private UI; citizen sees only public update')
 
   const previousDirectory = service.directory
+  // Detach Vite's HMR client before replacing the server at the same origin.
+  // Otherwise its reconnect/reload can abort the next explicit navigation.
+  await page.goto('about:blank')
   process.emit('SIGINT')
   assert.equal(await session.closed, 0)
   await checkClosed(previousDirectory)
@@ -163,20 +167,12 @@ try {
   await page.waitForSelector('.status-section [role="alert"]')
   assert.equal(await page.$('.status-result'), null)
   const newDirectory = service.directory
+  await page.goto('about:blank')
   await session.stop(); assert.equal(await session.closed, 0); await checkClosed(newDirectory)
   session = undefined
   checkpoint('Second demo session starts empty; prior report and admin token are unusable; second SQLite deleted')
 
   demoRequests = false
-  session = await startDevelopment()
-  await page.goto(origin, { waitUntil: 'networkidle0' })
-  await page.waitForSelector('.research-provenance')
-  assert.equal(await page.$('.demo-notice'), null)
-  assert.ok(await portAvailable(8766))
-  await session.stop(); assert.equal(await session.closed, 0); await checkClosed()
-  session = undefined
-  checkpoint('Original dev command path starts only research + Vite with no demo notice or citizen service')
-
   production = await preview({ root: resolve(root, 'frontend'), preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
   let forbiddenProductionRequests = 0
   page.on('request', request => { if (/127\.0\.0\.1:876[56]/.test(request.url())) forbiddenProductionRequests++ })
@@ -184,6 +180,7 @@ try {
     await page.goto('http://127.0.0.1:5174' + path, { waitUntil: 'networkidle0' })
     assert.equal(await page.$('.demo-notice'), null)
     assert.equal(await page.$('.research-spatial'), null)
+    assert.equal(await page.$('.demo-workspace'), null)
   }
   for (const name of await readdir(resolve(root, 'frontend/dist/assets'))) {
     if (name.endsWith('.js')) assert.ok(!(await readFile(resolve(root, 'frontend/dist/assets', name), 'utf8')).includes('127.0.0.1:8766'))
@@ -191,7 +188,7 @@ try {
   assert.equal(forbiddenProductionRequests, 0)
   assert.deepEqual(errors, [])
   checkpoint('Production preview keeps public routes with no demo/A-B controls, demo endpoint in JS or experimental requests')
-  await writeFile(resolve(output, 'checks.json'), JSON.stringify({ checks, pageErrors: errors, simulatedResponses: false, postgis: false }, null, 2))
+  await writeFile(resolve(output, 'checks.json'), JSON.stringify({ checks, measurements, conditions: await conditions(browser), all_under_five_seconds: measurements.every(row => row.milliseconds < 5000), pageErrors: errors, unexpectedRequests, simulatedResponses: false, postgis: false, privateResearchRead: false }, null, 2))
 } finally {
   await browser?.close()
   await session?.stop()

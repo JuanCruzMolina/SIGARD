@@ -157,7 +157,9 @@ export async function startDevelopment(runtime = developmentRuntime) {
     }
     await runtime.checkRequirements?.()
     checkStopped()
-    if (!await runtime.portAvailable(8765)) {
+    if (runtime.research === false) {
+      runtime.log('Demo ficticia: no se inicia ni consulta la API privada A/B.')
+    } else if (!await runtime.portAvailable(8765)) {
       if (!await runtime.identifyApi()) {
         throw new Error('El puerto 127.0.0.1:8765 está ocupado y no responde como la API experimental válida. Revisá ese proceso; SIGARD no lo detendrá.')
       }

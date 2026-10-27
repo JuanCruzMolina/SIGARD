@@ -34,6 +34,28 @@ test('Python isolation rejects persistent configuration/DB paths and geocoding w
   assert.equal(result.code, 0, output)
 })
 
+test('fictional workspace validates roles, inputs, unknowns, alerts, revocation and production exclusion', async () => {
+  const probe = spawnOwned(python, ['-I', '-B', join(root, 'backend/tests/demo_workspace_isolated.py')], { cwd: root, silent: true })
+  let output = ''
+  probe.stdout.resume()
+  probe.stderr.on('data', data => { output += data })
+  const result = await probe.exited
+  assert.equal(result.code, 0, output)
+})
+
+test('demo explicitly opts out of starting or querying private A/B', async () => {
+  const { runtime, calls, resolveReady } = fixture()
+  runtime.research = demoRuntime().research
+  runtime.identifyApi = () => assert.fail('Private research must not be queried')
+  runtime.startApi = () => assert.fail('Private research must not be started')
+  runtime.portAvailable = async port => { assert.notEqual(port, 8765); return true }
+  resolveReady()
+  const session = await startDevelopment(runtime)
+  await session.stop()
+  assert.equal(await session.closed, 0)
+  assert.equal(calls.apiStart, 0)
+})
+
 function fixture() {
   const calls = { apiStop: 0, companionStop: 0, close: 0, apiStart: 0, listen: 0 }
   let resolveExit, resolveReady

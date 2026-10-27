@@ -11,6 +11,8 @@ from sigard_ml.official.normalization import DATE_FORMATS, normalize_text
 from sigard_ml.official.settings import DATE_MIN_YEAR, DATE_MAX_YEAR, normalize_header
 
 DATE_HIERARCHY = ("symptom_onset", "consultation_on", "sample_on", "notified_on")
+# Opción explícita para conteos principales; no cambia escenarios congelados.
+PRINCIPAL_DATE_HIERARCHY = ("symptom_onset", "sample_on")
 DATE_TYPES = dict(zip(DATE_HIERARCHY, ("inicio_sintomas", "consulta_medica", "toma_muestra", "notificacion")))
 # Correspondencias literales. Apertura, actualización, revisión administrativa,
 # fecha de edición del libro y query del geocodificador no son fechas clínicas.
@@ -23,8 +25,10 @@ REFERENCE_HEADERS = {
 
 
 def validate_date_hierarchy(hierarchy):
-    if not isinstance(hierarchy, (list, tuple)) or not hierarchy or tuple(hierarchy) != DATE_HIERARCHY[:len(hierarchy)]:
-        raise ValueError("La jerarquía debe ser un prefijo de síntomas, consulta, muestra, notificación")
+    if (not isinstance(hierarchy, (list, tuple)) or not hierarchy
+            or (tuple(hierarchy) != DATE_HIERARCHY[:len(hierarchy)]
+                and tuple(hierarchy) != PRINCIPAL_DATE_HIERARCHY)):
+        raise ValueError("La jerarquía debe ser un prefijo de síntomas, consulta, muestra, notificación o síntomas, muestra")
 
 
 def identify_reference_header(header):
@@ -80,6 +84,10 @@ def select_reference_date(record, hierarchy, period_start, period_end, as_of):
         if status == "valid":
             return value, field, rejections
         rejections.append(f"{field}:{status}")
+        if tuple(hierarchy) == PRINCIPAL_DATE_HIERARCHY and status in {"future_date", "outside_analysis_period"}:
+            # Una fecha interpretable no se sustituye para hacer entrar la fila
+            # en la ventana. El alcance/contradicción requiere revisión.
+            return None, None, rejections
     return None, None, rejections
 
 

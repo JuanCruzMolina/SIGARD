@@ -91,6 +91,9 @@ def create_demo_app(directory):
         response.headers["Cache-Control"] = "no-store"
         return response
 
+    from app.demo_workspace import attach_demo_workspace
+    attach_demo_workspace(app)
+
     nonce = secrets.token_urlsafe(24)
 
     @app.get("/health/demo", include_in_schema=False)

@@ -6,6 +6,10 @@ from itertools import combinations
 import pandas as pd
 
 from sigard_ml.official.calendar import week_from_date, weeks_between
+from sigard_ml.official.coverage_panel import validate_coverage_panel
+from sigard_ml.official.episodes import validate_episode_summary
+
+PRINCIPAL_COVERAGE_PROJECTION_VERSION = "principal-coverage-eligibility-1"
 
 
 def interval_summary(values, cache):
@@ -19,6 +23,112 @@ def interval_summary(values, cache):
         "observed_end": dates[-1].isoformat() if dates else None, "represented_weeks": len(represented),
         "weeks_without_observed_date_between_extrema": gaps,
         "continuous_coverage_proven": False}
+
+
+def principal_eligibility_matrix(panel, *, source_versions, identity_by_week=None):
+    """Proyecta un panel agregado existente, sin recalcular cobertura o episodios.
+
+    Selecciona semanas con registros provisionales positivos. No recibe pacientes,
+    ni carga archivos, ni convierte el escenario de cobertura en aprobación P1–P6.
+    Los resúmenes P2 opcionales son conciliaciones del mismo alcance semanal; el
+    llamador debe comprobar su procedencia y disponibilidad, como exige el adaptador.
+    """
+    validate_coverage_panel(panel)
+    if not pd.api.types.is_integer_dtype(panel.casos_observados.dtype):
+        raise ValueError("El panel debe conservar conteos enteros nullable")
+    if panel.duplicated(["radio_censal", "fecha_inicio_semana"]).any():
+        raise ValueError("Celdas agregadas duplicadas")
+    identity_by_week = {} if identity_by_week is None else identity_by_week
+    universe = set(panel.radio_censal)
+    weekly, source_weeks = [], []
+    for start, group in panel.groupby("fecha_inicio_semana", sort=True):
+        positives = group.loc[group.casos_observados.gt(0).fillna(False)]
+        if positives.empty:
+            continue
+        week = week_from_date(start)
+        pending_mentions = int(group.registros_pendientes_posibles.sum())
+        partial = bool(group.ventana_semanal_parcial.any())
+        identity = identity_by_week.get(start)
+        if identity is not None:
+            validate_episode_summary(identity)
+        identity_pending = (identity is None or identity["exact_episode_count"] is None)
+        records = int(positives.casos_observados.sum())
+        if identity is not None and identity["eligible_records"] != records:
+            raise ValueError("P2 no concilia el alcance semanal de registros provisionales")
+        for values in positives.fuentes_con_registros:
+            values = list(values) if not isinstance(values, str) and values is not None else []
+            if not values or not all(isinstance(value, str) and value for value in values) or len(set(values)) != len(values):
+                raise ValueError("Una celda positiva carece de fuentes agregadas únicas")
+        sources = sorted({source for values in positives.fuentes_con_registros for source in values})
+        if not sources or any(source not in source_versions or not source_versions[source] for source in sources):
+            raise ValueError("Fuente de registros sin versión documentada")
+        reasons = ["provisional_record_unit_not_accredited_episodes", "maturity_not_documented",
+                   "effective_availability_not_documented", "source_extraction_completeness_not_documented"]
+        if not group.cobertura_comprobada.eq("complete").all():
+            reasons.append("coverage_not_verified_for_entire_territory")
+        if partial:
+            reasons.append("partial_week")
+        grid_complete = set(group.radio_censal) == universe
+        if not grid_complete:
+            reasons.append("incomplete_radio_grid")
+        if pending_mentions:
+            reasons.append("pending_records_may_modify_count")
+        if identity_pending:
+            reasons.append("P2_unknown_or_unresolved")
+        uncertain = int(positives.registros_asignacion_incierta.sum())
+        if uncertain:
+            reasons.append("spatial_assignment_uncertain")
+        # Este panel conserva unidad provisional. P2 y cobertura por sí solos
+        # no acreditan P1/P4/P5/P6 ni autorizan un total como etiqueta por radio.
+        weekly.append({"week_start": start.isoformat(), "week_end": week.end.isoformat(),
+            "epidemiological_year": week.year, "epidemiological_week": week.number,
+            "provisional_records": records, "observation_status": "positive_provisional",
+            "positive_accredited": False, "backed_zero": False,
+            "coverage_states": sorted(group.estado_cobertura.unique()),
+            "declared_states": sorted(group.cobertura_declarada.unique()),
+            "verified_states": sorted(group.cobertura_comprobada.unique()),
+            "coverage_sufficient_for_whole_territory": bool(group.cobertura_comprobada.eq("complete").all()
+                and grid_complete and not partial and not pending_mentions),
+            "partial_week": partial, "pending_may_modify_count": bool(pending_mentions or identity_pending),
+            "pending_cell_mentions": pending_mentions, "pending_mentions_are_not_unique_episodes": True,
+            "classification_pending_records": None, "identity_pending_records": None,
+            "identity_summary": identity, "P2_status": "unknown_or_unresolved" if identity_pending else "reviewed_identity_only",
+            "assigned_provisional_records": records, "uncertain_assignment_records": uncertain,
+            "maturity": "unknown", "available_on": None, "training_eligible": False,
+            "accredited_episode_count": None, "permitted_use": "retrospective_provisional_description",
+            "block_reasons": reasons,
+            "declaration_refs": sorted(set(group.declaracion_cobertura_ref.dropna())),
+            "verification_refs": sorted(set(group.verificacion_cobertura_ref.dropna())),
+            "adapter_status": "blocked_requires_radio_week_accreditation_and_availability"})
+        for source in sources:
+            exclusive, ambiguous = 0, 0
+            for row in positives.itertuples():
+                values = list(row.fuentes_con_registros)
+                if source in values:
+                    if len(values) == 1:
+                        exclusive += int(row.casos_observados)
+                    else:
+                        ambiguous += int(row.casos_observados)
+            source_weeks.append({"week_start": start.isoformat(), "source_id": source,
+                "source_version": source_versions[source], "provisional_positive_present": True,
+                "provisional_records": exclusive if ambiguous == 0 else None,
+                "provisional_records_lower_bound": exclusive, "provisional_records_upper_bound": exclusive + ambiguous,
+                "source_attribution": "exact_from_aggregate_cells" if ambiguous == 0 else "mixed_source_cells_not_disaggregated",
+                "source_coverage": "unknown", "source_maturity": "unknown",
+                "source_pending_classification": None, "source_pending_identity": None,
+                "block_reason": "source_period_and_extraction_completeness_not_accredited"})
+    if set(identity_by_week) - {date.fromisoformat(row["week_start"]) for row in weekly}:
+        raise ValueError("P2 contiene semanas ajenas a la matriz seleccionada")
+    return {"transformation_version": PRINCIPAL_COVERAGE_PROJECTION_VERSION,
+        "unit": "provisional_records_capital_week_with_source_context", "weeks": weekly, "source_weeks": source_weeks,
+        "grid_weeks": int(panel.fecha_inicio_semana.nunique()),
+        "selected_provisional_weeks": len(weekly), "other_grid_weeks_not_evidence_of_zero": int(panel.fecha_inicio_semana.nunique()) - len(weekly),
+        "coverage_sufficient_weeks": sum(row["coverage_sufficient_for_whole_territory"] for row in weekly),
+        "accredited_count_weeks": 0, "backed_zero_weeks_in_selected_positive_matrix": 0,
+        "grid_weeks_with_any_backed_zero_cell": int(panel.loc[
+            panel.estado_observacion.eq("cero_comprobado_bajo_reglas"), "fecha_inicio_semana"].nunique()),
+        "grid_partial_weeks": int(panel.loc[panel.ventana_semanal_parcial, "fecha_inicio_semana"].nunique()),
+        "adapter_bundle_ready": False, "training_authorized": False}
 
 
 def temporal_inventory(normalized, audits, period_start, period_end, source_declarations):

@@ -1,0 +1,25 @@
+{
+  "territory_version": "la-rioja-46014010-256-v1",
+  "transformation_version": "whole-radio-locality-selection-1",
+  "locality_code": "46014010",
+  "minimum_inside_fraction": 0.9999,
+  "expected_counts": {"source": 263, "inside": 245, "near_complete": 11, "selected": 256, "excluded": 7},
+  "decision": {
+    "status": "approved_operational_scope",
+    "responsible": "project_owner",
+    "record": "Explicit project-owner instruction to adopt 245 inside and 11 at least 99.99 percent inside; 2026-10-23",
+    "epidemiological_eligibility": false,
+    "historical_availability_accredited": false
+  },
+  "inputs": {
+    "master": {
+      "path": "data/processed/territorial_master.parquet",
+      "sha256": "eab3f34da0d8e02406054192a928cba65f85783b5b262fb4d983ba383d32b088"
+    },
+    "comparison": {
+      "path": "data/interim/official/principal_city_boundary_20261022_v1/review_v2/radio_locality_comparison.csv",
+      "sha256": "3422e074df91ddea17f1e75d766a97890a120a45c734ac561770b005d3394edc"
+    }
+  },
+  "output_directory": "data/processed/principal_territory_46014010_256_v1"
+}

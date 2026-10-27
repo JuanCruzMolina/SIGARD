@@ -354,7 +354,10 @@ def build_territorial_master(
 def parse_args() -> argparse.Namespace:
     """Define los argumentos de línea de comandos."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--config", type=Path, required=True)
+    configs = parser.add_mutually_exclusive_group(required=True)
+    configs.add_argument("--config", type=Path)
+    configs.add_argument("--universe-config", type=Path,
+                         help="Versionar unidades completas desde maestro/comparación revisados")
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
@@ -368,6 +371,12 @@ def main() -> None:
         format="%(asctime)s %(levelname)s %(name)s: %(message)s",
     )
     repo_root = args.repo_root.resolve()
+    if args.universe_config is not None:
+        from sigard_ml.territorial.universe import create_version
+
+        report = create_version(load_config(args.universe_config.resolve()), repo_root)
+        LOGGER.info("Versión territorial generada: %d radios", report["counts"]["selected"])
+        return
     config = load_config(args.config.resolve())
     frame, quality = build_territorial_master(config, repo_root)
     write_outputs(frame, quality, config, repo_root)

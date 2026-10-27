@@ -115,6 +115,22 @@ def test_manual_episode_resolution_never_picks_first_automatically():
         review_episode_groups(frame, version="fixture", resolutions=[{**r, "countable": True} for r in resolutions])
 
 
+def test_reused_identifier_can_represent_distinct_reviewed_episodes_without_time_or_address_matching():
+    frame = fixture_frame(2)
+    frame.loc[1, "event_ref"] = frame.loc[0, "event_ref"]
+    frame["symptom_onset"] = [date(2020, 1, 10), date(2024, 1, 10)]
+    before = frame.copy(deep=True)
+    pending = review_episode_groups(frame, version="fictional_reuse_v1")
+    assert len(pending) == 2 and not pending.identity_countable.any()
+    # Sólo una resolución documentada puede decidir que son episodios distintos;
+    # ni el tiempo transcurrido ni la coordenada compartida deciden identidad.
+    resolutions = [{"record_key": row[ROW_KEY].tolist(), "episode_ref": f"fictional_episode_{index}",
+                    "countable": True, "evidence_ref": "fictional_review"} for index, row in frame.iterrows()]
+    reviewed = review_episode_groups(frame, version="fictional_reuse_v1", resolutions=resolutions)
+    assert reviewed.identity_countable.all() and reviewed.episode_ref.nunique() == 2
+    pd.testing.assert_frame_equal(frame, before)
+
+
 @pytest.mark.parametrize("day, year, number, start", [
     (date(2020, 1, 1), 2020, 1, date(2019, 12, 29)),
     (date(2020, 12, 27), 2020, 53, date(2020, 12, 27)),
