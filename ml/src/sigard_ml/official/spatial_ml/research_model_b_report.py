@@ -51,7 +51,7 @@ def write_reports(output, review, tables):
             f"F1 A={ar['f1']:.4f}, B={br['f1']:.4f}; ROC dentro de semana A={ar['roc_auc']:.4f}, B={br['roc_auc']:.4f}.")
     limitations = [
         "Prueba ya examinada en fases anteriores: comparación exploratoria. No se eligieron umbrales, hiperparámetros ni calibradores con ella. Umbral 0,5 congelado antes del ajuste.",
-        "Sólo 8 semanas de entrenamiento, 8 de validación y 4 de prueba; 861 radio-semanas de prueba no equivalen a 861 eventos temporalmente independientes. Los radios vecinos y las semanas repetidas están correlacionados. No se calculan p-valores ni intervalos basados en filas independientes.",
+        "Sólo 8 semanas de entrenamiento, 8 de validación y 4 de prueba; radio-semanas conocidas de prueba no equivalen a eventos temporalmente independientes. Los radios vecinos y las semanas repetidas están correlacionados. No se calculan p-valores ni intervalos basados en filas independientes.",
         "Prevalencia 7,19% → 67,35% → 11,03%. El cambio entre períodos modifica Precision/AP y la calibración. ROC global incluye pares entre semanas y puede reflejar descenso temporal además de discriminación espacial; se informa ROC por semana.",
         "Positivos provisionales y negativos cero_asumido_experimental: ausencia de registro no es ausencia verificada de dengue. Cobertura epidemiológica no acreditada. Los desconocidos se excluyen como etiquetas, conservando las filas con historia faltante.",
         "Rezago k = presencia binaria del radio en t−k, origen t y objetivo t+1; no cuenta pacientes. Historia desde 07/01/2024, sin inventar semanas anteriores. Semanas purgadas excluidas del ajuste pueden aportar historia estrictamente pasada.",

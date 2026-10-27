@@ -1,11 +1,11 @@
 # Plan técnico del proyecto SIGARD
 
-**Proyecto:** Sistema informático para la geolocalización y alerta de zonas de riesgo por dengue en La Rioja Capital  
-**Versión del plan:** 0.1  
-**Fecha de elaboración:** 14 de septiembre de 2026  
-**Horizonte:** 16 semanas  
-**Equipo base estimado:** 2 integrantes  
-**Audiencia principal:** equipo técnico  
+**Proyecto:** Sistema informático para la geolocalización y alerta de zonas de riesgo por dengue en La Rioja Capital<br>
+**Versión del plan:** 0.1<br>
+**Fecha de elaboración:** 14 de septiembre de 2026<br>
+**Horizonte:** 16 semanas<br>
+**Equipo base estimado:** 2 integrantes<br>
+**Audiencia principal:** equipo técnico<br>
 **Estado:** línea base de ejecución sujeta a validación institucional
 
 ## Actualización de ejecución — 24 de septiembre de 2026
@@ -150,7 +150,7 @@ se realiza en la etapa 11.
 
 ### 0. Bootstrap Docker + Git
 
-**Período:** semana 1  
+**Período:** semana 1<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -209,7 +209,7 @@ impide agregarla al índice.
 
 ### 1. Arquitectura y configuración base
 
-**Período:** semana 2  
+**Período:** semana 2<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -255,7 +255,7 @@ publica y valida.
 
 ### 2. Persistencia PostgreSQL/PostGIS
 
-**Período:** semanas 3 y 4  
+**Período:** semanas 3 y 4<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -315,7 +315,7 @@ Los volúmenes y backups privados permanecen locales, cifrados y fuera de Git.
 
 ### 3. Backend mínimo
 
-**Período:** semana 5  
+**Período:** semana 5<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -360,7 +360,7 @@ healthcheck y no ejecuta entrenamiento ni generación sintética ante peticiones
 
 ### 4. Ingestión de datos
 
-**Período:** semanas 6 y 7  
+**Período:** semanas 6 y 7<br>
 **Estado inicial:** avanzado
 
 #### Objetivo
@@ -420,7 +420,7 @@ salida revela valores personales en logs ni abandona el entorno local.
 
 ### 5. Autenticación y autorización administrativa
 
-**Período:** semana 8  
+**Período:** semana 8<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -467,7 +467,7 @@ definida genera un registro de auditoría.
 
 ### 6. API pública con información agregada
 
-**Período:** semana 9  
+**Período:** semana 9<br>
 **Estado inicial:** pendiente
 
 #### Objetivo
@@ -524,7 +524,7 @@ de publicación correspondiente.
 
 ### 7. Visualización geográfica
 
-**Período:** semanas 10 y 11  
+**Período:** semanas 10 y 11<br>
 **Estado inicial:** avanzado
 
 #### Objetivo
@@ -572,7 +572,7 @@ vista afirma precisión espacial real.
 
 ### 8. Componente predictivo
 
-**Período:** semanas 12 y 13  
+**Período:** semanas 12 y 13<br>
 **Estado inicial:** avanzado y exploratorio
 
 #### Objetivo
@@ -623,7 +623,7 @@ epidemiológica.
 
 ### 9. Alertas con validación administrativa
 
-**Período:** semana 14  
+**Período:** semana 14<br>
 **Estado inicial:** pendiente
 
 #### Objetivo
@@ -678,7 +678,7 @@ auditable.
 
 ### 10. Información sanitaria
 
-**Período:** semana 15  
+**Período:** semana 15<br>
 **Estado inicial:** parcial
 
 #### Objetivo
@@ -723,7 +723,7 @@ fuente, revisión y estado de vigencia.
 
 ### 11. Pruebas, seguridad y validación
 
-**Período:** semana 16  
+**Período:** semana 16<br>
 **Estado inicial:** parcial
 
 #### Objetivo

@@ -42,6 +42,11 @@ selection = ['backend/tests'] if '--backend-regression' in sys.argv else ['backe
 label = 'backend' if '--backend-regression' in sys.argv else 'importer'
 output = root / '.tmp/territorial-import-review'
 output.mkdir(parents=True, exist_ok=True)
+# Keep fixture paths below Windows/Arrow path limits in a nested checkout.
+# Never reuse a previous directory: pytest may clean its selected basetemp.
+basetemp = root / '.tmp' / f'p-{uuid4().hex[:12]}'
+if basetemp.exists():
+    raise RuntimeError('Test temporary directory already exists')
 raise SystemExit(pytest.main(selection + ['-q', '-p', 'no:cacheprovider', '--tb=short',
-    '--basetemp', str(output / f'pytest-{label}-{uuid4().hex}'),
+    '--basetemp', str(basetemp),
     '--junitxml', str(output / f'{label}.xml')]))

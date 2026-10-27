@@ -133,3 +133,9 @@ Las pruebas usan libros totalmente ficticios y verifican protección de identida
 agregación, ambigüedades, diferencias de campos, reglas no clínicas, ausencia de
 fecha/domicilio, fórmulas, encabezados ambiguos, integridad, reproducibilidad,
 destinos privados y bloqueo antes de lectura si faltan rutas originales.
+
+## Ejemplo compartible
+
+El ejemplo versionado deja `expected_processed_records=null` y la autorizaci?n
+deshabilitada. El custodio debe aportar el conteo revisado en una configuraci?n
+privada ignorada; no se distribuyen totales sanitarios como valores de ejemplo.

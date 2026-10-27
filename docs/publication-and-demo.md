@@ -1,5 +1,9 @@
 # Distribución de código y demostración ficticia
 
+Esta versión se distribuye en la rama `entrenamiento-ML` del repositorio
+original. Los commits nuevos incorporan el código sanitizado y conservan la
+historia remota anterior, sin publicar los commits locales descartados.
+
 La demostración compartible utiliza código versionado y recursos públicos
 aprobados. No necesita fuentes epidemiológicas, archivos `.env`, predicciones
 experimentales, modelos serializados ni informes privados.
@@ -46,7 +50,33 @@ el historial que quedará alcanzable desde la rama, y probar una exportación
 que sólo contenga archivos versionados. Revisar también secretos y datos
 incrustados en documentación, constantes, pruebas y figuras.
 
-`.gitignore` no elimina datos ya versionados. Un commit correctivo no retira
-contenido del historial publicado. Si la base remota ya contiene información
-privada, detener el push y resolver su tratamiento con el responsable; una
-auditoría estática aprobada no acredita por sí sola ausencia de datos sanitarios.
+`.gitignore` no elimina datos ya versionados. El alcance de esta entrega es
+evitar datos privados en los nuevos commits; el historial remoto preexistente
+no se reescribe en esta actualización.
+
+## Actualizar una instalación existente
+
+Desde la raíz de un checkout limpio del repositorio original:
+
+```powershell
+git switch entrenamiento-ML
+git pull --ff-only origin entrenamiento-ML
+.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.research.txt
+npm.cmd --prefix frontend ci
+npm.cmd --prefix frontend run dev:demo
+```
+
+Si todavía no existe `backend/.venv`, crearlo primero con
+`python -m venv backend/.venv`. Abrir `http://127.0.0.1:5173/`.
+Desde `frontend` el mismo inicio se ejecuta con `npm run dev:demo`.
+
+## Clonar por primera vez
+
+```powershell
+git clone --branch entrenamiento-ML https://github.com/JuanCruzMolina/SIGARD.git
+cd SIGARD
+```
+
+Después seguir la instalación de dependencias y el inicio de demo indicados
+arriba. El clon no necesita fuentes sanitarias, artefactos A/B ni modelos
+privados para ejecutar esta demostración.

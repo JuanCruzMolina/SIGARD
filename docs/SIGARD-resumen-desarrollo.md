@@ -5,8 +5,8 @@ demostración con `npm run dev:demo` desde `frontend`. El guion de las secciones
 8–9 es el recorrido vigente; [aceptación y límites](mvp-functional-status.md).
 Las secciones 1–7 conservan el resumen histórico.
 
-**Resumen del desarrollo hasta la etapa 11**  
-Material de apoyo para comprender el proyecto y preparar la tesis.  
+**Resumen del desarrollo hasta la etapa 11**<br>
+Material de apoyo para comprender el proyecto y preparar la tesis.<br>
 Síntesis documental: etapa 12 | 20 de octubre de 2026
 
 **Preparación de etapa 16 — 20/10/2026:** el resumen histórico de las secciones

@@ -1,5 +1,10 @@
 # SIGARD
 
+Esta versión compartible contiene código, pruebas, fixtures ficticias y mapas
+públicos aprobados. No incluye fuentes sanitarias privadas, modelos entrenados,
+predicciones experimentales, informes reales ni autorizaciones transferibles.
+Para instalar y ejecutar la demo, seguir [la guía de distribución](docs/publication-and-demo.md).
+
 ## Demostración funcional para la tesis — 26/10/2026
 
 Desde la raíz: `npm.cmd --prefix frontend run dev:demo`; abrir

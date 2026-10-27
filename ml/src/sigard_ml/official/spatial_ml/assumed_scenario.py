@@ -8,7 +8,7 @@ from sigard_ml.official.spatial_ml.features import KEYS
 from sigard_ml.official.spatial_ml.splits import DEFAULT_PLANS, class_counts, prepare_splits
 from sigard_ml.official.weekly_targets import validate_targets
 
-VERSION = "official-assumed-label-scenario-0.5b.3.0"
+VERSION = "official-assumed-label-scenario-0.5b.3.1"
 ZERO_KIND = "cero_asumido_experimental"
 
 
@@ -17,12 +17,19 @@ def validate_authorization(entry):
     required = {"version", "declaration_ref", "responsible_ref", "decision_ref", "justification",
                 "start", "end", "source_ids", "radio_scope", "date_policy", "coverage_kind",
                 "materialization_authorized", "training_authorized", "pending_policy",
-                "ready_universe_records", "clinical_confirmation_inferred"}
-    if set(entry) != required or entry["version"] != VERSION:
+                "ready_universe_records", "expected_label_counts", "clinical_confirmation_inferred"}
+    if not isinstance(entry, dict) or set(entry) != required or entry["version"] != VERSION:
         raise ValueError("Contrato de autorización inválido")
     if any(not isinstance(entry[key], str) or not entry[key].strip()
            for key in ("declaration_ref", "responsible_ref", "decision_ref", "justification")):
         raise ValueError("Falta la decisión explícita del responsable")
+    # Reviewed private configuration supplies dataset totals; none are public defaults.
+    counts = entry["expected_label_counts"]
+    if (type(entry["ready_universe_records"]) is not int or entry["ready_universe_records"] <= 0
+            or not isinstance(counts, dict) or set(counts) != {"positive", "negative", "unknown"}
+            or any(type(value) is not int or value < 0 for value in counts.values())
+            or sum(counts.values()) == 0):
+        raise ValueError("Faltan conteos de control privados válidos")
     if (entry["coverage_kind"] != "assumed_experimental_not_verified"
             or entry["materialization_authorized"] is not True
             or entry["training_authorized"] is not False
@@ -30,8 +37,7 @@ def validate_authorization(entry):
             or entry["date_policy"] != "expanded"
             or entry["pending_policy"] != "preserve_all_existing_blockers"
             or entry["source_ids"] != ["delivery_2024_2026"]
-            or entry["radio_scope"] != "all_263_capital_radios"
-            or entry["ready_universe_records"] != 7720):
+            or entry["radio_scope"] != "all_263_capital_radios"):
         raise ValueError("Acciones o alcance no autorizados")
     start, end = (date.fromisoformat(entry[key]) for key in ("start", "end"))
     # Esta versión implementa exclusivamente la decisión concreta de esta fase.

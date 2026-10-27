@@ -23,7 +23,6 @@ from sigard_ml.official.spatial_ml.assumed_scenario import (
 from sigard_ml.official.spatial_ml.splits import class_counts
 
 EXPECTED_RADIOS = 263
-EXPECTED_LABEL_COUNTS = {"positive": 2708, "negative": 0, "unknown": 66198}
 DEFAULTS = {"version": VERSION, "access_config": "data/interim/official/access.private.json",
     "phase5a_dir": "data/processed/official/spatial_ml_05a_v2",
     "phase5b_dir": "data/interim/official/spatial_experiment_05b_v1",
@@ -74,7 +73,7 @@ def snapshot(inputs, registry):
 def report_text(report):
     lines = ["# Escenario experimental de cobertura asumida", "",
         "Privado. Cobertura asumida para investigación, no verificada. No se entrenó.",
-        "Universo listo de esta versión: 7.720 registros; no es el universo epidemiológico definitivo.",
+        f"Universo listo autorizado: {report['ready_universe_records']} registros; no es el universo epidemiológico definitivo.",
         "Intervalo objetivo inclusivo: 2024-01-07 a 2024-06-08; fuente delivery_2024_2026; 263 radios.",
         "Política de fechas ampliada; positivos provisionales y bloqueos heredados conservados.", ""]
     for name in ("full_grid", "authorized_target_interval"):
@@ -128,7 +127,8 @@ def run_scenario(root, options):
     original_labels = pd.read_parquet(directory / "labels.private.parquet").sort_values(KEYS).reset_index(drop=True)
     conservative = pd.read_parquet(inputs["phase5a_dir"] / "expanded/conservative/labels.private.parquet").sort_values(KEYS).reset_index(drop=True)
     validate_panel(panel, set(panel.radio_censal), metadata["analysis_period"])
-    if panel.radio_censal.nunique() != EXPECTED_RADIOS or class_counts(panel.objetivo_semana_siguiente) != EXPECTED_LABEL_COUNTS:
+    if (panel.radio_censal.nunique() != EXPECTED_RADIOS
+            or class_counts(panel.objetivo_semana_siguiente) != options["authorization"]["expected_label_counts"]):
         raise ValueError("La grilla o las etiquetas previas no coinciden")
     pd.testing.assert_frame_equal(original_labels[KEYS], panel[KEYS])
     pd.testing.assert_series_equal(original_labels.objetivo_semana_siguiente, panel.objetivo_semana_siguiente)
@@ -155,6 +155,7 @@ def run_scenario(root, options):
         return {"rows": len(frame), **class_counts(frame.objetivo_semana_siguiente),
             "assumed_negative": int(frame.tipo_etiqueta.eq(ZERO_KIND).sum())}
     report = {"version": VERSION, "training_performed": False, "training_authorized": False,
+        "ready_universe_records": options["authorization"]["ready_universe_records"],
         "coverage_verified": False, "verified_negatives": 0, "labels_materialized": True,
         "full_grid": counts(labels), "authorized_target_interval": counts(scope),
         "radios": int(panel.radio_censal.nunique()), "authorized_weeks": len(by_week),
@@ -202,7 +203,8 @@ def run_scenario(root, options):
         "selection": "preserve all previous labels; unknown to 0 only under explicit assumed authorization without blockers",
         "unknown_labels": "never supervised negatives unless separately authorized by this scoped assumption",
         "counts_and_history": "unchanged; experimental absence labels never used as observed counts or history",
-        "previous_source_count": 5, "ready_universe_records": 7720,
+        "previous_source_count": len(registry.sources),
+        "ready_universe_records": options["authorization"]["ready_universe_records"],
         "availability": "retrospective only; census publication and outcome maturation unverified",
         "implementation_sha256": {path.name: digest_path(path) for path in (Path(__file__), Path(__file__).with_name("assumed_scenario.py"))},
         "runtime": {"pandas": pd.__version__, "numpy": np.__version__}, "training_enabled": False},

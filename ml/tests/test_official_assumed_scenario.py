@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import date
+from pathlib import Path
 import json
 import subprocess
 
@@ -27,7 +28,9 @@ def authorization(**changes):
         "radio_scope": "all_263_capital_radios", "date_policy": "expanded",
         "coverage_kind": "assumed_experimental_not_verified", "materialization_authorized": True,
         "training_authorized": False, "pending_policy": "preserve_all_existing_blockers",
-        "ready_universe_records": 7720, "clinical_confirmation_inferred": False, **changes}
+        "ready_universe_records": 8,
+        "expected_label_counts": class_counts(panel_fixture().objetivo_semana_siguiente),
+        "clinical_confirmation_inferred": False, **changes}
 
 
 def panel_fixture():
@@ -39,7 +42,11 @@ def panel_fixture():
     {"date_policy": "strict"}, {"start": "2024-01-01"}, {"end": "2024-12-31"},
     {"source_ids": ["delivery_2022"]}, {"justification": ""}, {"responsible_ref": ""},
     {"decision_ref": ""}, {"pending_policy": "ignore"}, {"clinical_confirmation_inferred": True},
-    {"ready_universe_records": 8000}, {"radio_scope": "any"}, {"unexpected": True},
+    {"ready_universe_records": -1}, {"ready_universe_records": True},
+    {"expected_label_counts": None}, {"expected_label_counts": {}},
+    {"expected_label_counts": {"positive": 0, "negative": 0, "unknown": 0}},
+    {"expected_label_counts": {"positive": True, "negative": 0, "unknown": 1}},
+    {"radio_scope": "any"}, {"unexpected": True},
 ])
 def test_rejects_unauthorized_scope_or_actions(changes):
     with pytest.raises(ValueError):
@@ -177,7 +184,6 @@ def fictional_scenario(tmp_path, monkeypatch):
     monkeypatch.setattr(prefix + "require_branch", lambda root: None)
     monkeypatch.setattr(prefix + "load_configuration", lambda *args: ({}, registry))
     monkeypatch.setattr(prefix + "EXPECTED_RADIOS", 2)
-    monkeypatch.setattr(prefix + "EXPECTED_LABEL_COUNTS", class_counts(panel.objetivo_semana_siguiente))
     for target in ("sklearn.ensemble.RandomForestClassifier.fit", "sklearn.ensemble.RandomForestRegressor.fit",
                    "sklearn.impute.SimpleImputer.fit", "sigard_ml.official.excel.open_authorized_workbook"):
         monkeypatch.setattr(target, lambda *args, **kwargs: pytest.fail("No fit ni Excel en esta fase"))
@@ -207,6 +213,31 @@ def test_tampering_blocks_before_writing(fictional_scenario):
     (root / options["phase5a_dir"] / "expanded/exploratory/labels.private.parquet").write_bytes(b"fictional_corruption")
     with pytest.raises(ValueError, match="manifiesto"):
         run_scenario(root, options)
+    assert not (root / options["output_dir"]).exists()
+
+
+def test_missing_private_control_counts_fail_before_processing():
+    entry = authorization()
+    del entry["expected_label_counts"]
+    with pytest.raises(ValueError, match="Contrato"):
+        validate_authorization(entry)
+
+
+def test_public_template_matches_schema_and_grants_no_permission():
+    path = Path(__file__).resolve().parents[1] / "configs/official.assumed-scenario.example.json"
+    template = json.loads(path.read_text(encoding="utf-8"))
+    assert template == DEFAULTS
+    with pytest.raises(ValueError):
+        validate_authorization(template["authorization"])
+
+
+def test_private_control_counts_must_match_frozen_labels(fictional_scenario):
+    root, options, _ = fictional_scenario
+    counts = dict(options["authorization"]["expected_label_counts"])
+    counts["positive"] += 1
+    changed = {**options, "authorization": {**options["authorization"], "expected_label_counts": counts}}
+    with pytest.raises(ValueError, match="etiquetas previas"):
+        run_scenario(root, changed)
     assert not (root / options["output_dir"]).exists()
 
 

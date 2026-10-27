@@ -2,7 +2,7 @@
   "version": "official-original-selection-reconciliation-0.5b.2",
   "local_aggregate_processing_authorized": false,
   "output_dir": "data/interim/official/selection_reconciliation_05b2_v1",
-  "expected_processed_records": 7720,
+  "expected_processed_records": null,
   "training_enabled": false,
   "generate_negatives": false,
   "sources": []

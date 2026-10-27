@@ -42,6 +42,21 @@ residencia, asignación espacial, disponibilidad censal histórica y maduración
 La evaluación es retrospectiva, no operativa validada. Las etiquetas estrictas
 sólo se consultan para sensibilidad descriptiva, sin materializar otros ceros.
 
+El contrato `official-assumed-label-scenario-0.5b.3.1` exige que la autorización
+local declare `ready_universe_records` (entero positivo) y `expected_label_counts`
+(objeto con enteros no negativos `positive`, `negative`, `unknown`, con suma
+positiva). No existen totales reales predeterminados en el código ni en sus
+pruebas. La autorización debe estar revisada por el custodio y guardarse en una
+configuración `.private.json` bajo almacenamiento ignorado; esta copia no la
+incluye ni concede permisos. Una configuración anterior requiere revisión y
+versión nuevas: no se migra ni autoriza automáticamente.
+
+Antes de materializar se verifican manifiestos, procedencia y coincidencia exacta
+entre los conteos de etiquetas declarados y el panel congelado. Los totales de
+control son una comprobación de integridad, no evidencia de cobertura sanitaria.
+Las pruebas obtienen sus conteos de matrices generadas de radios ficticios.
+La demo web no utiliza esta configuración ni ejecuta el pipeline científico.
+
 ```powershell
 .\ml\venv\Scripts\python.exe -B -m sigard_ml.official.spatial_ml.assumed_scenario_pipeline --config <configuracion-privada>
 .\ml\venv\Scripts\python.exe -B -m pytest ml/tests/test_official_assumed_scenario.py -p no:cacheprovider

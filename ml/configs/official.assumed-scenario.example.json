@@ -1,5 +1,5 @@
 {
-  "version": "official-assumed-label-scenario-0.5b.3.0",
+  "version": "official-assumed-label-scenario-0.5b.3.1",
   "access_config": "data/interim/official/access.private.json",
   "phase5a_dir": "data/processed/official/spatial_ml_05a_v2",
   "phase5b_dir": "data/interim/official/spatial_experiment_05b_v1",

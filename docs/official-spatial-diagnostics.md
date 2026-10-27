@@ -77,7 +77,7 @@ ese baseline fijo, sin construir un baseline usando prevalencia futura.
   se convierte en una demora específica del test de 2024.
 
 El análisis reconoce ocho/ocho/cuatro semanas de una temporada, radios vecinos
-dependientes y radios repetidos en todos los bloques. No trata las 861 celdas
+dependientes y radios repetidos en todos los bloques. No trata las celdas conocidas
 de prueba como eventos independientes ni calcula intervalos/p-valores IID.
 La etiqueta es presencia provisional en t+1, separada del objetivo de conteos
 sintéticos de `v0.1`; no modifica el MVP.

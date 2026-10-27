@@ -88,10 +88,10 @@ def render(data, output):
         ax.bar(x, [r[top] for r in rows], bottom=[r[bottom] for r in rows], color=ORANGE, hatch="//", label=second)
         for index, row in enumerate(rows):
             ax.text(index, row[bottom] + row[top] + 3, str(row[bottom] + row[top]), ha="center")
-        ax.set(title=title, ylabel="Celdas radio–semana con etiqueta conocida", xlabel="Inicio de semana objetivo (2024)", ylim=(0, 210))
+        ax.set(title=title, ylabel="Celdas radio–semana con etiqueta conocida", xlabel="Inicio de semana objetivo (2024)", ylim=(0, None))
         ax.set_xticks(x, [date.fromisoformat(r["target_week"]).strftime("%d/%m") for r in rows])
         ax.legend(fontsize=9)
-    save(fig, "03_test_weekly_errors", "12/05–08/06/2024. Umbral congelado 0,5; 861 celdas conocidas; 191 desconocidas excluidas.")
+    save(fig, "03_test_weekly_errors", "12/05–08/06/2024. Umbral congelado 0,5; S?lo etiquetas conocidas; desconocidas excluidas.")
 
     fig, axes = plt.subplots(1, 3, figsize=(12, 5.5), layout="constrained")
     for ax, feature in zip(axes, ("semana_epidemiologica", "estacionalidad_seno", "estacionalidad_coseno")):

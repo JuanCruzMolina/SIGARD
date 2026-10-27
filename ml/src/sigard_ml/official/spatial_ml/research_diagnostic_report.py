@@ -34,7 +34,7 @@ def recommendations():
         {"priority": "P2", "category": "calibracion", "recommendation": "Investigar el efecto del balanceo de clases y de la prevalencia cambiante mediante comparaciones planificadas en entrenamiento/validación interna; no atribuirle causalmente la sobreestimación actual.",
          "requires": "Fase posterior con autorización y protocolo. No elegir nuevos hiperparámetros ni aplicar correcciones de prior desde los resultados de prueba.", "status": "proposed_not_executed"},
         {"priority": "P2", "category": "evaluacion_seleccion_temporal", "recommendation": "Añadir sensibilidad por bloques espaciales para una pregunta explícita de generalización territorial y cuantificar incertidumbre por temporadas/bloques cuando haya soporte independiente suficiente.",
-         "requires": "Más semanas/temporadas y estructura de dependencia defendible. No bootstrap IID de 861 filas ni intervalos supuestamente robustos con cuatro semanas.", "status": "proposed_not_executed"},
+         "requires": "Más semanas/temporadas y estructura de dependencia defendible. No bootstrap IID de filas observadas ni intervalos supuestamente robustos con cuatro semanas.", "status": "proposed_not_executed"},
     ]
 
 
@@ -117,7 +117,7 @@ def write_diagnostic_report(output, data, checks, protected_count, git_state):
     lines += ["", "MDI distribuye disminuciones de impureza en el ajuste: no mide aporte causal, información exclusiva ni estabilidad fuera del entrenamiento. Puede favorecer variables continuas/de alta cardinalidad y repartir importancia entre predictores redundantes; sumar o comparar porcentajes no identifica determinantes epidemiológicos. La dispersión entre árboles no es un intervalo de confianza. No se eliminan variables. [E6,R3]", "",
         "![Correlaciones estructurales e importancia MDI](figures/05_redundancy_and_mdi.png)", "",
         "## 7. Validez experimental y límites epidemiológicos", "",
-        "Las 861 celdas de prueba son mediciones repetidas en cuatro semanas consecutivas y sobre los mismos radios. No constituyen 861 eventos temporalmente independientes. Radios vecinos comparten contexto y posiblemente vigilancia; la dependencia temporal/espacial reduce información independiente. [E1,E3]",
+        "Las celdas conocidas de prueba son mediciones repetidas en cuatro semanas consecutivas y sobre los mismos radios. No constituyen eventos temporalmente independientes. Radios vecinos comparten contexto y posiblemente vigilancia; la dependencia temporal/espacial reduce información independiente. [E1,E3]",
         "No se calculan p-valores, intervalos binomiales IID, bootstrap por filas ni significancia para diferencias de métricas. Cuatro semanas no permiten una estimación robusta de generalización entre temporadas; tampoco prueban transferibilidad a radios nuevos. [I1]",
         "Los positivos son registros elegibles provisionales, sin convertirlos en confirmación clínica ni ubicación real de infección. Los negativos son asunciones experimentales, no ausencias verificadas. No hay cobertura epidemiológica comprobada; subregistro, etiquetas incompletas y desconocidos selectivos pueden cambiar todas las métricas. [E1,E2]",
         "La disponibilidad histórica del Censo 2022 y de sus límites, y la maduración/llegada de etiquetas, siguen sin acreditarse. La purga y el catálogo sin offsets futuros previenen ciertos errores computacionales, pero no certifican disponibilidad operativa punto en el tiempo. [E1,E2]", ""]
