@@ -1,5 +1,48 @@
 # Contrato conceptual de datos de SIGARD v0.1
 
+## Contrato del módulo principal de conteos
+
+V2 agrega `snapshot_record_count` como unidad experimental privada separada:
+ceros del snapshot filtrado sólo bajo su hipótesis explícita, desconocidos ante
+pendientes/fechas no utilizables o fuera de alcance y 2022 aparte. Produce conteos
+territoriales y puntaje de presencia experimental por horizonte directo t+1/t+2/t+4.
+Las observaciones y predicciones se distinguen; el total observado de 256 radios
+es null cuando alguna etiqueta es desconocida. La consulta local no habilita
+producción, publicación ni probabilidades de infección. Ver
+[extensión de entrada V2](principal-count-input-contract.md#extensión-v2-snapshot-filtrado-y-consulta-privada).
+
+El [módulo principal t+1](principal-count-forecasting.md) agrega un contrato
+interno independiente `principal-counts-0.1.0`:
+snapshots radio–semana con conteo nullable, estado, cobertura, pendientes,
+madurez, disponibilidad y procedencia. Un positivo parcial no acredita un
+conteo completo; desconocidos nunca se imputan como cero. Predictores usan
+versiones conocidas al cierre del origen y desenlaces congelados separados.
+La salida conserva esperanza por radio, suma coherente de Capital, corte,
+objetivo y modelo; probabilidades e intervalos permanecen null sin acreditación.
+No cambia los contratos públicos, el MVP sintético, A/B ni sus etiquetas.
+
+Desde el 26/10/2026, `provisional_aggregate_experiment` permite ajuste y evaluación
+experimental local sobre agregados reales autorizados por la declaración expresa
+del responsable de SIGARD. Conserva `provisional_record_count`, desenlaces
+desconocidos null, disponibilidad histórica no acreditada y P1–P6 como límites.
+Su evaluación es retrospectiva y condicional a celdas positivas observadas;
+no estima aparición territorial, episodios independientes, ceros acreditados ni
+totales completos de Capital. `training_authorized`/`evaluation_authorized`
+se calculan desde permisos y evidencia de esa modalidad; no activan producción.
+Modelo y resultados V1 se almacenan sólo en la versión privada
+`ml/artifacts/official/sigard-principal-v1-experimental/`. Ver
+[contrato de entrada experimental](principal-count-input-contract.md#modalidad-provisional_aggregate_experiment).
+
+El contexto operativo del principal adopta desde el 23/10/2026 la versión
+`la-rioja-46014010-256-v1`: 256 radios completos (245 interiores y 11 con
+superficie interior ≥ 99,99% en localidad `46014010`), con grafo inducido cerrado.
+Se preservan geometrías, población, superficie y densidad por unidad; no hay
+reparto por fracción de área ni reasignación de pacientes. La preparación está
+configurada en `ml/configs/principal_territory.json` y conectada al adaptador
+mediante `territorial_components`, sin entrenamiento ni conteos reales nuevos.
+Ver [adopción y límites](principal-city-boundary.md#adopción-operativa-del-23102026).
+El maestro original, contratos públicos y artefactos A/B conservan 263 radios.
+
 ## Contratos internos del circuito oficial
 
 La fase 1 agrega objetos validados en `sigard_ml.official` para procedencia,

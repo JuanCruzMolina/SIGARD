@@ -1,5 +1,29 @@
 # Pipelines reproducibles de SIGARD
 
+El código de conteos principal incluye adaptadores, snapshots con disponibilidad
+explícita, modelos de conteos/presencia, baselines, cortes temporales purgados y
+consulta retrospectiva separada del backend.
+Ver [interfaces del principal](../docs/principal-count-forecasting.md),
+[contrato de entrada](../docs/principal-count-input-contract.md) y
+[protocolo de evaluación](../docs/validacion-predictiva-tesis.md).
+
+Las fuentes, artefactos, métricas e informes reales permanecen privados.
+La consulta V2/V3 necesita artefactos locales autorizados; no vienen con el clon.
+La demo compartible se ejecuta con `npm run dev:demo` desde `frontend` y no los usa.
+`python -B -m sigard_ml.forecasting --fictional-demo` ejercita el contrato ficticio.
+Publicar código no autoriza accesos, entrenamientos ni nuevas etapas científicas.
+
+El principal adopta el territorio **`la-rioja-46014010-256-v1`**, configurado en
+`configs/principal_territory.json`: 245 radios interiores y 11 con superficie
+interior ≥ 99,99% en localidad `46014010`. La extensión del constructor existente
+`python -B -m sigard_ml.ingestion.territorial --universe-config ml/configs/principal_territory.json`
+(desde la raíz) crea una versión local nueva y rechaza sobrescritura. Conserva
+las unidades completas y atributos, con grafo inducido; no altera el maestro
+original de 263. `forecasting.adapter.territorial_components` carga el contexto
+para el futuro paquete principal y exige disponibilidad explícita. Ver
+[salidas, validaciones y límites](../docs/principal-city-boundary.md#adopción-operativa-del-23102026).
+No reasigna pacientes, acredita P5/P6 ni crea conteos/ceros o entrenamiento real.
+
 El [validador epidemiológico de etapa 7](../docs/official-epidemiology-review.md#etapa-7-validador-independiente-de-consistencia)
 se ejecuta de forma independiente mediante
 `python -B -m sigard_ml.official.epidemiological_validator` (JSON por stdin).

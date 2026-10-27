@@ -1,4 +1,11 @@
-# Frontend de SIGARD
+# Frontend de SIGARD v1.0 académica
+
+Cierre funcional para tesis: `npm.cmd run dev:demo` inicia una demostración
+ficticia integral con SQLite descartable; `npm.cmd run dev` conserva el entorno
+privado A/B. Abrir `http://127.0.0.1:5173/`. **Ctrl+C** elimina la base temporal
+de demo. No habilita operación sanitaria ni promueve ML frente a persistencia.
+Ver [cierre, matriz de requisitos y aceptación](../docs/cierre-funcional-tesis.md).
+Para otro equipo, seguir la [instalación de la demo desde un clon](../docs/publication-and-demo.md).
 
 SPA React/Vite con dos dominios visuales explícitamente separados:
 
@@ -68,11 +75,10 @@ npm run dev:demo
 
 Desde la raíz: `npm.cmd --prefix frontend run dev:demo`. Requiere las mismas
 dependencias del inicio habitual; no instala otras ni modifica producción.
-Coordina Vite **127.0.0.1:5173**, investigación A/B **127.0.0.1:8765** y una
-segunda FastAPI ciudadana/administrativa en **127.0.0.1:8766**. Comprueba los
-puertos y requisitos antes de iniciar. Sólo puede reutilizar la API A/B tras
-verificar su contrato y protección local. Nunca reutiliza 8766 ni detiene un
-servicio desconocido. `npm run dev` conserva únicamente Vite + A/B.
+Coordina Vite **127.0.0.1:5173** y FastAPI ciudadana/administrativa en
+**127.0.0.1:8766**, con SQLite temporal propia. Comprueba requisitos y puertos;
+no reutiliza 8766 ni detiene servicios desconocidos. **No inicia ni consulta A/B**.
+`npm run dev` conserva el entorno privado Vite + A/B en 8765.
 
 Abrir **http://127.0.0.1:5173/**. La franja **Demo integral** enlaza al reporte y
 seguimiento en `/prevencion` y a `/admin/reportes`. El usuario y la contraseña
@@ -91,7 +97,7 @@ en `backend/.tmp/sigard-demo-*/demo.sqlite3`, excluida de Git.
 
 Sólo este coordinador activa la marca interna de demo y la URL ciudadana 8766.
 El MVP/contexto usa directamente el respaldo estático aprobado, sin consultar
-otra API pública; A/B mantiene sus solicitudes protegidas e integridad habitual.
+otra API pública. A/B permanece fuera de esta demostración, sin modificaciones.
 Los reportes no alimentan modelos ni aparecen en el mapa A/B. Los centros de
 salud conservan sus fuentes/límites de vigencia y son contexto público, no datos
 ficticios. No se cargan modelos serializados ni se recalculan scores/métricas.
@@ -102,13 +108,24 @@ la ruta del geocodificador. Se omiten teselas y la fuente tipográfica remotas
 únicamente durante esta sesión; polígonos, marcadores, listado y selector manual
 funcionan sin Internet. Los enlaces externos voluntarios conservan sus destinos.
 
-**Recorrido:** mapa/semana/radio A/B → prevención/directorio → reporte inventado
-→ código de seguimiento → login demo → revisar/actualizar → consultar el mismo
-código y ver el mensaje público. Sólo la administración ve el detalle privado.
+**Recorrido:** mapa público aprobado → prevención/directorio → reporte inventado
+→ seguimiento → login en Administración → **Análisis y alertas demo**.
+La consulta permite fecha, radio D01–D06, horizonte t+1/t+2/t+4 y persistencia;
+la opción V3 usa valores ficticios del contrato, nunca ejecuta V3 real.
+Probabilidad validada y superioridad ML siguen pendientes. Una fecha de 2026
+devuelve datos insuficientes. Los seis rectángulos son ajenos a La Rioja.
+
+**Ingestión ficticia** valida/carga 48 claves del ejemplo CSV (vacío = desconocido)
+y rechaza campos adicionales. **Alertas experimentales** permite crear/editar
+reglas, habilitarlas/deshabilitarlas, evaluar manualmente por fecha/horizonte y
+marcar candidatas revisadas. Hay auditoría en SQLite, sin notificaciones ni
+publicación oficial. Todo requiere rol administrador verificado por el servidor.
+Volver a reportes permite revisar/actualizar el reporte; el seguimiento público
+nunca revela notas, descripción o coordenadas exactas.
 
 **Ctrl+C** cierra los procesos propios, espera al cierre de SQLite y elimina su
-directorio, también ante fallos de inicio. Una API A/B previamente reutilizada
-permanece activa. Al reiniciar cambian cuenta, contraseña y clave de tokens; los
+directorio, también ante fallos de inicio. Una API A/B preexistente
+permanece intacta porque la demo no la consulta ni controla. Al reiniciar cambian cuenta, contraseña y clave de tokens; los
 reportes anteriores no existen. La eliminación se garantiza en el cierre
 coordinado; una caída del sistema o terminación forzada del coordinador puede
 dejar un directorio temporal ignorado. Nunca se recupera/reutiliza como sesión.
@@ -123,11 +140,12 @@ npm run test:demo:browser
 ```
 
 La prueba de navegador requiere Puppeteer ya disponible (o su ruta en
-`SIGARD_BROWSER_MODULE`). Inicia las API reales y Vite, comprueba A/B, reporte,
-seguimiento, administración, reinicio vacío, cierre, ruta del inicio habitual
-y preview de producción. No simula respuestas HTTP ni guarda credenciales,
-códigos, reportes o resultados A/B. Sólo conserva capturas de la interfaz vacía
-y un recibo de comprobaciones en `frontend/.tmp/demo-ui/`. La selección aislada
+`SIGARD_BROWSER_MODULE`). Inicia FastAPI/Vite reales con fixtures ficticias;
+comprueba navegación, consulta, ingestión, alertas, reportes, seguimiento,
+roles, reinicio vacío y preview de producción. No simula respuestas HTTP ni
+guarda credenciales o códigos de seguimiento. Conserva capturas públicas o
+ficticias y mediciones de respuesta en `frontend/.tmp/thesis-closure-ui/`.
+La selección aislada
 `backend/tests/demo_isolated.py` prueba configuración hostil, guards SQLite,
 autenticación y geocodificador bloqueado. No usa Docker ni evalúa ML.
 
@@ -242,9 +260,9 @@ estático, el ciclo ficticio HTTP/SQLite y A/B. Las vistas completas con selecto
 textual excluyen los polígonos de la tabulación para evitar 263 paradas de tooltip;
 conservan clic/hover. El harness integral comprueba Tab del mapa al selector.
 El [guion académico y checklist](../docs/SIGARD-resumen-desarrollo.md#8-guion-académico-de-siete-minutos)
-explica qué puede mostrarse con el comando habitual y qué precisa la API separada.
-El harness sólo redirige su propio navegador a la API ficticia y limpia al cerrar;
-no prepara una sesión administrativa manual ni acredita PostgreSQL/PostGIS.
+describe el circuito integrado con `dev:demo`, que prepara la sesión manual
+descartable. El harness de cuentas usa su propia API ficticia y limpia al cerrar;
+su comprobación SQLite no acredita PostgreSQL/PostGIS.
 
 ## Docker local
 
@@ -267,3 +285,11 @@ en el mapa epidemiológico. La búsqueda opcional requiere un consentimiento
 separado y envía la referencia a la API de SIGARD, que actúa como intermediaria
 ante Nominatim/OpenStreetMap sin reenviar la IP del navegador. Si la persona no
 quiere compartir esa referencia puede ubicar el marcador manualmente.
+## Demostración predictiva privada
+
+La [guía de cierre experimental](../docs/predictive-experimental-demo.md) explica
+el mapa Leaflet autocontenido generado desde `local_query --map-output`.
+`npm.cmd --prefix frontend run build:predictive-viewer` compila sólo código genérico
+en `.tmp`; los datos se incorporan después bajo `data/interim/official`, nunca en
+`public` ni en la distribución. Abrir el HTML privado directamente como archivo
+local: no necesita servidor y no habilita una ruta pública ni alertas.

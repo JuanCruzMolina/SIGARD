@@ -198,6 +198,13 @@ fracciones censales, conjuntos contiguos de radios o unidades administrativas
 con límites oficiales. Agrupar no soluciona posiciones equivocadas ni sesgo de
 geocodificación. No se implementa una agrupación territorial en esta fase.
 
+## Territorio del módulo principal
+
+El principal utiliza una configuración territorial separada, documentada en
+[límite censal y territorio](principal-city-boundary.md). La validez geométrica
+no acredita residencia, lugar de contagio ni precisión de geocodificación.
+No se publican diagnósticos, asignaciones o desgloses sanitarios privados.
+
 ## Pruebas
 
 ```powershell

@@ -74,6 +74,40 @@ Estas reglas se aplican a todo el repositorio.
 - Comparar el modelo con baselines temporales simples antes de interpretar sus
   métricas.
 - Ejecutar entrenamiento y evaluación fuera del proceso del backend.
+- La modalidad explícita `provisional_aggregate_experiment` admite experimentos
+  locales retrospectivos de conteos de registros agregados provisionales, sin
+  acreditarlos como episodios ni exigir el cierre P1–P6 del objetivo definitivo.
+  La declaración expresa del responsable del 26/10/2026 establece que las cinco
+  entregas SISA le fueron proporcionadas para desarrollar SIGARD y entrenar ML,
+  y autoriza procesamiento, entrenamiento, evaluación y artefactos privados de
+  sus agregados para uso experimental local. Registrar ese fundamento como
+  `project_owner_declared_provision`, sin atribuir firma institucional ni exigir
+  nuevamente documentación P1–P6. Versionar permisos de paquete/fuentes para ese
+  alcance agregado; mantener los permisos históricos de ingestión separados.
+  P1–P6 siguen siendo limitaciones metodológicas del objetivo definitivo, no
+  bloqueos de este experimento. No convertir desconocidos en ceros, acreditar
+  episodios/cobertura, modificar A/B, publicar ni habilitar producción.
+- La solicitud V2 del 26/10/2026 autoriza además un escenario privado separado
+  de conteos del snapshot filtrado: ceros registrados asumidos sólo en semanas
+  explícitamente incluidas, nunca ausencia epidemiológica. Conservar null ante
+  pendientes, problemas temporales o fuera de ese alcance; mantener 2022 aparte.
+  Se permite entrenar/evaluar conteos y presencia experimental y consultar por
+  fecha en local con modelos anteriores al origen, sin activar producción.
+  La prueba V1 ya observada sólo sirve para diagnóstico/comparación; seleccionar
+  V2 exclusivamente dentro de desarrollo. No sobrescribir V1 ni reutilizar A/B.
+- El cierre experimental conserva V1 y V2 congeladas. El GLM V2 condicional no
+  se promueve; la consulta utiliza persistencia con respaldo histórico como
+  referencia estadística simple. Probabilidad territorial en evaluación, sin
+  puntajes visibles ni alertas. Las demostraciones se generan sólo como archivos
+  privados locales; no reentrenar en tareas de presentación salvo defecto técnico
+  demostrado ni convertirlas en una nueva etapa de investigación.
+- La solicitud explícita V3 autoriza una nueva ejecución experimental local de
+  tres candidatos (Poisson directo, presencia/cantidad y corrección de persistencia)
+  sobre la grilla existente. Conservar V1/V2 y A/B; seleccionar sólo con walk-forward
+  de desarrollo. Se admiten features de la semana de origen ya cerrada, siempre
+  como reconstrucción retrospectiva, comparando también persistencia con esa
+  información. No modificar por el período ya observado ni activar ML por defecto:
+  la consulta exige versión explícita y respaldo de validación multifactorial.
 
 ## Arquitectura y cambios
 

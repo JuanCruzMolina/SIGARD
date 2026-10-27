@@ -1,5 +1,10 @@
 # SIGARD
 
+**Entrega v1.0 académica — 21/10/2026:** prototipo local terminado para
+demostración con `npm run dev:demo` desde `frontend`. El guion de las secciones
+8–9 es el recorrido vigente; [aceptación y límites](mvp-functional-status.md).
+Las secciones 1–7 conservan el resumen histórico.
+
 **Resumen del desarrollo hasta la etapa 11**  
 Material de apoyo para comprender el proyecto y preparar la tesis.  
 Síntesis documental: etapa 12 | 20 de octubre de 2026
@@ -268,9 +273,8 @@ queda activa. Reiniciar `npm run dev:demo` y comprobar que el código anterior y
 no existe; cuenta, contraseña y clave de tokens son nuevas. Cerrar nuevamente.
 «Esta evidencia demuestra el circuito técnico con SQLite descartable, no
 PostGIS actual ni capacidad epidemiológica acreditada. No se entrenó ni recalculó
-ML». Próxima prioridad académica: ensayar la exposición completa con el equipo
-de tesis y registrar sólo hallazgos de usabilidad, sin credenciales ni resultados
-privados. El comando habitual `npm run dev` conserva únicamente frontend + A/B.
+ML». La entrega v1.0 académica queda cerrada en este alcance, sin iniciar una
+fase operativa. El comando habitual `npm run dev` conserva únicamente frontend + A/B.
 
 ## 9. Lista de preparación de la demostración
 

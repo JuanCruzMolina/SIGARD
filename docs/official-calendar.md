@@ -117,6 +117,10 @@ no se usan como fecha del evento ni como año epidemiológico.
   del MVP quedan vinculadas a ese perfil para preservar su historia 2015–2024.
   El adaptador vectorial permite `calendar=DEFAULT_CALENDAR` y devuelve `NaT`
   para SE inválidas, en lugar de aceptar una SE53 desbordada al año siguiente.
+  `transformation.temporal.aggregate_climate` también admite ahora
+  `calendar=DEFAULT_CALENDAR`: seleccionarlo explícitamente para el principal,
+  sin fechas fuera de los años verificados. El default y los artefactos del MVP
+  siguen preservados; la salida oficial añade versión y completitud de valores.
 - `ml/configs/official.calendar.example.json` separa calendario validado,
   reproducción histórica, período de análisis y extensión de cobertura
   desactivada. Es una configuración para la API de calendario y una futura

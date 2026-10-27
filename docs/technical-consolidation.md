@@ -1,5 +1,14 @@
 # SIGARD: consolidación técnica de las etapas 1 a 17
 
+**Entrega SIGARD v1.0 académica — 21/10/2026:** cierre del prototipo local
+demostrable con `npm run dev:demo` desde `frontend`; `npm run dev` conserva A/B
+para desarrollo. No se encontraron bloqueos P0/P1 de producto en los recorridos
+definidos. Se actualizaron únicamente ensayos de navegador y documentación;
+sin cambios de producción, datos, modelos, etiquetas ni predicciones.
+La [aceptación final y los límites](mvp-functional-status.md#sigard-v10-académica--cierre-final-21102026)
+prevalecen para esta entrega; la evidencia técnica que sigue es histórica.
+La operación sanitaria y el importador completo con PostGIS siguen fuera del cierre.
+
 **Consolidación integral — 21/10/2026:** revisión de los 24 archivos pendientes
 iniciales y separación de responsabilidades: robustez A/B, preparación científica,
 integración descartable de persistencia, importador territorial y documentación.

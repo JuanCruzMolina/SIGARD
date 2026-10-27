@@ -1,5 +1,21 @@
 # Arquitectura conceptual de SIGARD v0.1
 
+## Implementación local de cierre — 26/10/2026
+
+La [arquitectura efectivamente verificada](cierre-funcional-tesis.md#arquitectura-efectivamente-implementada)
+mantiene React/Leaflet, preparación/ML offline y FastAPI separados. `dev:demo`
+usa Vite 5173 + FastAPI 8766 y SQLite descartable; no inicia A/B ni PostgreSQL.
+El espacio ficticio de administrador se registra sólo desde la factory demo,
+con autorización del servidor y auditoría. La vista pública recibe únicamente
+los recursos ya aprobados. No se incorporan originales, agregados privados ni
+modelos al bundle o a `frontend/public`.
+
+`dev` conserva el lector A/B privado en 8765; V1/V2/V3 y la consulta real por
+radio permanecen congeladas en su entorno local separado. La opción V3 del
+espacio ficticio sólo demuestra su contrato, sin ejecutar ML. Persistencia es
+la referencia predeterminada. La arquitectura conceptual histórica sigue abajo;
+no acredita PostGIS actual ni superioridad predictiva.
+
 ## Propósito
 
 La arquitectura de `v0.1` valida un recorrido técnico reproducible desde

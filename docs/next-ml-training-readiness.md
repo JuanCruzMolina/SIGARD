@@ -3,6 +3,14 @@
 20/10/2026 · Rama `entrenamiento-ML` · Propuesta para revisión humana.
 **No autoriza accesos, nuevas etiquetas, procesamiento real ni entrenamiento.**
 
+Actualización 26/10/2026: este dossier conserva los requisitos del objetivo
+epidemiológico acreditado. No bloquea la modalidad separada
+`provisional_aggregate_experiment`, autorizada por la declaración expresa del
+responsable para agregados de las cinco entregas SISA y uso experimental local.
+V1 se ejecutó bajo ese alcance, sin resolver ni acreditar P1–P6, sin ceros nuevos
+y sin habilitar producción. No se requieren nuevas respuestas del responsable
+para esa ejecución. Ver [estado y límites del principal V1](principal-count-forecasting.md#principal-v1-experimental-autorización-del-26102026).
+
 ## Decisión que necesitamos tomar
 
 Antes de otro entrenamiento hay que acordar qué evento y episodio representa
@@ -20,6 +28,11 @@ institucionales existentes. Las seis decisiones siguen pendientes.
 
 ## 1. Condiciones actuales y evidencia utilizable
 
+- **Ámbito operativo aprobado el 23/10/2026:** el principal adopta los 256 radios
+  de `la-rioja-46014010-256-v1`, con grafo inducido y configuración propia.
+  Ver [adopción territorial](principal-city-boundary.md#adopción-operativa-del-23102026).
+  Esta decisión no completa P5 epidemiológico ni disponibilidad P6; el maestro
+  original y A/B permanecen en 263, sin reasignar geocodificaciones aproximadas.
 - **Comprobado técnicamente:** cartografía de 263 radios, calendario
   `ar-snvs-2020-2026-v1` domingo–sábado, trazabilidad de campos, tratamiento
   explícito de desconocidos y objetivos exactos t+1. La cartografía validada
@@ -317,3 +330,65 @@ Kassis, T., Agarwal, V., He, Y., Patel, D., & Brueckner, A. M. (2026).
 [Scientific Agent Skills: A Library of Procedural Knowledge for Research Agents](https://doi.org/10.48550/arXiv.2609.00065).
 Referencia ya verificada en la fase anterior; no es evidencia epidemiológica.
 Documento elaborado con asistencia de Codex, pendiente de revisión humana.
+
+## 10. Resumen ejecutivo para solicitar evidencia al Ministerio
+
+22/10/2026 · Solicitud preparada, no enviada. Destinatarios: custodio de registros,
+referente epidemiológico y responsables de extracción y contexto territorial,
+todos pendientes de designación. Se necesitan documentos/metadatos y agregados
+revisados, sin registros identificables. Este resumen reutiliza la matriz P1–P6
+de la sección 9 del dossier único, según su descripción ya documentada arriba;
+no reabre ese archivo privado ni repite las auditorías completadas.
+
+La decisión solicitada es si puede prepararse un derivado de **conteos de
+episodios elegibles por radio y semana**, con referencia temporal y cobertura
+definidas. No se solicita acreditar el MVP sintético ni convertir el resultado
+retrospectivo A/B en incidencia, conteos completos o nueva prueba independiente.
+
+- **P1 — Evento y clasificación:** diccionario y definiciones históricas por
+  fuente/período; correspondencias y evidencia de aplicación de criterios
+  admitidos a episodios, con resolución de la discrepancia documentada de 2022.
+  Entrega esperada: política versionada de elegibilidad y excepciones; sin ella,
+  los registros continúan provisionales y no son etiquetas de conteos reales.
+- **P2 — Episodio e identificadores:** significado de fila e IDs, relaciones
+  entre notificación/muestra/actualización, reutilizaciones y criterio de nuevo
+  episodio. Entrega esperada: resolución documentada de identidad y conciliación;
+  sin ella no se puede contar filas como episodios ni deduplicar por conveniencia.
+- **P3 — Extracción, cobertura y madurez:** canales/establecimientos incluidos
+  y omitidos, población/residencia, filtros, fechas de corte, interrupciones,
+  notificación de semanas sin registros, atrasos y pendientes que puedan cambiar
+  cada celda. Entrega esperada: cobertura por radio/semana y criterio de madurez;
+  sin ella no se acreditan ceros ni totales exhaustivos, aunque haya positivos.
+- **P4 — Referencia temporal:** significado y calidad de síntomas, consulta,
+  muestra y notificación; fecha defendible del objetivo y reglas para faltantes
+  y contradicciones. Entrega esperada: política versionada compatible con semanas
+  domingo–sábado; no sustituir fechas ni asignar años por nombre del archivo.
+- **P5 — Atribución territorial:** significado de ubicaciones, residencia u
+  otro rol, procedencia, CRS, cartografía vigente, precisión y ambigüedades.
+  Entrega esperada: universo y política espacial aprobados con límites de uso;
+  la validez geométrica de los 263 radios no acredita ubicación de episodios.
+- **P6 — Disponibilidad histórica:** snapshots, historial de llegada y cambios,
+  publicaciones/recepciones del clima y versiones censales/cartográficas.
+  Entrega esperada: inventario de disponibilidad efectiva por snapshot y variable,
+  incluidos estados, máscaras y grafo; sin ello una exportación retrospectiva
+  no demuestra que esos predictores se conocían en cada origen.
+
+Cada respuesta debe indicar fuente/versión, período, territorio, regla y versión,
+localizador de respaldo, responsable/revisor, resolución, fecha y límites.
+Registrar también documentos inexistentes y su consecuencia; una firma genérica
+no resuelve cobertura, identidad o disponibilidad que no puedan respaldarse.
+Las resoluciones permanecen en el dossier único, sin duplicar ni inventar
+aprobaciones en este resumen.
+
+**Actos separados que se necesitan:** designación y revisión P1–P6; autorización
+de acceso/procesamiento y preparación sobre entradas exactas; revisión del
+derivado y protocolo/reserva temporal; autorización posterior de entrenamiento.
+No hay evidencia nueva que habilite 2025–2026 ni una reserva independiente; no
+se deducen del nombre de las entregas o del éxito de pruebas técnicas.
+
+El [adaptador y contrato exacto](principal-count-input-contract.md) ya comprueban
+versiones, permisos, integridad, alcance, estados y disponibilidad en software.
+Su ejecución real sigue pendiente de esos actos institucionales. No autentica
+firmas ni reemplaza criterio epidemiológico; el entrenamiento e inferencia reales
+continúan deshabilitados. El próximo hito útil es obtener las respuestas y
+registrarlas en el dossier, sin iniciar otra preparación o estudio automáticamente.

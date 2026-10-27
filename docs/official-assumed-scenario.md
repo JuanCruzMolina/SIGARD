@@ -36,8 +36,8 @@ fronteras; todos los radios comparten cortes, sin división aleatoria.
 Se cuentan ambas clases, desconocidos y semanas por clase. Tener ambas clases
 no valida tamaño muestral, independencia ni entrenamiento.
 
-Los 7.720 registros son el universo de trabajo de esta versión, no el universo
-epidemiológico definitivo. Persisten limitaciones de clasificación, fechas,
+El universo de trabajo lo define el paquete privado autorizado; no acredita
+el universo epidemiológico definitivo. Persisten limitaciones de clasificación, fechas,
 residencia, asignación espacial, disponibilidad censal histórica y maduración.
 La evaluación es retrospectiva, no operativa validada. Las etiquetas estrictas
 sólo se consultan para sensibilidad descriptiva, sin materializar otros ceros.

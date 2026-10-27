@@ -130,8 +130,10 @@ y 05/05. Estas divisiones no justifican cobertura y no se modifican aquí. [R8]
 
 ## 3. Reglas propuestas pendientes de validación y evidencia necesaria
 
-Las propuestas P1–P6 son especificaciones para revisión, **no nuevas categorías
-implementadas ni instrucciones para reclasificar los datos actuales**. No se afirma
+Las propuestas P1–P6 son especificaciones para revisión, **no instrucciones para
+reclasificar los datos actuales ni aprobaciones institucionales**. La política
+técnica optativa P2 descrita abajo implementa indicios y resoluciones controladas,
+sin aplicarlos a datos reales en esta entrega. No se afirma
 que los campos necesarios estén disponibles. Su existencia y significado deben
 acreditarse mediante documentación o una revisión futura expresamente autorizada.
 
@@ -172,6 +174,34 @@ especialmente la fuente 2022 señalada por la auditoría. La matriz no debe inve
 equivalencias entre años ni inferir el evento desde el nombre de un archivo. [R1,R3]
 
 ### P2. Episodios frente a notificaciones y muestras
+
+Implementación técnica optativa: `official/episodes.py::principal_episode_review`,
+política `principal-episode-review-1`. Las categorías `possible_distinct`,
+`possible_duplicate` e `indeterminate` no autorizan contar ni fusionar registros.
+Compara únicamente fechas seleccionadas por síntomas → muestra y referencias
+espaciales existentes, con calidad/comparabilidad explícitas; sin umbrales clínicos.
+Compartir domicilio no se consulta y compartir posición no demuestra identidad.
+
+Procedimiento: inspeccionar el resultado privado y obtener el alcance con
+`episode_decision_digest(review, record_keys=...)`. El revisor autorizado documenta
+`reference`, `reviewer_ref`, `authorization_ref`, `basis`, `criterion_ref`,
+`criterion_version`, `criterion_status="approved"`, `status="approved"`,
+`policy_version`, `records_sha256`, `decided_on`, `available_on` y `resolutions`.
+Las resoluciones conservan `record_key`, `episode_ref`, `countable`, `evidence_ref`
+del mecanismo existente, con la referencia de esa decisión. Deben cubrir el grupo
+completo y cada episodio en una misma decisión, con un representante explícito.
+La fecha de disponibilidad no puede anticipar la decisión o los registros conocidos.
+
+Volver a invocar con `decisions=[...]` permite `reviewed_distinct` o
+`reviewed_same_episode`; una revisión parcial, sin criterio aprobado, posterior
+al corte o para otros metadatos se rechaza. Los cambios de clasificación, fechas
+o calidad requieren revisar nuevamente el alcance. No se autentican firmas:
+el llamador debe aportar exclusivamente decisiones y criterios reales cuya
+autorización/evidencia haya comprobado el custodio. El software no los crea.
+`episode_count_summary` exporta sólo conciliación agregada para el adaptador
+principal; pendientes implican conteo exacto null. La selección del alcance
+elegible y su asignación radiosemana dependen de P1/P4/P5, no de este indicio.
+El recorrido histórico predeterminado y sus artefactos permanecen congelados.
 
 **Pendiente:** acreditar si el identificador representa persona, evento,
 notificación, muestra o actualización, su alcance entre fuentes y si puede

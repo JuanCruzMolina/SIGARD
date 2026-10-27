@@ -1,5 +1,20 @@
 # API de SIGARD
 
+## Demostración de tesis sin infraestructura persistente
+
+`npm.cmd --prefix frontend run dev:demo` coordina Vite y `app/demo_local.py`
+en 127.0.0.1:8766. Reutiliza usuarios, roles, reportes y auditoría existentes;
+adjunta `app/demo_workspace.py` únicamente a la factory descartable, con
+consulta/CSV/alertas ficticios y dos tablas SQLite de estado/auditoría. Todas
+esas rutas requieren administrador validado por la API; no existen en la app
+productiva. No se cargan modelos o fuentes sanitarias privadas ni `.env`.
+
+Consultar [cierre funcional](../docs/cierre-funcional-tesis.md) y
+[ejecución de demo](../frontend/README.md#demostración-integral-descartable).
+Para este prototipo no se ejecuta la cadena Docker/PostGIS descrita para otros
+entornos. El runner aislado usa una ruta de fixtures nueva por ejecución para
+conservar carpetas históricas y evitar conflictos de permisos.
+
 FastAPI expone el alta anónima, seguimiento público y administración protegida
 de reportes ciudadanos. Los reportes se almacenan en `citizen_reports`, sin
 reutilizar tablas epidemiológicas.

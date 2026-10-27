@@ -15,7 +15,12 @@ predeterminado sin respaldo. La jerarquía completa es:
 3. `sample_on`: toma de muestra.
 4. `notified_on`: notificación.
 
-Se admiten prefijos de ese orden, incluido sólo inicio de síntomas. Cambiar la
+Se admiten prefijos de ese orden, incluido sólo inicio de síntomas. Para el
+módulo principal se admite además la opción explícita `symptom_onset, sample_on`
+(`PRINCIPAL_DATE_HIERARCHY`), con su propia versión de regla. No altera el orden
+histórico predeterminado ni sus salidas. En esa opción no se sustituye un inicio
+interpretable futuro/fuera de ventana por muestra para hacer entrar la fila.
+Cambiar la
 política exige una versión de fecha propia y una carpeta versionada independiente.
 El ejemplo `ml/configs/official.date-recovery.example.json` contiene la jerarquía
 completa y puede editarse manualmente. El comparador sólo permite modificar fechas,

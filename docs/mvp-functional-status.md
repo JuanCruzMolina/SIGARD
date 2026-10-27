@@ -1,5 +1,45 @@
 # Estado funcional del MVP
 
+## SIGARD v1.0 académica — cierre final, 21/10/2026
+
+**Terminada para demostración local.** Los recorridos esenciales se conservan
+en sus módulos existentes. No quedan P0 ni P1 de producto abiertos dentro de
+este alcance; no se agregan funcionalidades ni se habilita operación sanitaria.
+Se corrigieron dos problemas del ensayo de navegador: reconexión HMR entre
+servidores sucesivos y navegación que todavía suponía el antiguo inicio público.
+La aplicación, producción y los artefactos A/B no necesitaron modificaciones.
+
+Aceptación actual: demo real con A/B, diferencia B − A, semana/radio, métricas,
+historial, prevención/directorio, reporte ficticio, seguimiento, administración,
+actualización, logout, eliminación de SQLite y reinicio vacío. Chromium a
+1440/390 px, sin errores JavaScript ni desbordamiento horizontal; también
+verificados reintentos/idempotencia, filtros/CSV, cuentas y revocación de sesiones.
+El primer ensayo completó la demo pero abortó al cambiar a desarrollo; sólo
+la repetición con la transición corregida cuenta como aprobada.
+
+Pruebas actuales: backend aislado **177 aprobadas y seis omitidas PostgreSQL**;
+frontend: investigación 18, mapa 5, ciudadano 4, recursos públicos 15,
+coordinador 18 y demo 11 aprobadas; lint/build y **178 controles estáticos de
+seguridad** aprobados. Los ensayos de procesos/navegador usaron permisos para
+cerrar sus propios árboles de Windows; el intento restringido fallido se excluye.
+Sin entrenamiento, inferencia, auditoría científica nueva, Docker ni acceso a 5432.
+
+La matriz global **15 completas, ocho parciales y tres bloqueadas** se conserva:
+las ocho parciales tienen el recorrido académico necesario; sus faltantes son
+operación persistente/PostGIS, vigencia institucional, retención supervisada,
+despliegue y accesibilidad integral. Target epidemiológico acreditado, alertas
+oficiales y edición sanitaria institucional quedan fuera de v1.0. También quedan
+fuera validación independiente, nuevos entrenamientos y acreditación de
+cobertura/episodios. No son defectos de software que bloqueen esta entrega.
+P2 pospuesto: compactar la franja de demo en móvil; el recorrido permite scroll.
+
+Entrega: desde `frontend`, `npm run dev` para desarrollo A/B o
+`npm run dev:demo` para el circuito integral; abrir `http://127.0.0.1:5173/`.
+Cuenta temporal sólo en terminal; **Ctrl+C** elimina los datos de esa demo.
+Preparación y recorrido en [README](../frontend/README.md) y
+[guion vigente](SIGARD-resumen-desarrollo.md#8-guion-académico-de-siete-minutos).
+Las secciones siguientes conservan evidencia histórica y su alcance original.
+
 Cierre funcional del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo académico,
 no sistema sanitario operativo. Esta matriz contrasta documentación con código;
 no toma los estados históricos del plan como prueba de implementación.

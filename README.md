@@ -1,5 +1,19 @@
 # SIGARD
 
+## Demostración funcional para la tesis — 26/10/2026
+
+Desde la raíz: `npm.cmd --prefix frontend run dev:demo`; abrir
+`http://127.0.0.1:5173/`. Integra mapas públicos aprobados, prevención y un
+espacio administrativo enteramente ficticio de consulta por radio/horizonte,
+CSV y alertas configurables, con SQLite temporal y autenticación en servidor.
+No requiere Docker/PostgreSQL ni inicia el lector privado A/B. Ctrl+C elimina
+la sesión. `dev` conserva por separado el entorno privado A/B existente.
+
+El [cierre funcional para tesis](docs/cierre-funcional-tesis.md) contiene el
+estado actual de los seis módulos, pruebas, rendimiento, ejecución y protocolo
+de aceptación pendiente. ML superior al baseline sigue sin acreditarse.
+Los apartados de v0.1 siguientes conservan su contexto histórico.
+
 SIGARD es un prototipo de predicción espacio-temporal de posibles casos de
 dengue por radio censal en La Rioja Capital. Su versión `v0.1` tiene como
 propósito validar el flujo técnico completo —preparación de datos,
