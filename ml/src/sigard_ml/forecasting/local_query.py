@@ -113,7 +113,9 @@ def research_summary(directory):
             for h, value in metrics.items()})
 
 
-def load_predictions(directory, *, method="selected"):
+def load_predictions(directory, *, method="selected", historical_reproduction=False):
+    from sigard_ml.data_access.historical import require_historical
+    require_historical(historical_reproduction)
     directory = _artifact_directory(directory)
     require(method in ("selected", "persistence"), "Método no admitido para consulta")
     manifest = json.loads((directory / "manifest.private.json").read_text(encoding="utf-8"))
@@ -142,6 +144,7 @@ def load_predictions(directory, *, method="selected"):
 def main():
     root = Path(__file__).resolve().parents[4]
     parser = argparse.ArgumentParser(description="SIGARD: consulta privada de predicciones retrospectivas selladas")
+    parser.add_argument('--historical-reproduction', action='store_true', help='Archivo histórico, nunca inferencia nueva')
     parser.add_argument("--artifacts", type=Path, default=root / "ml/artifacts/official/sigard-principal-v2-experimental")
     parser.add_argument("--date")
     parser.add_argument("--horizon", type=int, choices=[1, 2, 4], default=1)
@@ -153,9 +156,11 @@ def main():
     parser.add_argument("--map-output", type=Path, help="Exporta un HTML privado sin servidor; requiere build:predictive-viewer")
     args = parser.parse_args()
     try:
+        from sigard_ml.data_access.historical import require_historical
+        require_historical(args.historical_reproduction)
         require(not args.research_summary or not (args.map_output or args.list_dates or args.radio or args.date),
                 "--research-summary no combina consultas territoriales")
-        frame = None if args.research_summary else load_predictions(args.artifacts, method=args.method)
+        frame = None if args.research_summary else load_predictions(args.artifacts, method=args.method, historical_reproduction=True)
         if args.map_output:
             require(not args.output and not args.list_dates and not args.radio, "--map-output no combina exportación JSON ni filtro de radio")
             from sigard_ml.forecasting.local_map import export_private_map

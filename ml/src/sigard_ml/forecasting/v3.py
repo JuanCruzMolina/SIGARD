@@ -328,6 +328,11 @@ def select_model(oof,metrics,fold_metrics):
 
 def validate_development(inputs,cached,horizon):
     frame=feature_frame(inputs,cached,horizon)
+    return validate_development_frame(frame,horizon)
+
+
+def validate_development_frame(frame,horizon):
+    """Same frozen V3 evaluation, also usable with a PostgreSQL-built matrix."""
     development=frame.loc[frame.partition.isin(["train","validation"]) & frame.predictor_admissible & frame.target_count.notna()].copy()
     require(development.target_week.nunique()>=18 and development.target_count.gt(0).sum()>=30,"Desarrollo insuficiente para V3")
     dates=sorted(development.target_week.unique())

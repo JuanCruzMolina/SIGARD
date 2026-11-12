@@ -112,7 +112,8 @@ def write_outputs(result: tuple[Any, ...], config: dict[str, Any], root: Path, o
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args(); config = load_config(args.config.resolve()); result = run_variants(config, args.repo_root.resolve()); write_outputs(result, config, args.repo_root.resolve(), args.overwrite)
+    from sigard_ml.data_access.historical import parse_file_args
+    args = parse_file_args(parser); config = load_config(args.config.resolve()); result = run_variants(config, args.repo_root.resolve()); write_outputs(result, config, args.repo_root.resolve(), args.overwrite)
 
 
 if __name__ == "__main__": main()

@@ -123,8 +123,8 @@ def test_v3_explicit_query_preserves_reference_and_rejects_unpromoted_ml(tmp_pat
         (directory / "manifest.private.json").write_text(json.dumps(dict(outputs_sha256=hashes)),encoding="utf-8")
 
     seal()
-    selected = local_query.load_predictions(directory)
-    reference = local_query.load_predictions(directory, method="persistence")
+    selected = local_query.load_predictions(directory,historical_reproduction=True)
+    reference = local_query.load_predictions(directory, method="persistence",historical_reproduction=True)
     assert selected.equals(reference)
     summary = local_query.research_summary(directory)
     assert summary["horizons"]["1"]["counts"]["fictional"] == fictional_metric
@@ -138,11 +138,11 @@ def test_v3_explicit_query_preserves_reference_and_rejects_unpromoted_ml(tmp_pat
     quality["territorial_selected"] = dict.fromkeys(("1","2","4"),"v3_direct_poisson")
     seal()
     with pytest.raises(ForecastError,match="promoción explícitas"):
-        local_query.load_predictions(directory)
-    assert local_query.load_predictions(directory,method="persistence").selected_method.eq("lag_1_or_training_mean").all()
+        local_query.load_predictions(directory,historical_reproduction=True)
+    assert local_query.load_predictions(directory,method="persistence",historical_reproduction=True).selected_method.eq("lag_1_or_training_mean").all()
     (directory / "persistence_predictions.private.parquet").write_bytes(b"tampered fictional data")
     with pytest.raises(ForecastError,match="Integridad"):
-        local_query.load_predictions(directory,method="persistence")
+        local_query.load_predictions(directory,method="persistence",historical_reproduction=True)
 
 
 def test_presence_decisions_use_the_same_supported_cohort():

@@ -117,7 +117,8 @@ def write_outputs(result: tuple, config: dict[str, Any], root: Path, overwrite: 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--config", type=Path, required=True); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args(); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve()
+    from sigard_ml.data_access.historical import parse_file_args
+    args = parse_file_args(parser); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve()
     result = run(config, root)
     print(f"Observaciones temporales válidas después de lags: {len(result[0])}")
     write_outputs(result, config, root, args.overwrite)

@@ -220,9 +220,12 @@ def run_scenario(root, options):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--historical-reproduction', action='store_true')
     parser.add_argument("--config", type=Path, required=True)
     parser.add_argument("--diagnose-failure", action="store_true")
     args = parser.parse_args()
+    if not args.historical_reproduction:
+        parser.error('File preparation is historical only; use sigard_ml.ingestion.db_analytics for PostgreSQL datasets')
     try:
         root = Path(__file__).resolve().parents[5]
         report = run_scenario(root, read_json(args.config))

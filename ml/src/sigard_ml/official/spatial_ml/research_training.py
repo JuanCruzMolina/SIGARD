@@ -362,7 +362,9 @@ def report_markdown(report, importance, temporal):
     return "\n".join(lines)
 
 
-def run_research(root, options):
+def run_research(root, options, *, historical_reproduction=False):
+    from sigard_ml.data_access.historical import require_historical
+    require_historical(historical_reproduction)
     root = root.resolve()
     require_branch(root)
     inputs, output = private_paths(root, options)
@@ -499,13 +501,18 @@ def run_research(root, options):
 
 
 def main():
+    from sigard_ml.data_access.historical import database_default
+    status = database_default('A')
+    if status is not None:
+        return status
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--historical-reproduction', action='store_true')
     parser.add_argument("--config", required=True, type=Path)
     parser.add_argument("--diagnose-failure", action="store_true")
     args = parser.parse_args()
     try:
         root = Path(__file__).resolve().parents[5]
-        result = run_research(root, read_json(args.config))
+        result = run_research(root, read_json(args.config), historical_reproduction=True)
         print(json.dumps({key: result[key] for key in ("version", "training_performed", "training_authorized",
             "research_training_authorized", "partitions", "metrics", "reproducibility")}, sort_keys=True))
     except Exception as error:
@@ -519,4 +526,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

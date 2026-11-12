@@ -199,7 +199,7 @@ def test_missing_authorization_blocks_before_fit_or_output(tmp_path, monkeypatch
         raise AssertionError("fit cannot run without authorization")
     monkeypatch.setattr(research.RandomForestClassifier, "fit", forbidden)
     with pytest.raises(ValueError):
-        research.run_research(root, deepcopy(research.DEFAULTS))
+        research.run_research(root, deepcopy(research.DEFAULTS),historical_reproduction=True)
     assert not (root / research.DEFAULTS["output_dir"]).exists()
 
 

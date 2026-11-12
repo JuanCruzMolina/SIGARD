@@ -210,7 +210,9 @@ def history_value_sensitivity(frame, estimator):
     return rows
 
 
-def run(root, config_path):
+def run(root, config_path, *, historical_reproduction=False):
+    from sigard_ml.data_access.historical import require_historical
+    require_historical(historical_reproduction)
     root = root.resolve()
     require_branch(root)
     config_path = config_path.resolve()
@@ -335,13 +337,18 @@ def run(root, config_path):
 
 
 def main():
+    from sigard_ml.data_access.historical import database_default
+    status = database_default('B')
+    if status is not None:
+        return status
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--historical-reproduction', action='store_true')
     parser.add_argument("--root", type=Path, default=Path.cwd())
     parser.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
-    result = run(args.root, args.config)
+    result = run(args.root, args.config, historical_reproduction=True)
     print(result["output_dir"])
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

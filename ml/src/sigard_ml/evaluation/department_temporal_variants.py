@@ -148,7 +148,8 @@ def write_report(report: dict[str, Any], config: dict[str, Any], root: Path, ove
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__); parser.add_argument("--config", type=Path, required=True); parser.add_argument("--repo-root", type=Path, default=Path.cwd()); parser.add_argument("--overwrite", action="store_true")
-    args = parser.parse_args(); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve(); write_report(run(config, root), config, root, args.overwrite)
+    from sigard_ml.data_access.historical import parse_file_args
+    args = parse_file_args(parser); config = json.loads(args.config.read_text(encoding="utf-8")); root = args.repo_root.resolve(); write_report(run(config, root), config, root, args.overwrite)
 
 
 if __name__ == "__main__": main()

@@ -42,11 +42,16 @@ def snapshot_provenance(grid, bundle):
 
 
 def main():
+    from sigard_ml.data_access.historical import database_default
+    status = database_default('V3')
+    if status is not None:
+        return status
     ROOT=Path(__file__).resolve().parents[4]
     V2=ROOT/"ml/artifacts/official/sigard-principal-v2-experimental"
     DATA=ROOT/"data/processed/official/principal_snapshot_20261026_v2"
     HERE=Path(__file__).resolve().parent
     parser=argparse.ArgumentParser(description="V3 local autorizada; sin sobrescrituras")
+    parser.add_argument('--historical-reproduction',action='store_true')
     parser.add_argument("--output",type=Path,default=ROOT/"ml/artifacts/official"/VERSION)
     args=parser.parse_args()
     OUT=args.output.resolve()
@@ -229,4 +234,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())

@@ -170,7 +170,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--repo-root", type=Path, default=Path.cwd())
     parser.add_argument("--overwrite", action="store_true", help="Reemplaza sólo las cinco salidas configuradas de etapa 6")
     parser.add_argument("--log-level", default="INFO")
-    return parser.parse_args()
+    from sigard_ml.data_access.historical import parse_file_args
+    return parse_file_args(parser)
 
 
 def main() -> None:

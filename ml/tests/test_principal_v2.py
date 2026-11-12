@@ -174,9 +174,9 @@ def test_private_reader_checks_integrity_without_loading_executable_models(tmp_p
     pd.DataFrame({"fictional": [1]}).to_parquet(path)
     manifest = {"outputs_sha256": {path.name: hashlib.sha256(path.read_bytes()).hexdigest()}}
     (directory / "manifest.private.json").write_text(json.dumps(manifest), encoding="utf-8")
-    assert local_query.load_predictions(directory).fictional.tolist() == [1]
+    assert local_query.load_predictions(directory,historical_reproduction=True).fictional.tolist() == [1]
     path.write_bytes(path.read_bytes() + b"fictional_tamper")
     with pytest.raises(ForecastError, match="Integridad"):
-        local_query.load_predictions(directory)
+        local_query.load_predictions(directory,historical_reproduction=True)
     with pytest.raises(ForecastError, match="privados"):
-        local_query.load_predictions(tmp_path / "frontend/public")
+        local_query.load_predictions(tmp_path / "frontend/public",historical_reproduction=True)
