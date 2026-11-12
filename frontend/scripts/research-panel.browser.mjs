@@ -23,12 +23,46 @@ function scores(id, week, radio) {
   const meta = weeks.find(w => w.target_week_start === week)
   const model = models.find(m => m.model_id === id)
   return { schema_version: schema, model_id: id, experiment_id: model.experiment_id, training_version: model.training_version, ...meta,
+    origin_week_start: new Date(Date.parse(week) - 7 * 86400000).toISOString().slice(0, 10), origin_week_end: new Date(Date.parse(week) - 86400000).toISOString().slice(0, 10),
     territory_version: 'capital-census-2022-public-v1', calendar_version: 'ar-snvs-2020-2026-v1', data_kind: 'official_experimental_retrospective', score_semantics: 'raw_class_1_score_uncalibrated', retrospective: true, operational_use_authorized: false, publication_authorized: false, coverage_verified: false, previously_examined: true, coverage_scenario: 'spatial_assumed_2024_v1', interpretation_limitations: Array(10).fill('fictional'),
     rows: (radio ? [radio] : ids).map((radio_censal) => {
       const index = ids.indexOf(radio_censal)
       const score = index === 0 ? (id === 'A' ? .2 : .7) : index === 1 ? (id === 'A' ? .7 : .2) : index === 2 ? 0 : index === 3 && id === 'B' ? null : .3
       return { radio_censal, experimental_score: score, score_status: score === null ? 'not_computed' : 'available', score_unavailable_reason: score === null ? 'frozen_score_missing' : null, data_availability: { prediction_as_of: null, operational_availability: 'not_accredited', known_lag_count: id === 'A' ? null : 3 } }
     }) }
+}
+// Fictional transport fixture only; production resolves dates in the Python calendar.
+function dateMetadata(requested) {
+  const day = new Date(requested + 'T00:00:00Z')
+  const start = new Date(day); start.setUTCDate(day.getUTCDate() - day.getUTCDay())
+  const add = n => new Date(start.getTime() + n * 86400000).toISOString().slice(0, 10)
+  return { schema_version: 'sigard-private-spatial-date-query/1', requested_date: requested,
+    calendar_version: 'ar-snvs-2020-2026-v1', calendar_min: '2019-12-29', calendar_max: '2027-01-02', calendar_status: 'supported',
+    horizon_weeks: 1, information_cutoff: null, operational_use_authorized: false, publication_authorized: false,
+    target_week_start: add(0), target_week_end: add(6), target_epidemiological_year: 2024,
+    target_epidemiological_week: Math.round((start.getTime() - Date.UTC(2023, 11, 31)) / (7 * 86400000)) + 1,
+    origin_week_start: add(-7), origin_week_end: add(-1), calendar_cutoff: add(-1) }
+}
+function dateResponse(requested, model) {
+  const temporal = dateMetadata(requested)
+  const found = weeks.some(w => w.target_week_start === temporal.target_week_start)
+  return { ...temporal, model_id: model, experiment_id: models.find(m => m.model_id === model).experiment_id,
+    training_version: models.find(m => m.model_id === model).training_version, territory_version: 'capital-census-2022-public-v1',
+    radio_ids: ids, new_inference_enabled: false, availability: found ? 'available' : 'unavailable',
+    result_type: found ? 'frozen' : 'unavailable', blockers: found ? [] : ['no_frozen_prediction', 'temporal_provenance_not_verified'],
+    result: found ? scores(model, temporal.target_week_start) : null }
+}
+async function submit(page) {
+  await page.waitForFunction(() => [...document.querySelectorAll('button')].some(b => b.textContent === 'Consultar predicción' && !b.disabled))
+  await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent === 'Consultar predicción').click())
+}
+async function chooseDate(page, date) {
+  await page.$eval('#research-date', (e, value) => {
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(e, value)
+    e.dispatchEvent(new Event('input', { bubbles: true }))
+  }, date)
+  assert.equal(await page.$('.radio-difference'), null, 'date edit removes previous result immediately')
+  await submit(page)
 }
 const comparison = (week, radio) => ({ schema_version: schema, target_week_start: week, radio_censal: radio, comparable: radio !== ids[3], results: ['A', 'B'].map(id => scores(id, week, radio)) })
 const metrics = { precision: .2, recall: .3, f1: .24, average_precision_pr_auc: .4, roc_auc: .6, brier: .3 }
@@ -53,6 +87,7 @@ try {
   })
   await page.setViewport({ width: 1440, height: 1000 })
   await page.goto(origin, { waitUntil: 'networkidle0' })
+  await submit(page)
   await page.waitForFunction(() => document.querySelector('.research-availability')?.textContent.includes('radios con'))
   assert.equal(new URL(page.url()).pathname, '/mapa')
   assert.equal(await page.$$eval('#research-model option', o => o.length), 3)
@@ -60,10 +95,10 @@ try {
   const radio = await page.$eval('#research-radio', e => e.options[1].value)
   await page.select('#research-radio', radio)
   await page.waitForSelector('.radio-difference')
-  const week = await page.$eval('#research-week', e => e.value)
+  const week = await page.$eval('#research-date', e => e.value)
   for (const mode of ['B', 'difference', 'A']) {
     await page.select('#research-model', mode)
-    assert.equal(await page.$eval('#research-week', e => e.value), week)
+    assert.equal(await page.$eval('#research-date', e => e.value), week)
     assert.equal(await page.$eval('#research-radio', e => e.value), radio)
     assert.equal(await page.$$eval('.leaflet-container', e => e.length), 1)
   }
@@ -71,6 +106,23 @@ try {
   await page.waitForSelector('.radio-timeline svg')
   for (const partition of ['train', 'validation', 'test']) await page.select('#analysis-partition', partition)
   checkpoint('Real local app: default A/B entry, 3 views, same week/radio, history and 6 metrics/3 partitions')
+  const capabilities = await page.evaluate(async () => {
+    const response = await fetch('http://127.0.0.1:8765/api/v1/research/spatial/models', { headers: { 'X-Sigard-Research': 'local-read' }, credentials: 'omit', cache: 'no-store' })
+    return (await response.json()).date_inference
+  })
+  if (capabilities?.model_a_enabled) {
+    await page.select('#research-model', 'A')
+    await chooseDate(page, capabilities.target_week_start)
+    await page.waitForFunction(() => document.querySelector('.research-availability')?.textContent.includes('Inferencia experimental nueva'))
+    assert.ok((await page.$eval('.research-availability', e => e.textContent)).includes('cuatro rezagos'))
+    assert.equal(await page.$eval('#research-radio', e => e.value), radio)
+    assert.equal(await page.$$eval('.radio-score-pair strong', e => e.filter(x => x.textContent === 'No disponible').length), 1)
+    await page.select('#research-model', 'difference')
+    assert.equal(await page.$eval('.radio-difference strong', e => e.textContent), 'No disponible')
+    await chooseDate(page, week)
+    await page.waitForFunction(() => document.querySelector('.research-availability')?.textContent.includes('Resultado congelado'))
+    checkpoint('Real existing A: new t+1 inference, 263 radios, B recent-history block, no invented difference and return to frozen data')
+  }
   for (const width of [1440, 390]) {
     await page.setViewport({ width, height: 1000 })
     const layout = await page.evaluate(() => ({
@@ -92,7 +144,7 @@ try {
   const fixture = await browser.newPage()
   fixture.setDefaultTimeout(12000)
   fixture.on('pageerror', e => report.pageErrors.push(e.message))
-  let failB = false, failCatalog = false, failEvaluation = false, failHistory = false, delayWeek = '', delayedHistory = '', pending = []
+  let failB = false, failCatalog = false, failEvaluation = false, failHistory = false, disconnect = false, delayWeek = '', delayedHistory = '', pending = []
   await fixture.setRequestInterception(true)
   const respond = (r, body, status = 200) => r.respond({ status, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'X-Sigard-Research', 'Cache-Control': 'no-store' }, body: JSON.stringify(body) })
   fixture.on('request', async r => {
@@ -102,6 +154,14 @@ try {
       if (r.method() === 'OPTIONS') return respond(r, {})
       const path = u.pathname.replace('/api/v1/research/spatial', '')
       if (path === '/models') return respond(r, { schema_version: schema, models }, failCatalog ? 503 : 200)
+      if (path === '/calendar') return respond(r, dateMetadata(u.searchParams.get('date')))
+      if (path === '/query') {
+        if (disconnect) return r.abort('connectionfailed')
+        const requested = u.searchParams.get('date'), model = u.searchParams.get('model')
+        const body = dateResponse(requested, model)
+        if (body.target_week_start === delayWeek) { pending.push(() => respond(r, body).catch(() => {})); return }
+        return respond(r, body, failB && model === 'B' ? 503 : 200)
+      }
       if (path === '/evaluation') return respond(r, evaluation, failEvaluation ? 404 : 200)
       if (path.startsWith('/history/')) {
         const radio = decodeURIComponent(path.split('/').at(-1))
@@ -135,7 +195,7 @@ try {
   }
   const ready = () => fixture.waitForFunction(() => document.querySelector('.research-availability')?.textContent.includes('radios con'))
   await fixture.setViewport({ width: 1440, height: 1000 })
-  await mount(); await ready()
+  await mount(); await submit(fixture); await ready()
   await fixture.select('#research-model', 'difference')
   for (const [index, expected] of [[0, '+0,500000'], [1, '-0,500000'], [2, '0,000000'], [3, 'No disponible']]) {
     await fixture.select('#research-radio', ids[index])
@@ -153,16 +213,16 @@ try {
   await fixture.focus('.map-reset'); await fixture.keyboard.press('Enter')
   checkpoint('Fictional UI: positive/negative/zero/missing difference, divergent colors, map/text selection and keyboard')
   delayWeek = weeks[1].target_week_start
-  await fixture.select('#research-week', delayWeek)
+  await chooseDate(fixture, delayWeek)
   await fixture.waitForFunction(() => document.querySelector('.research-availability [role="status"]'))
   await fixture.select('#research-model', 'B'); await fixture.select('#research-radio', ids[2])
-  await fixture.select('#research-week', weeks[2].target_week_start); await ready()
+  await chooseDate(fixture, weeks[2].target_week_start); await ready()
   await Promise.all(pending.splice(0).map(fn => fn())); delayWeek = ''
-  assert.equal(await fixture.$eval('#research-week', e => e.value), weeks[2].target_week_start)
+  assert.equal(await fixture.$eval('#research-date', e => e.value), weeks[2].target_week_start)
   assert.ok((await fixture.$eval('.radio-target', e => e.textContent)).includes(weeks[2].target_week_start))
   checkpoint('Fictional UI: rapid week/model/radio changes discard late weekly results')
   failB = true
-  await fixture.select('#research-week', weeks[3].target_week_start); await ready()
+  await chooseDate(fixture, weeks[3].target_week_start); await ready()
   await fixture.waitForSelector('.research-error [role="alert"]')
   assert.equal(await fixture.$eval('.radio-difference strong', e => e.textContent), 'No disponible')
   failB = false; await fixture.click('.research-error button'); await ready()
@@ -177,6 +237,26 @@ try {
   await fixture.waitForSelector('.analysis-temporal [role="alert"]')
   failHistory = false; await fixture.click('.analysis-temporal button'); await fixture.waitForSelector('.radio-timeline svg')
   checkpoint('Fictional UI: partial score API error/retry, late history ignored and history error/retry')
+  for (const requested of ['2024-04-07', '2024-04-10', '2024-04-13']) {
+    await chooseDate(fixture, requested); await ready()
+    assert.ok((await fixture.$eval('.radio-target', e => e.textContent)).includes('2024-04-07'))
+    assert.equal(await fixture.$eval('#research-radio', e => e.value), ids[3])
+  }
+  await chooseDate(fixture, '2024-03-06'); await ready()
+  assert.ok((await fixture.$eval('.research-availability', e => e.textContent)).includes('No existe una predicción congelada'))
+  assert.equal(await fixture.$eval('.radio-difference strong', e => e.textContent), 'No disponible')
+  assert.equal(await fixture.$$eval('.leaflet-interactive', e => e.filter(x => x.getAttribute('fill') === '#aab2ba').length), 263)
+  await chooseDate(fixture, '2024-04-10'); await ready()
+  checkpoint('Fictional dates: same week, free uncalculated date, explicit reason, 263 gray radios and retained selection')
+  disconnect = true
+  await chooseDate(fixture, '2024-04-14'); await ready()
+  assert.ok((await fixture.$eval('.research-error', e => e.textContent)).includes('No se pudo contactar'))
+  assert.equal(await fixture.$$eval('.leaflet-interactive', e => e.filter(x => x.getAttribute('stroke-dasharray') === '4 3').length), 263)
+  assert.equal(await fixture.$eval('#research-radio', e => e.value), ids[3])
+  disconnect = false
+  await fixture.click('.research-error button'); await ready()
+  assert.equal(await fixture.$('.research-error'), null)
+  checkpoint('Fictional transport: disconnected backend clears results, marks 263 errors, preserves radio and retries')
   for (const width of [1440, 390]) {
     await fixture.setViewport({ width, height: 1000 })
     await fixture.select('#research-model', 'difference')
@@ -185,7 +265,7 @@ try {
     const layout = await fixture.evaluate(() => {
       const map = document.querySelector('.leaflet-container').getBoundingClientRect()
       const legend = document.querySelector('.research-legend').getBoundingClientRect()
-      const controls = [...document.querySelectorAll('.research-controls select')].map(e => e.getBoundingClientRect())
+      const controls = [...document.querySelectorAll('.research-controls select, .research-controls input, .research-controls button')].map(e => e.getBoundingClientRect())
       return { overflow: document.documentElement.scrollWidth > innerWidth, legendBelowMap: legend.top >= map.bottom - 1, controlsFit: controls.every(r => r.left >= 0 && r.right <= innerWidth), mapHeight: map.height }
     })
     assert.equal(layout.overflow, false); assert.equal(layout.legendBelowMap, true); assert.equal(layout.controlsFit, true)
@@ -195,7 +275,7 @@ try {
   }
   checkpoint('Fictional UI: desktop 1440/mobile 390, full panel, scrollable tables/chart, no horizontal overflow or legend overlap')
   failCatalog = true; await mount(); await fixture.waitForSelector('.research-controls [role="alert"]')
-  failCatalog = false; await fixture.click('.research-controls button'); await ready()
+  failCatalog = false; await fixture.click('.research-controls button'); await submit(fixture); await ready()
   failEvaluation = true; await mount(); await fixture.waitForSelector('.experimental-analysis [role="alert"]')
   failEvaluation = false; await fixture.click('.experimental-analysis button'); await fixture.waitForSelector('.metric-comparison')
   checkpoint('Fictional UI: catalogue failure and unavailable metrics recover with explicit retries')

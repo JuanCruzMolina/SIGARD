@@ -58,7 +58,7 @@ export function TerritorialMap({ geojson, view, disclaimer, compact = false, col
       <MapContainer {...(initialView || { bounds })} attributionControl={view !== 'snapshot_counts'} zoomAnimation={false} scrollWheelZoom={false} className="leaflet-map">
         {!initialView && <FitBounds bounds={bounds} />}
         <ResetView bounds={bounds} initialView={initialView} />
-        {showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: '#fff', weight: 1, dashArray: view === 'snapshot_counts' && feature.properties.estimate_status !== 'available' ? '4 3' : undefined, fillColor: view === 'snapshot_counts' ? countColor(feature.properties.expected_count) : view === 'research' ? researchMode === 'difference' ? differenceColor(feature.properties.difference) : experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => {
+        {showData && <GeoJSON key={selectionKey} data={geojson} style={(feature) => ({ color: view === 'research' && feature.properties.score_status === 'error' ? '#543583' : '#fff', weight: 1, dashArray: (view === 'snapshot_counts' && feature.properties.estimate_status !== 'available') || (view === 'research' && feature.properties.score_status === 'error') ? '4 3' : undefined, fillColor: view === 'snapshot_counts' ? countColor(feature.properties.expected_count) : view === 'research' ? researchMode === 'difference' ? differenceColor(feature.properties.difference) : experimentalColor(feature.properties.experimental_score) : levelColors[feature.properties.relative_level] || levelColors.very_low, fillOpacity: .82 })} onEachFeature={(feature, layer) => {
           layer.bindTooltip(view === 'snapshot_counts' ? countTooltip(feature.properties) : view === 'research' ? researchTooltip(feature.properties, researchMode) : tooltipHtml(feature.properties, view), { sticky: true, direction: 'top' })
           // These views have a textual selector; avoid 263 tooltip-only tab stops.
           if (!compact) layer.on('add', () => layer.getElement()?.setAttribute('tabindex', '-1'))
@@ -100,7 +100,8 @@ function researchTooltip(props, mode) {
   const value = mode === 'difference' ? props.difference : props.experimental_score
   const available = mode === 'difference' ? value !== null : props.score_status === 'available'
   const label = mode === 'difference' ? 'Diferencia B − A' : `Score ${mode}`
-  element.textContent = `Radio ${props.radio_id} · ${label}: ${available ? `${value > 0 && mode === 'difference' ? '+' : ''}${formatNumber(value, 6)}` : 'Sin resultado disponible'}`
+  const source = props.result_type === 'experimental_inference' ? 'Inferencia experimental nueva · ' : ''
+  element.textContent = `Radio ${props.radio_id} · Semana objetivo: ${props.target_week_start || 'pendiente'} · ${available ? source : ''}${label}: ${available ? `${value > 0 && mode === 'difference' ? '+' : ''}${formatNumber(value, 6)}` : props.score_status === 'error' ? 'Error de consulta' : 'Sin estimación'}`
   return element
 }
 function ResearchLegend({ mode }) {
@@ -113,6 +114,7 @@ function ResearchLegend({ mode }) {
     <strong>{difference ? 'Diferencia B − A · escala fija −1 a +1' : `Score del Modelo ${mode} · escala fija 0 a 1`}</strong>
     {levels.map(([value, label]) => <span key={value}><i style={{ backgroundColor: color(value) }} />{label}</span>)}
     <span><i style={{ backgroundColor: color(null) }} />Sin resultado disponible</span>
+    <span><i style={{ backgroundColor: color(null), border: '1px dashed #543583' }} />Error de consulta · borde discontinuo</span>
     <small>{difference ? 'Negativo: B menor · positivo: B mayor. Sólo resta de scores; no es un cambio sanitario.' : 'Mismos intervalos en A y B. Scores sin calibración epidemiológica; no son umbrales sanitarios.'} Ausencia de resultado no significa cero ni ausencia de casos.</small>
   </div>
 }

@@ -43,6 +43,7 @@ const replacements = {
   '../services/sigardData': url('export const getSelectedWeek=()=>({}),getSelectedPrediction=()=>({}),getExperimentalCollection=()=>({}),getDisclaimer=()=>"fictional";'),
   '../components/SigardComponents': url('export const MethodNotice=({children})=>children,PageIntro=({title})=>title,TemporalControls=()=>"simulation controls",TerritorialMap=()=>"simulation map";'),
   '../components/ExperimentalSpatial': url('export default function Research(){return "research fixture"}'),
+  '../components/HistoricalBacktest': url('export default function Backtest(){return "backtest fixture"}'),
   './App.css': url(''),
 }
 replacements['../services/experimentalResults'] = replacements['./services/experimentalResults']
@@ -80,18 +81,15 @@ test('root redirects with replace only in authorized local development; dashboar
   }
 })
 
-test('map starts in research locally, allows both manual switches, and keeps public simulation', () => {
+test('one predictive module opens locally without public data or archived A/B; production keeps simulation', () => {
   const props = { data: { availableWeeks: { weeks: [] }, territorialContext: {} }, selectedCutoffDate: '2030-01-06' }
   state.enabled = true
-  assert.match(render(Mapa, [], props), /research fixture/)
-  assert.equal(state.buttons[1]['aria-pressed'], true)
-  state.buttons[0].onClick()
-  assert.doesNotMatch(render(Mapa, state.slots, props), /research fixture/)
-  assert.equal(state.buttons[0]['aria-pressed'], true)
-  state.buttons[1].onClick()
-  assert.match(render(Mapa, state.slots, props), /research fixture/)
+  const local=render(Mapa, [], {})
+  assert.match(local, /backtest fixture/)
+  assert.match(local, /Módulo predictivo experimental/)
+  assert.doesNotMatch(local, /research fixture|research-mode|simulation controls/)
   state.enabled = false
   const publicHtml = render(Mapa, [], props)
   assert.match(publicHtml, /Mapa público agregado/)
-  assert.doesNotMatch(publicHtml, /research fixture|research-mode/)
+  assert.doesNotMatch(publicHtml, /research fixture|research-mode|backtest fixture/)
 })

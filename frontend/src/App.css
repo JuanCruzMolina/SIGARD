@@ -298,6 +298,8 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .research-controls { align-items: flex-end; flex-wrap: wrap; }
 .research-controls input { padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; color: var(--navy); background: #fff; min-width: 0; width: 100%; }
 .research-controls input:focus-visible { outline: 3px solid var(--gold-deep); outline-offset: 3px; }
+.research-date-control input { min-height: 44px; font: inherit; box-sizing: border-box; }
+.research-origin { color: var(--muted); max-width: 75ch; font-size: .85rem; line-height: 1.6; }
 .research-controls button { padding: 10px 16px; border: 1px solid var(--line); border-radius: 6px; color: var(--navy); background: #fff; cursor: pointer; }
 .research-controls button:disabled { opacity: .65; cursor: wait; }
 .research-spatial .week-control { min-width: 0; }

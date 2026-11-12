@@ -3,13 +3,10 @@ import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
 import { identifyApi, portAvailable, spawnOwned, startDevelopment } from './dev.mjs'
+import { catalog as generatedCatalog } from '../security/backtest.fixture.mjs'
 
 const origin = 'http://127.0.0.1:5173'
-const catalog = {
-  schema_version: 'sigard-retrospective-spatial-score/1',
-  models: [{ model_id: 'A', experiment_id: 'spatial_rf_05c_v1', training_version: 'official-spatial-rf-research-0.5c.0',
-    weeks: Array.from({ length: 20 }, (_, i) => ({ target_week_start: `2024-01-${String(i + 1).padStart(2, '0')}`, target_epidemiological_week: i + 1 })) }],
-}
+const catalog = { ...generatedCatalog, module_version: 'sigard-predictive-experimental/1', active_methods: { presence: 'presence_seasonal', quantity: 'count_latest' }, training_enabled: false, operational_enabled: false }
 
 async function serverFor(t, handler) {
   const server = createServer(handler)

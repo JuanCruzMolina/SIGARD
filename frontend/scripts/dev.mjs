@@ -4,7 +4,7 @@ import { createServer } from 'node:net'
 import { dirname, join, delimiter } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
-import { validateCatalog } from '../src/services/experimentalContract.mjs'
+import { validateBacktestCatalog } from '../src/services/backtestContract.mjs'
 
 const frontend = dirname(dirname(fileURLToPath(import.meta.url)))
 const repository = dirname(frontend)
@@ -29,13 +29,16 @@ export async function identifyApi(base = api) {
   try {
     const health = await request('/health')
     if (!health.ok || (await health.json()).status !== 'ok') return false
-    const catalog = await request('/api/v1/research/spatial/models', {
+    const catalog = await request('/api/v1/research/predictive/calendar', {
       Origin: origin, 'X-Sigard-Research': 'local-read',
     })
     if (!catalog.ok || catalog.headers.get('access-control-allow-origin') !== origin
       || catalog.headers.get('cache-control') !== 'no-store, private') return false
-    validateCatalog(await catalog.json())
-    const denied = await request('/api/v1/research/spatial/models')
+    const value = validateBacktestCatalog(await catalog.json())
+    if (value.module_version !== 'sigard-predictive-experimental/1' || value.training_enabled !== false
+      || value.operational_enabled !== false || value.active_methods?.presence !== 'presence_seasonal'
+      || value.active_methods?.quantity !== 'count_latest') return false
+    const denied = await request('/api/v1/research/predictive/calendar')
     await denied.body?.cancel()
     return denied.status === 403
   } catch {
@@ -158,7 +161,7 @@ export async function startDevelopment(runtime = developmentRuntime) {
     await runtime.checkRequirements?.()
     checkStopped()
     if (runtime.research === false) {
-      runtime.log('Demo ficticia: no se inicia ni consulta la API privada A/B.')
+      runtime.log('Demo ficticia: no se inicia ni consulta el módulo predictivo privado.')
     } else if (!await runtime.portAvailable(8765)) {
       if (!await runtime.identifyApi()) {
         throw new Error('El puerto 127.0.0.1:8765 está ocupado y no responde como la API experimental válida. Revisá ese proceso; SIGARD no lo detendrá.')

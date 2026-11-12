@@ -2,7 +2,7 @@
 
 Cierre funcional para tesis: `npm.cmd run dev:demo` inicia una demostración
 ficticia integral con SQLite descartable; `npm.cmd run dev` conserva el entorno
-privado A/B. Abrir `http://127.0.0.1:5173/`. **Ctrl+C** elimina la base temporal
+privado del módulo predictivo final. Abrir `http://127.0.0.1:5173/`. **Ctrl+C** elimina la base temporal
 de demo. No habilita operación sanitaria ni promueve ML frente a persistencia.
 Ver [cierre, matriz de requisitos y aceptación](../docs/cierre-funcional-tesis.md).
 Para otro equipo, seguir la [instalación de la demo desde un clon](../docs/publication-and-demo.md).
@@ -45,9 +45,10 @@ Desde `frontend/` también se puede ejecutar `npm.cmd run dev`.
 El coordinador `scripts/dev.mjs` reutiliza `app.research_local` para iniciar
 FastAPI en **127.0.0.1:8765** y la configuración existente de Vite para servir
 React en **127.0.0.1:5173**. Abrir **http://127.0.0.1:5173**: en desarrollo
-local autorizado, `/` redirige a `/mapa` con **Investigación local A/B**
-seleccionada. **MVP sintético y contexto** permite volver manualmente a la
-simulación original; **Situación actual** abre el dashboard en `/dashboard`.
+local autorizado, `/` redirige a `/mapa` con el **Módulo predictivo experimental**.
+Presencia, cantidad y evaluación histórica reutilizan un solo panel, con
+presentación protegida predeterminada y consulta privada exacta explícita.
+**Situación actual** abre el dashboard de demostración en `/dashboard`.
 En producción, `/` conserva el dashboard y `/mapa` inicia en el MVP original.
 No requiere Docker ni PostgreSQL.
 
@@ -58,12 +59,12 @@ iniciado por el coordinador. Un servicio incompatible en 8765 o cualquier
 ocupación de 5173 bloquea el inicio con un mensaje; no se detienen procesos
 ajenos ni se cambia de puerto. No se admiten argumentos para cambiar host/puerto.
 
-Los artefactos A/B y el registro privado deben existir y superar las
+El paquete histórico final y su registro privado deben existir y superar las
 validaciones del launcher; no se crean ni reparan automáticamente. Si falta el
 entorno o una dependencia, el inicio falla y muestra el motivo. La API de
 reportes ciudadanos y administración del puerto 8000 sigue siendo independiente.
 Este comando sólo coordina desarrollo: build, preview y producción conservan
-su comportamiento. Ver también la [guía experimental](../docs/experimental-spatial-local.md).
+su comportamiento. Ver [arquitectura y cierre del módulo final](../docs/predictive-module-final.md).
 
 ### Demostración integral descartable
 
@@ -78,7 +79,7 @@ dependencias del inicio habitual; no instala otras ni modifica producción.
 Coordina Vite **127.0.0.1:5173** y FastAPI ciudadana/administrativa en
 **127.0.0.1:8766**, con SQLite temporal propia. Comprueba requisitos y puertos;
 no reutiliza 8766 ni detiene servicios desconocidos. **No inicia ni consulta A/B**.
-`npm run dev` conserva el entorno privado Vite + A/B en 8765.
+`npm run dev` utiliza el módulo predictivo privado de lectura en 8765.
 
 Abrir **http://127.0.0.1:5173/**. La franja **Demo integral** enlaza al reporte y
 seguimiento en `/prevencion` y a `/admin/reportes`. El usuario y la contraseña

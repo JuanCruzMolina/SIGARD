@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { differenceColor, scoreDifference, joinComparisonGeometry, experimentalColor, isLocalResearchContext, validateCatalog, validateScores, validateComparison, joinExperimentalGeometry } from '../src/services/experimentalContract.mjs'
+import { differenceColor, scoreDifference, joinComparisonGeometry, experimentalColor, isLocalResearchContext, validateCatalog, validateScores, validateComparison, joinExperimentalGeometry, validateResolvedDate, validateDateQuery } from '../src/services/experimentalContract.mjs'
 
 const schema = 'sigard-retrospective-spatial-score/1'
 const models = ['A', 'B'].map(id => ({ model_id: id,
@@ -196,6 +196,15 @@ test('research requests read aggregates directly without cookies, tokens or appr
       assert.ok(!call.url.includes('/session'))
     }
     assert.deepEqual(responses, [])
+    globalThis.fetch = async () => { throw new TypeError('fictional disconnect') }
+    await assert.rejects(() => service.researchRequest('/models'), /No se pudo contactar/)
+    globalThis.fetch = async () => new Response('incomplete fictional JSON')
+    await assert.rejects(() => service.researchRequest('/models'), /respuesta incompleta/)
+    const controller = new AbortController()
+    const superseded = new Error('obsolete request')
+    controller.abort(superseded)
+    globalThis.fetch = async (_url, options) => { throw options.signal.reason }
+    await assert.rejects(() => service.researchRequest('/models', controller.signal), error => error === superseded)
     globalThis.window.location.origin = 'https://foreign.example'
     await assert.rejects(() => service.researchCatalog(), /desarrollo local/)
     assert.equal(calls.length, 5)
@@ -210,8 +219,9 @@ test('experimental selectors and radio comparison work after automatic catalog l
   const { readFile } = await import('node:fs/promises')
   const { transformWithOxc } = await import('vite')
   const moduleUrl = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
-  const weeks = Array.from({ length: 20 }, (_, i) => ({
-    target_week_start: new Date(Date.UTC(2024, 0, 7 + i * 7)).toISOString().slice(0, 10),
+  const offsets = [...Array(8).keys(), ...Array.from({ length: 8 }, (_, i) => i + 9), ...Array.from({ length: 4 }, (_, i) => i + 18)]
+  const weeks = offsets.map((offset, i) => ({
+    target_week_start: new Date(Date.UTC(2024, 0, 7 + offset * 7)).toISOString().slice(0, 10),
     target_epidemiological_year: 2024, target_epidemiological_week: i + 2,
   }))
   const catalog = { schema_version: schema, models: models.map(m => ({ ...m, weeks })) }
@@ -225,14 +235,23 @@ test('experimental selectors and radio comparison work after automatic catalog l
     if (state.failCatalog) throw Error('API no disponible')
     return catalog
   }
-  state.scores = async (model, week, ids) => {
+  state.date = async requested => {
+    if (state.pauseDates) await new Promise(resolve => state.pendingDates.push({ requested, resolve }))
+    const day = new Date(requested + 'T00:00:00Z')
+    const start = new Date(day); start.setUTCDate(day.getUTCDate() - day.getUTCDay())
+    const add = n => new Date(start.getTime() + n * 86400000).toISOString().slice(0, 10)
+    return { requested_date: requested, target_week_start: add(0), target_week_end: add(6), origin_week_start: add(-7), origin_week_end: add(-1), calendar_cutoff: add(-1), target_epidemiological_year: 2024, target_epidemiological_week: 2, calendar_min: '2019-12-29', calendar_max: '2027-01-02' }
+  }
+  state.scores = async (model, date, ids, temporal) => {
+    const week = temporal.target_week_start
     state.calls.push(`${model.model_id}/${week}`)
     assert.deepEqual(ids, radios)
     if (state.pauseScores) await new Promise(resolve => state.pending.push({ week, model: model.model_id, resolve }))
     if (state.failModel === model.model_id) throw Error('Error ficticio de scores')
-    return { ...collection(model.model_id, model.model_id === 'A' ? .2 : .4), target_week_start: week,
+    if (!weeks.some(w => w.target_week_start === week)) return { result: null, blockers: ['no_frozen_prediction', 'temporal_provenance_not_verified'] }
+    return { blockers: [], result: { ...collection(model.model_id, model.model_id === 'A' ? .2 : .4), target_week_start: week,
       rows: ids.map(id => ({ ...collection(model.model_id).rows[0], radio_censal: id,
-        experimental_score: model.model_id === 'A' ? .2 : .4 })) }
+        experimental_score: model.model_id === 'A' ? .2 : .4 })) } }
   }
   state.request = async path => {
     state.calls.push(path)
@@ -271,7 +290,7 @@ test('experimental selectors and radio comparison work after automatic catalog l
     '../services/experimentalContract.mjs': new URL('../src/services/experimentalContract.mjs', import.meta.url).href,
     '../services/experimentalResults': moduleUrl(`
       const s=globalThis.__sigardExperimentalFlow;
-      export const researchCatalog=s.catalog,researchScores=s.scores,researchRequest=s.request;
+      export const researchCatalog=s.catalog,researchDate=s.date,researchDateQuery=s.scores;
     `),
     '../services/sigardData': moduleUrl('export const formatNumber=String;'),
   }
@@ -299,6 +318,12 @@ test('experimental selectors and radio comparison work after automatic catalog l
       return [node, ...nodes(node.props?.children)]
     }
     const find = predicate => nodes(tree).find(predicate)
+    async function chooseDate(value, submit = true) {
+      find(n => n.props?.id === 'research-date').props.onChange({ target: { value } })
+      await settle()
+      assert.ok(find(n => n.type === 'map').props.geojson.features.every(f => f.properties.experimental_score === null && f.properties.difference === null), 'editing date clears all previous scores immediately')
+      if (submit) { find(n => n.type === 'button' && n.props.children === 'Consultar predicción').props.onClick(); await settle() }
+    }
     await settle()
     assert.deepEqual(state.calls, ['/models'])
     assert.ok(find(n => n.props?.role === 'alert'))
@@ -309,14 +334,13 @@ test('experimental selectors and radio comparison work after automatic catalog l
     await settle()
     assert.equal(find(n => n.type === 'map').props.geojson.features.length, 263)
     assert.equal(find(n => n.props?.id === 'research-model').props.value, 'A')
+    assert.ok(!state.calls.some(call => call.startsWith('A/')), 'predictions require explicit submission')
     for (const id of ['B', 'A']) {
       find(n => n.props?.id === 'research-model').props.onChange({ target: { value: id } })
       await settle()
       for (const week of weeks) {
-        find(n => n.props?.id === 'research-week').props.onChange({ target: { value: week.target_week_start } })
-        await settle()
+        await chooseDate(week.target_week_start)
         const map = find(n => n.type === 'map')
-        assert.equal(map.props.showData, true)
         assert.ok(map.props.geojson.features.every(f => f.properties.target_week_start === week.target_week_start && f.properties.experimental_score === (id === 'A' ? .2 : .4)))
       }
     }
@@ -330,7 +354,7 @@ test('experimental selectors and radio comparison work after automatic catalog l
     for (const mode of ['difference', 'B', 'A', 'difference']) {
       find(n => n.props?.id === 'research-model').props.onChange({ target: { value: mode } })
       await settle()
-      assert.equal(find(n => n.props?.id === 'research-week').props.value, weeks.at(-1).target_week_start)
+      assert.equal(find(n => n.props?.id === 'research-date').props.value, weeks.at(-1).target_week_start)
       assert.equal(find(n => n.type === 'map').props.geojson.features[2].properties.difference, .2)
     }
     find(n => n.props?.id === 'research-radio').props.onChange({ target: { value: radios[1] } })
@@ -340,32 +364,45 @@ test('experimental selectors and radio comparison work after automatic catalog l
 
     // Resolve superseded requests after the latest ones; the stub deliberately ignores abort.
     state.pauseScores = true; state.pending = []
-    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[0].target_week_start } })
-    await settle()
-    assert.equal(find(n => n.type === 'map').props.showData, false)
-    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[1].target_week_start } })
-    await settle()
+    await chooseDate(weeks[0].target_week_start)
+    assert.ok(find(n => n.type === 'map').props.geojson.features.every(f => f.properties.experimental_score === null))
+    await chooseDate(weeks[1].target_week_start)
     assert.equal(state.pending.length, 4)
     state.pending.slice(2).forEach(p => p.resolve())
     await settle()
-    assert.equal(find(n => n.type === 'map').props.showData, true)
+    assert.equal(find(n => n.type === 'map').props.geojson.features[1].properties.model_a.experimental_score, .2)
     state.pending.slice(0, 2).forEach(p => p.resolve())
     await settle()
     assert.ok(find(n => n.type === 'map').props.geojson.features.every(f => f.properties.target_week_start === weeks[1].target_week_start))
 
     state.pauseScores = false; state.failModel = 'B'
-    find(n => n.props?.id === 'research-week').props.onChange({ target: { value: weeks[2].target_week_start } })
-    await settle()
+    await chooseDate(weeks[2].target_week_start)
     const partial = find(n => n.type === 'map').props.geojson.features[1].properties
     assert.equal(partial.model_a.experimental_score, .2)
     assert.equal(partial.model_b, undefined)
     assert.equal(partial.difference, null)
     assert.ok(find(n => n.props?.role === 'alert'))
     state.failModel = null
-    find(n => n.type === 'button' && n.props.children === 'Reintentar scores').props.onClick()
+    find(n => n.type === 'button' && n.props.children === 'Reintentar consulta').props.onClick()
     await settle()
     assert.equal(find(n => n.type === 'map').props.geojson.features[1].properties.difference, .2)
     assert.equal(find(n => n.props?.role === 'alert'), undefined)
+    await chooseDate('2024-03-06')
+    assert.equal(find(n => n.type === 'map').props.selectedRadio, radios[1])
+    assert.ok(find(n => n.type === 'map').props.geojson.features.every(f => f.properties.difference === null && f.properties.score_status === 'not_computed'))
+    for (const requested of ['2024-04-07', '2024-04-10', '2024-04-13']) {
+      await chooseDate(requested)
+      assert.equal(find(n => n.type === 'map').props.geojson.features[1].properties.target_week_start, '2024-04-07')
+      assert.equal(find(n => n.type === 'map').props.geojson.features[1].properties.difference, .2)
+      assert.equal(find(n => n.type === 'map').props.selectedRadio, radios[1])
+    }
+    state.pauseDates = true; state.pendingDates = []
+    await chooseDate('2024-04-14', false)
+    await chooseDate('2024-04-21', false)
+    state.pendingDates[1].resolve(); await settle()
+    assert.equal(find(n => n.type === 'map').props.geojson.features[0].properties.target_week_start, '2024-04-21')
+    state.pendingDates[0].resolve(); await settle()
+    assert.equal(find(n => n.type === 'map').props.geojson.features[0].properties.target_week_start, '2024-04-21')
     assert.ok(!JSON.stringify(tree).match(/Autorizar|Windows|contraseña|token|Desconectar/))
     assert.ok(!state.calls.some(path => path.includes('/session')))
   } finally {
@@ -390,4 +427,71 @@ test('difference has fixed divergent signs, real zero and missing values; source
   assert.equal(joined.features[0].properties.difference, null)
   assert.deepEqual({ geometry, values }, before)
   assert.equal(joinComparisonGeometry(geometry, values, '2024-01-07', 'A').features[0].properties.experimental_score, 0)
+})
+
+test('date query validates t+1, model identity, unchanged frozen metadata and explicit unavailability', () => {
+  const temporal = { schema_version: 'sigard-private-spatial-date-query/1', requested_date: '2024-01-10',
+    calendar_version: 'ar-snvs-2020-2026-v1', calendar_min: '2019-12-29', calendar_max: '2027-01-02',
+    calendar_status: 'supported', horizon_weeks: 1, information_cutoff: null,
+    operational_use_authorized: false, publication_authorized: false,
+    target_week_start: '2024-01-07', target_week_end: '2024-01-13', target_epidemiological_year: 2024, target_epidemiological_week: 2,
+    origin_week_start: '2023-12-31', origin_week_end: '2024-01-06', calendar_cutoff: '2024-01-06' }
+  validateResolvedDate(temporal, temporal.requested_date)
+  const value = { ...temporal, ...models[0], territory_version: 'capital-census-2022-public-v1', radio_ids: ['000001'],
+    new_inference_enabled: false, availability: 'available', result_type: 'frozen', blockers: [],
+    result: { ...collection(), ...Object.fromEntries(['target_week_end', 'target_epidemiological_year', 'target_epidemiological_week', 'origin_week_start', 'origin_week_end'].map(k => [k, temporal[k]])) } }
+  validateDateQuery(value, temporal.requested_date, models[0], ['000001'], temporal)
+  for (const change of [v => v.requested_date = '2024-01-11', v => v.model_id = 'B', v => v.training_version = 'v3',
+    v => v.result_type = 'experimental_inference', v => v.information_cutoff = '2024-01-06',
+    v => v.origin_week_start = '2024-01-07', v => v.radio_ids = ['000002'],
+    v => v.result.origin_week_start = '2024-01-07', v => v.result.target_week_start = '2024-01-14']) {
+    const bad = structuredClone(value); change(bad)
+    assert.throws(() => validateDateQuery(bad, temporal.requested_date, models[0], ['000001'], temporal))
+  }
+  const unavailable = { ...value, availability: 'unavailable', result_type: 'unavailable', result: null, blockers: ['temporal_provenance_not_verified'] }
+  validateDateQuery(unavailable, temporal.requested_date, models[0], ['000001'], temporal)
+  assert.throws(() => validateDateQuery({ ...unavailable, result: collection() }, temporal.requested_date, models[0], ['000001'], temporal))
+  assert.throws(() => validateDateQuery({ ...unavailable, blockers: ['invented'] }, temporal.requested_date, models[0], ['000001'], temporal))
+})
+
+test('map rejects another model/week and distinguishes errors from missing scores', () => {
+  const geometry = { features: [{ properties: { radio_id: '000001' }, geometry: null }] }
+  const current = { A: { value: collection('A') }, B: { value: { ...collection('B'), target_week_start: '2024-01-14' } } }
+  assert.equal(joinComparisonGeometry(geometry, current, '2024-01-07', 'difference').features[0].properties.difference, null)
+  current.B = { error: 'disconnected' }
+  assert.equal(joinComparisonGeometry(geometry, current, '2024-01-07', 'B').features[0].properties.score_status, 'error')
+  assert.equal(joinComparisonGeometry(geometry, current, '2024-01-07', 'A').features[0].properties.score_status, 'available')
+  current.B = { unavailable: 'no_frozen_prediction' }
+  assert.equal(joinComparisonGeometry(geometry, current, '2024-01-07', 'B').features[0].properties.score_status, 'not_computed')
+})
+
+test('new A inference is separately validated and mapped while B remains unavailable', () => {
+  const temporal = { schema_version: 'sigard-private-spatial-date-query/1', requested_date: '2026-11-04',
+    calendar_version: 'ar-snvs-2020-2026-v1', calendar_min: '2019-12-29', calendar_max: '2027-01-02', calendar_status: 'supported',
+    horizon_weeks: 1, information_cutoff: null, operational_use_authorized: false, publication_authorized: false,
+    target_week_start: '2026-11-01', target_week_end: '2026-11-07', target_epidemiological_year: 2026, target_epidemiological_week: 44,
+    origin_week_start: '2026-10-25', origin_week_end: '2026-10-31', calendar_cutoff: '2026-10-31' }
+  const cutoff = '2026-10-28T01:00:00+00:00'
+  const result = { ...collection('A', .42), ...temporal, ...models[0], schema_version: 'sigard-experimental-spatial-inference/1',
+    information_cutoff: cutoff, data_kind: 'private_experimental_inference', prediction_target: 'binary_experimental_record_presence_next_week',
+    retrospective: false, provenance: { source_snapshot_id: 'ab-fixed-context-fictional', context_available_at: '2026-10-27T18:00:00+00:00',
+      model_available_at: '2026-10-27T18:00:00+00:00', availability_basis: 'local_hash_verified_observation_now',
+      historical_availability_accredited: false, model_fitted: false, context_semantics: 'fixed_2022_census_context_not_current_population' } }
+  result.rows[0].data_availability = { prediction_as_of: cutoff, epidemiological_history: 'not_used_by_model', known_lag_count: null, operational_availability: 'not_accredited' }
+  const value = { ...temporal, ...models[0], territory_version: 'capital-census-2022-public-v1', radio_ids: ['000001'],
+    information_cutoff: cutoff, new_inference_enabled: true, availability: 'available', result_type: 'experimental_inference', result, blockers: [] }
+  validateDateQuery(value, temporal.requested_date, models[0], ['000001'], temporal)
+  for (const mutate of [v => v.result.target_week_start = '2026-11-08', v => v.result.training_version = 'V3',
+    v => v.result.provenance.context_available_at = '2026-11-02T00:00:00Z', v => v.result.provenance.model_fitted = true,
+    v => v.information_cutoff = '2026-11-01T04:00:00Z', v => v.result.retrospective = true,
+    v => v.result.rows[0].experimental_score = null, v => v.new_inference_enabled = false]) {
+    const bad = structuredClone(value); mutate(bad)
+    assert.throws(() => validateDateQuery(bad, temporal.requested_date, models[0], ['000001'], temporal))
+  }
+  const geometry = { features: [{ properties: { radio_id: '000001' }, geometry: null }] }
+  const current = { A: { value: result, query: value }, B: { unavailable: 'recent_epidemiological_history_unavailable' } }
+  const mapped = joinComparisonGeometry(geometry, current, temporal.target_week_start, 'A').features[0].properties
+  assert.equal(mapped.experimental_score, .42)
+  assert.equal(mapped.result_type, 'experimental_inference')
+  assert.equal(mapped.difference, null)
 })
