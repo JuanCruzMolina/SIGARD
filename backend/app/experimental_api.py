@@ -4,7 +4,7 @@ from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.responses import JSONResponse
 
-from .experimental_results import ArtifactBlocked, NotAvailable
+from .experimental_results import ArtifactBlocked, InvalidDate, NotAvailable
 
 PREFIX = "/api/v1/research/spatial"
 ORIGIN = "http://127.0.0.1:5173"
@@ -12,7 +12,7 @@ AUTHORITY = "127.0.0.1:8765"
 READ_HEADER = "x-sigard-research"
 
 
-def create_research_app(adapter):
+def create_research_app(adapter=None, backtest=None, *, predictive=None, legacy=True):
     # No database, admin/report routes, credentials, sessions or static file mounts.
     application = FastAPI(title="SIGARD · Investigación local", docs_url=None,
                           redoc_url=None, openapi_url=None)
@@ -35,6 +35,18 @@ def create_research_app(adapter):
             raise HTTPException(404, "not_available") from None
         except ArtifactBlocked:
             raise HTTPException(503, "experimental_artifacts_blocked") from None
+        except InvalidDate:
+            raise HTTPException(400, "invalid_date") from None
+
+    @router.get("/calendar")
+    def resolve_date(request: Request, date: str):
+        query(request, {"date"})
+        return call(lambda: adapter.resolve_date(date))
+
+    @router.get("/query")
+    def date_query(request: Request, date: str, model: str, radio: str | None = None):
+        query(request, {"date", "model", "radio"})
+        return call(lambda: adapter.query_date(date, model, radio))
 
     @router.get("/models")
     def models(request: Request):
@@ -70,7 +82,12 @@ def create_research_app(adapter):
         query(request, set())
         return call(lambda: adapter.history(radio))
 
-    application.include_router(router)
+    from .backtest_api import router_for
+    if legacy:
+        application.include_router(router)
+        application.include_router(router_for(backtest))
+    else:
+        application.include_router(router_for(predictive, prefix='/api/v1/research/predictive', unified=True))
 
     @application.get("/health")
     def health():

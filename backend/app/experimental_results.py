@@ -14,6 +14,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 SCHEMA = "sigard-retrospective-spatial-score/1"
 CALENDAR = "ar-snvs-2020-2026-v1"
+DATE_SCHEMA = "sigard-private-spatial-date-query/1"
 TERRITORY = "capital-census-2022-public-v1"
 MODELS = {
     "A": ("spatial_rf_05c_v1", "official-spatial-rf-research-0.5c.0"),
@@ -36,6 +37,10 @@ class ArtifactBlocked(ValueError):
 
 
 class NotAvailable(ValueError):
+    pass
+
+
+class InvalidDate(ValueError):
     pass
 
 
@@ -75,10 +80,84 @@ def calendar(root):
 
 
 class ExperimentalResults:
-    def __init__(self, registry_path, registry_sha256, *, root=ROOT):
+    def __init__(self, registry_path, registry_sha256, *, root=ROOT, inference=None):
         self.root = Path(root).resolve()
         self.registry_path = Path(registry_path)
         self.registry_sha256 = registry_sha256
+        self.inference = inference
+
+    def resolve_date(self, requested):
+        """A civil date belongs to the target week, never to an ISO week."""
+        try:
+            if not isinstance(requested, str) or not re.fullmatch(r"\d{4}-\d{2}-\d{2}", requested):
+                raise ValueError
+            day = date.fromisoformat(requested)
+        except ValueError:
+            raise InvalidDate("invalid_date") from None
+        rules = calendar(self.root)
+        first = rules.years[0].start
+        last = rules.years[-1].start + timedelta(weeks=rules.years[-1].weeks, days=-1)
+        metadata = {"schema_version": DATE_SCHEMA, "requested_date": requested,
+                    "calendar_version": CALENDAR, "calendar_min": first.isoformat(),
+                    "calendar_max": last.isoformat(), "horizon_weeks": 1,
+                    "information_cutoff": None, "operational_use_authorized": False,
+                    "publication_authorized": False}
+        if not first <= day <= last:
+            return {**metadata, "calendar_status": "outside_calendar", "target_week_start": None,
+                    "target_week_end": None, "target_epidemiological_year": None,
+                    "target_epidemiological_week": None, "origin_week_start": None,
+                    "origin_week_end": None, "origin_epidemiological_year": None,
+                    "origin_epidemiological_week": None, "calendar_cutoff": None}
+        year, week = rules.date_week(day)
+        target, end = rules.week_bounds(year, week)
+        origin = target - timedelta(days=7)
+        origin_year, origin_week = rules.date_week(origin) if origin >= first else (None, None)
+        return {**metadata, "calendar_status": "supported", "target_week_start": target.isoformat(),
+                "target_week_end": end.isoformat(), "target_epidemiological_year": year,
+                "target_epidemiological_week": week, "origin_week_start": origin.isoformat(),
+                "origin_week_end": (target - timedelta(days=1)).isoformat(),
+                "origin_epidemiological_year": origin_year, "origin_epidemiological_week": origin_week,
+                "calendar_cutoff": (target - timedelta(days=1)).isoformat()}
+
+    def query_date(self, requested, model, radio=None):
+        temporal = self.resolve_date(requested)
+        if model not in MODELS:
+            raise NotAvailable("not_available")
+        # Integrity and local read permission are checked even for unavailable dates.
+        values = self._read()
+        radios = sorted(r["radio_censal"] for weeks in values.values()
+                        for r in next(iter(weeks.values()))["rows"])
+        radios = sorted(set(radios))
+        all_radios = radios
+        if radio is not None:
+            if radio not in radios:
+                raise NotAvailable("not_available")
+            radios = [radio]
+        collection = values.get(model, {}).get(temporal["target_week_start"])
+        blockers = []
+        if temporal["calendar_status"] != "supported":
+            blockers = ["outside_calendar_coverage"]
+        elif model not in values:
+            blockers = ["model_not_registered"]
+        elif collection is None:
+            if self.inference is not None:
+                collection, blockers = self.inference.query(temporal, model, all_radios)
+                if collection is not None:
+                    temporal = {**temporal, "information_cutoff": collection["information_cutoff"]}
+            else:
+                blockers = ["no_frozen_prediction", "new_inference_not_enabled",
+                            "temporal_provenance_not_verified"]
+                if not "2024-01-07" <= temporal["target_week_start"] <= "2024-06-02":
+                    blockers.append("outside_experiment_coverage")
+        if collection is not None and not blockers and radio is not None:
+            collection = {**collection, "rows": [r for r in collection["rows"] if r["radio_censal"] == radio]}
+        return {**temporal, "model_id": model, "experiment_id": MODELS[model][0],
+                "training_version": MODELS[model][1], "territory_version": TERRITORY,
+                "radio_ids": radios, "availability": "unavailable" if blockers else "available",
+                "result_type": "unavailable" if blockers else "experimental_inference"
+                    if collection["schema_version"] == "sigard-experimental-spatial-inference/1" else "frozen",
+                "new_inference_enabled": self.inference is not None and model == "A", "blockers": blockers,
+                "result": None if blockers else collection}
 
     def _read(self, *, include_evaluation=False):
         """Revalidate every query; never silently serve a stale cached snapshot."""
@@ -257,7 +336,9 @@ class ExperimentalResults:
 
     def list_experiments(self):
         values = self._read()
-        return {"schema_version": SCHEMA, "models": [{"model_id": m, "experiment_id": MODELS[m][0],
+        return {"schema_version": SCHEMA,
+            **({"date_inference": self.inference.capabilities()} if self.inference is not None else {}),
+            "models": [{"model_id": m, "experiment_id": MODELS[m][0],
             "training_version": MODELS[m][1], "weeks": [{k: w[k] for k in (
                 "target_week_start", "target_week_end", "target_epidemiological_year", "target_epidemiological_week",
                 "evaluation_partition")} for _, w in sorted(weeks.items())]} for m, weeks in sorted(values.items())]}
