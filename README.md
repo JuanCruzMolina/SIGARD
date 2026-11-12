@@ -5,6 +5,16 @@ públicos aprobados. No incluye fuentes sanitarias privadas, modelos entrenados,
 predicciones experimentales, informes reales ni autorizaciones transferibles.
 Para instalar y ejecutar la demo, seguir [la guía de distribución](docs/publication-and-demo.md).
 
+## Módulo predictivo experimental integrado · 02/11/2026
+
+`npm.cmd --prefix frontend run dev` abre el módulo final en `/mapa`, únicamente
+en desarrollo local autorizado. Integra presencia territorial, cantidad y
+evaluación histórica, con referencias estadísticas seleccionadas, clima como
+contexto y presentación protegida. No carga A/B ni entrena al navegar; los
+artefactos privados deben existir y no se incluyen en un clon compartible.
+Ver [arquitectura, fuentes, archivo de modelos y ejecución](docs/predictive-module-final.md).
+Los apartados anteriores sobre A/B y los de v0.1 siguientes son históricos.
+
 ## Demostración funcional para la tesis — 26/10/2026
 
 Desde la raíz: `npm.cmd --prefix frontend run dev:demo`; abrir
@@ -12,7 +22,7 @@ Desde la raíz: `npm.cmd --prefix frontend run dev:demo`; abrir
 espacio administrativo enteramente ficticio de consulta por radio/horizonte,
 CSV y alertas configurables, con SQLite temporal y autenticación en servidor.
 No requiere Docker/PostgreSQL ni inicia el lector privado A/B. Ctrl+C elimina
-la sesión. `dev` conserva por separado el entorno privado A/B existente.
+la sesión. `dev` utiliza por separado el módulo predictivo privado integrado.
 
 El [cierre funcional para tesis](docs/cierre-funcional-tesis.md) contiene el
 estado actual de los seis módulos, pruebas, rendimiento, ejecución y protocolo

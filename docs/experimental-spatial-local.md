@@ -35,7 +35,13 @@ Espera a que la API esté lista antes de abrir el servidor de desarrollo.
 
 Abrir **http://127.0.0.1:5173**: `/` redirige a `/mapa` y selecciona
 **Investigación local A/B** automáticamente sólo en desarrollo con ese origen.
-El catálogo y los primeros scores se consultan automáticamente. **Vista del mapa**
+El catálogo se consulta automáticamente. Elegir una fecha libre y pulsar
+**Consultar predicción** resuelve su semana epidemiológica y consulta los scores.
+Ver [cobertura y límites de la consulta por fecha](experimental-spatial-date-query.md).
+Tras la migración PostgreSQL, A/B conservan congelados. La inferencia nueva A
+queda bloqueada por equivalencia PostgreSQL pendiente; B sigue sin una fuente
+reciente verificable. Ver [migración operativa](database/postgres-ml-migration.md).
+**Vista del mapa**
 ofrece Modelo A, Modelo B y Diferencia B − A. Cambiar vista conserva semana y radio;
 seleccionar un radio permite consultar ambos scores y su resta cuando existen.
 **MVP sintético y contexto** conserva la vista original y sigue accesible con
@@ -73,7 +79,7 @@ Build, preview, producción y la API habitual del puerto 8000 no cambian.
   workers; desactiva confianza en proxies y access logs, y rechaza Docker y
   entornos de despliegue conocidos. Vite usa **127.0.0.1:5173** por defecto.
 - La API experimental es una instancia FastAPI separada dentro de la
-  implementación existente. Sólo registra las seis consultas agregadas y
+  implementación existente. Sólo registra las consultas agregadas y de calendario y
   `/health`. No necesita base de datos ni carga la configuración confidencial
   del backend público. No registra reportes ciudadanos, administración, archivos,
   documentación ni OpenAPI. `app.main:app` sigue sin rutas experimentales.
@@ -91,7 +97,9 @@ Build, preview, producción y la API habitual del puerto 8000 no cambian.
 - La proyección usa exclusivamente campos permitidos de resultados ya autorizados
   para visualización local. No entrega Excel, registros individuales, direcciones,
   coordenadas individuales, etiquetas, valores de rezagos, configuraciones,
-  datasets privados ni modelos serializados. No carga joblib ni ejecuta ML.
+  datasets privados ni modelos serializados. La API no carga joblib; delega
+  inferencia autorizada de A en un proceso temporal del entorno ML existente,
+  que valida entradas/estimador y bloquea fit. La demo no lo invoca.
 - Se conservan las exclusiones Git/Docker y la whitelist con hashes de los diez
   recursos públicos. A/B no se copia a `public/`, al bundle ni a tablas públicas.
   La administración de reportes del backend habitual conserva su JWT y rol admin.

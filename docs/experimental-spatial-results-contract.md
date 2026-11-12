@@ -23,6 +23,8 @@ get_retrospective_scores(model_id, experiment_id, target_week_start)
 compare(radio_censal, target_week_start) -> colecciones A/B de una fila
 get_evaluation() -> seis métricas congeladas por modelo y partición
 history(radio_censal) -> comparaciones de las semanas ya calculadas de ese radio
+resolve_date(fecha) -> calendario oficial, semana objetivo y origen t
+query_date(fecha, modelo, radio opcional) -> resultado congelado o indisponibilidad
 ```
 
 ## Ampliación local de etapa 10
@@ -147,9 +149,11 @@ retrospective_only_no_operational_forecast
 
 1. Leer sólo proyecciones y metadatos incluidos en manifiestos privados conocidos;
    verificar hashes antes de usarlos. No aceptar rutas arbitrarias del cliente.
-2. No cargar `joblib` en el backend ni en el navegador. A se carga actualmente
-   sólo en auditoría offline, con hash, tipo y versión de scikit-learn comprobados;
-   B se recarga offline para verificar su propio archivo recién creado.
+2. No cargar `joblib` en el proceso backend ni en el navegador. El
+   [ejecutor histórico de A](experimental-spatial-date-query.md) lo carga sólo
+   en reproducción histórica explícita, con procedencia, hash, tipo y versiones
+   comprobados. Su inferencia nueva está bloqueada por equivalencia PostgreSQL.
+   B no ejecuta inferencia nueva sin fuente reciente verificable.
    Los scores guardados permiten la demostración sin deserializar modelos ni
    reconstruir features. Un hash local identifica el archivo esperado; por sí
    solo no autentica un pickle proporcionado por un tercero.
@@ -157,8 +161,14 @@ retrospective_only_no_operational_forecast
    etiqueta desconocida. No filtrar el mapa por conocimiento de la etiqueta.
    A/B tienen grillas de inferencia iguales; las métricas usan sólo etiquetas
    conocidas. No exportar etiquetas, conteos, pacientes o pendientes al cliente.
-4. Exponer únicamente las 20 semanas objetivo calculadas (8/8/4 por partición).
-   No inventar scores para las dos semanas purgadas ni para fechas nuevas.
+4. El calendario admite todas las fechas verificadas. El contrato congelado
+   conserva exclusivamente las 20 semanas calculadas (8/8/4). La
+   [consulta por fecha](experimental-spatial-date-query.md) devuelve indisponibilidad
+   para inferencia nueva A/B mientras falte el contrato PostgreSQL equivalente.
+   `date_inference.model_a_enabled` y `model_b_enabled` son falsos; el nuevo
+   `model_a_blocker` es `postgres_legacy_contract_unverified`. El esquema de
+   resultados congelados se conserva.
+   No inventar scores para purgas ni para fechas sin entradas respaldadas.
    Experimento/semana inexistente: `not_available`; artefacto corrupto o claves
    incompatibles: bloquear la consulta. Sin fallback silencioso a simulación,
    otro modelo, otra versión, otra semana o cero.
