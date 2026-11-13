@@ -39,12 +39,14 @@ const protect = (doc, mode) => {
 function week(w, mode) {
   const doc = comparison(w)
   if (w.target_year === 2024 && w.target_epi_week <= 24) {
-    for (const [i, observed, predicted] of [[0, 12, 7], [1, 7, 6], [2, 6, 8]]) {
+    // SE 15 has one extra disclosable radio, so the fictional default week is unambiguous.
+    for (const [i, observed, predicted] of [[0, 12, 7], [1, 7, 6], [2, 6, 8], ...(w.target_epi_week === 15 ? [[3, 9, 6]] : [])]) {
       const r = doc.rows[i]; r.observed.quantity = observed; r.observed.presence = 1; r.observed.assigned_records = observed
       r.predicted.quantity = predicted; r.baseline.quantity = predicted; r.confusion = r.predicted.presence ? 'TP' : 'FN'
       r.difference = predicted - observed; r.absolute_error = Math.abs(r.difference)
     }
-    doc.department.observed_total = 25; doc.department.assigned_common_total = 25
+    const total = doc.rows.slice(0, 4).reduce((sum, r) => sum + r.observed.quantity, 0)
+    doc.department.observed_total = total; doc.department.assigned_common_total = total
   }
   return protect(doc, mode)
 }
@@ -52,7 +54,8 @@ export function finalFixtureResponse(path) {
   const url = new URL(path, 'http://127.0.0.1:8765'), name = url.pathname.split('/').at(-1), mode = url.searchParams.get('disclosure') || 'presentation'
   if (name === 'calendar') return catalog
   if (name === 'geometry') return geometry
-  if (name === 'metadata') return { ...previousMetadata, module_version: catalog.module_version, climate_usage: 'context_only_not_used_by_selected_methods' }
+  if (name === 'metadata') return { ...previousMetadata, module_version: catalog.module_version, climate_usage: 'context_only_not_used_by_selected_methods',
+    method_labels: { presence: 'FICTIONAL seasonal label', quantity: 'FICTIONAL latest label' }, experimental_methods: { presence: 'rf_A_epi_climate', quantity: 'residual_h1' } }
   if (name === 'comparison') return week(catalog.weeks.find(w => w.target_year === Number(url.searchParams.get('year')) && w.target_epi_week === Number(url.searchParams.get('week'))), mode)
   if (name === 'history') {
     const start = url.searchParams.get('start'), end = url.searchParams.get('end'), radio = url.searchParams.get('radio')

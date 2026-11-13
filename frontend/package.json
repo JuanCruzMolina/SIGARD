@@ -7,7 +7,7 @@
     "security:check": "node security/public-assets.mjs",
     "test:security": "node --test security/public-assets.test.mjs",
     "test:research": "node --test security/experimental-results.test.mjs security/experimental-analysis.test.mjs security/local-entry.test.mjs",
-    "test:backtest": "node --test security/backtest.test.mjs",
+    "test:backtest": "node --test security/backtest.test.mjs security/predictive-view.test.mjs",
     "test:backtest:browser": "node scripts/predictive.browser.mjs",
     "test:predictive:browser": "node scripts/predictive.browser.mjs",
     "test:public-map": "node --test security/public-map.test.mjs",
