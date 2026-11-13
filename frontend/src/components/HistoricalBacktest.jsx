@@ -150,7 +150,7 @@ export default function HistoricalBacktest() {
   const [primary, other] = ordered
   const display = shown ? Object.fromEntries(sources.map(s => [s.source, experimentalView(shown, s.source)])) : null
   const panels = display ? (method === 'compare' ? sources : [primary]).map(s => ({ key: s.source, title: s.label,
-    subtitle: view === 'presence' ? 'Radios priorizados (relleno) y radios con registros (punto)' : url.layer === 'observed' && method !== 'compare' ? 'Registros observados por radio' : 'Registros esperados por radio',
+    subtitle: view === 'presence' ? 'Radios priorizados (relleno) y radios con registros (trama diagonal)' : url.layer === 'observed' && method !== 'compare' ? 'Registros observados por radio' : 'Registros esperados por radio',
     result: display[s.source] })) : []
   const tableRows = display ? shown.rows.map((r, i) => ({ radio_id: r.radio_id, base: r, ...Object.fromEntries(sources.map(s => [s.source, display[s.source].rows[i]])) })) : []
   const radioRow = url.radio && display ? Object.fromEntries(sources.map(s => [s.source, display[s.source].rows.find(r => r.radio_id === url.radio)])) : null

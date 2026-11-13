@@ -74,8 +74,16 @@
 .pv-legend li { display: inline-flex; align-items: center; gap: .45rem; }
 .pv-legend-caption { color: var(--ink-soft); }
 .pv-swatch { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 20px; border: 1px solid #7d8b85; flex: none; }
-.pv-swatch-dot { border-color: transparent; }
-.pv-dot { display: block; width: 8px; height: 8px; border-radius: 50%; background: #082b2e; box-shadow: 0 0 0 1.5px #fff; }
+.pv-swatch-hatch { background: repeating-linear-gradient(-45deg, #2b3b3d 0 2px, #fff 2px 6px); border-color: #2b3b3d; }
+/* Street base map: muted only on this map's tile pane, never on polygons or other maps. */
+.pv-map .pv-basetiles { filter: grayscale(1) brightness(1.05) contrast(.9); }
+.pv-map .leaflet-control-attribution { background: rgba(255, 255, 255, .85); color: #2f4547; }
+.pv-hatches { position: absolute; width: 0; height: 0; overflow: hidden; }
+.pv-map-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem 1rem; margin: 0 0 .3rem; font-size: .88rem; }
+.pv-basemap-toggle { display: inline-flex; align-items: center; gap: .45rem; min-height: 32px; cursor: pointer; }
+.pv-basemap-toggle input { width: 18px; height: 18px; accent-color: #06625e; }
+.pv-basemap-offline:not(:empty) { padding: .15rem .55rem; border-radius: 4px; background: #eef1ef; color: var(--ink-soft); font-size: .82rem; }
+.pv-map-note { margin: .5rem 0 0; font-size: .84rem; color: var(--ink-soft); }
 .pv-panel { padding: 1rem 1.1rem; background: var(--paper); border: 1px solid var(--line); border-radius: var(--radius-sm); box-shadow: var(--shadow-low); align-self: start; }
 .pv-panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: .5rem; }
 .historical-backtest .pv-panel h2 { font-size: 1.1rem; overflow-wrap: anywhere; }

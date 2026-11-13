@@ -10,12 +10,21 @@ import { finalFixtureResponse } from '../security/predictive.fixture.mjs'
 
 const require = createRequire(import.meta.url), puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
+// Map tiles: blocked by default (offline mode, no internet dependency); --tiles lets only
+// OpenStreetMap tile requests through, after checking they carry nothing but city tile coordinates.
+const tilesOnline = process.argv.includes('--tiles')
+const OFFLINE_TEXT = 'Mapa de calles no disponible sin conexión'
+// Allowed tile area: La Rioja Capital for --real; the generated fictional grid (deliberately
+// away from real cartography) otherwise. Both include the map's maxBounds padding.
+const CITY = real ? { south: -29.75, north: -29.1, west: -67.2, east: -66.5 } : { south: 9.8, north: 10.4, west: 9.8, east: 10.5 }
+const tileLat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) * 180 / Math.PI
+const tileLng = (x, z) => x / 2 ** z * 360 - 180
 const origin = process.env.SIGARD_MODULE_ORIGIN || 'http://127.0.0.1:5173'
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url))
-const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112', process.env.SIGARD_SHOTS_LABEL || 'despues', real ? 'real' : 'fictional')
+const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112', process.env.SIGARD_SHOTS_LABEL || 'despues', real ? 'real' : 'fictional', tilesOnline ? 'con-calles' : 'sin-conexion')
 await mkdir(output, { recursive: true })
 const browser = await puppeteer.launch({ headless: true }); let production
-const errors = [], external = [], requests = [], timings = []
+const errors = [], external = [], requests = [], timings = [], tileRequests = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 try {
   const page = await browser.newPage(); page.setDefaultTimeout(30000)
@@ -26,6 +35,16 @@ try {
   page.on('request', async r => {
     const u = new URL(r.url())
     if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
+    if (/^[abc]\.tile\.openstreetmap\.org$/.test(u.hostname)) {
+      const match = /^\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(u.pathname), [z, x, y] = (match || []).slice(1).map(Number)
+      assert.ok(match && u.protocol === 'https:' && !u.search && !u.hash && !u.username, `tile request carries only tile coordinates: ${u.href}`)
+      assert.ok(z >= 11 && z <= 17, 'tile zoom within the city range')
+      assert.ok(tileLat(y + 1, z) <= CITY.north && tileLat(y, z) >= CITY.south && tileLng(x + 1, z) >= CITY.west && tileLng(x, z) <= CITY.east, `tile within the map area: ${z}/${x}/${y}`)
+      assert.ok(!r.headers().referer, 'no referrer (page URL, week or radio) sent to the tile server')
+      assert.equal(r.method(), 'GET'); assert.equal(r.postData(), undefined)
+      tileRequests.push(`${z}/${x}/${y}`)
+      return tilesOnline ? r.continue() : r.abort()
+    }
     if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8765'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (u.pathname.startsWith('/api/v1/research/')) {
       assert.ok(u.pathname.startsWith('/api/v1/research/predictive/'), 'no archived A/B or unprotected backtest calls')
@@ -73,6 +92,25 @@ try {
   assert.equal(await page.$('[data-legend="FP"]'), null); assert.equal(await page.$('[data-legend="TN"]'), null)
   await page.waitForSelector('.pv-evolution svg')
   await scrollTo('.pv-controls'); await shot('desktop-donde')
+
+  // Street base map: OSM attribution, offline notice, keyboard toggle and neighbourhood zoom.
+  assert.match(await page.$eval('.pv-map .leaflet-control-attribution', e => e.textContent), /OpenStreetMap/)
+  assert.match(await page.$eval('.pv-map-note', e => e.textContent), /no representan domicilios ni ubicaciones exactas/)
+  assert.match(await page.$eval('[data-legend="records"]', e => e.textContent), /zona, no ubicación del caso/)
+  assert.equal(await page.$('.pv-map .leaflet-marker-pane > *, .pv-map circle'), null, 'no markers or points inside radios')
+  if (tilesOnline) {
+    await page.waitForSelector('.pv-basetiles img.leaflet-tile-loaded')
+    assert.equal(await page.$eval('.pv-basemap-offline', e => e.textContent), '')
+    for (let i = 0; i < 4; i++) { await page.click('.pv-map-figure:first-child .leaflet-control-zoom-in'); await new Promise(r => setTimeout(r, 150)) }
+    await new Promise(r => setTimeout(r, 2500)); await scrollTo('.pv-maps'); await shot('desktop-zoom-barrio')
+    await page.click('.pv-map-figure figcaption button')
+  } else {
+    await page.waitForFunction(t => document.querySelector('.pv-basemap-offline')?.textContent === t, {}, OFFLINE_TEXT)
+    await scrollTo('.pv-maps'); await shot('desktop-sin-conexion')
+  }
+  await page.focus('.pv-basemap-toggle input'); await page.keyboard.press('Space')
+  await page.waitForFunction(() => !document.querySelector('.pv-basetiles') && !document.querySelector('.pv-basemap-toggle input').checked)
+  await page.keyboard.press('Space'); await page.waitForSelector('.pv-basetiles')
 
   // Week navigation: arrows (network or cache), cache revisit and keyboard slider.
   await timed('next_week_until_rendered', () => page.click('[aria-label="Semana siguiente"]'), () => ready(defaultWeek))
@@ -138,6 +176,11 @@ try {
   // Mobile 390: no page-level horizontal scroll; bottom sheet panel.
   await page.setViewport({ width: 390, height: 844 }); await noHorizontalScroll()
   await page.evaluate(() => scrollTo(0, 0)); await scrollTo('.pv-controls'); await shot('movil-donde')
+  if (tilesOnline) {
+    for (let i = 0; i < 4; i++) { await page.click('.pv-map-figure:first-child .leaflet-control-zoom-in'); await new Promise(r => setTimeout(r, 150)) }
+    await new Promise(r => setTimeout(r, 2500)); await scrollTo('.pv-maps'); await shot('movil-zoom-barrio')
+    await page.click('.pv-map-figure figcaption button')
+  } else { await scrollTo('.pv-maps'); await shot('movil-sin-conexion') }
   await press('view', 'quantity'); await scrollTo('.pv-body'); await shot('movil-cuantos'); await noHorizontalScroll()
   await press('method', 'compare'); await page.waitForFunction(() => document.querySelectorAll('.pv-map').length === 2); await scrollTo('.pv-body'); await shot('movil-comparar'); await noHorizontalScroll()
   await press('method', 'ml'); await press('view', 'presence'); await openRadioWithKeyboard()
@@ -171,7 +214,8 @@ try {
     assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
   }
   const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
-    requests: requests.length, archived_calls: 0, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
+    requests: requests.length, archived_calls: 0,
+    tiles: tilesOnline ? 'osm_city_tiles_only' : 'blocked_offline', tile_requests_checked: tileRequests.length, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
     no_training: true, fixtures_in_project_metrics: false, origin, timings }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))

@@ -330,11 +330,30 @@ por la API; las reglas de redacción están centralizadas en
   imposibles; las cifras por año sólo aparecen en modo privado, y una semana sin
   radios divulgables se resume con una sola explicación. «Protegido» nunca
   significa cero.
+- **Mapa base de calles**: `BacktestMaps` agrega la capa de OpenStreetMap ya usada
+  por los otros mapas (misma URL y atribución, ya permitida por la CSP), atenuada
+  en gris sólo en el panel de mosaicos de este mapa, con zoom 11–17 y límites
+  alrededor del universo común. «Mostrar calles» (casilla, activada por defecto)
+  la oculta; en Comparar ambos mapas comparten capa y encuadre. Las peticiones de
+  mosaicos se envían sin referrer y sólo contienen `z/x/y` del área de la ciudad;
+  ningún dato de radios, registros, predicciones ni parámetros de la aplicación.
+  Sin conexión el mapa sigue con el fondo liso y el aviso «Mapa de calles no
+  disponible sin conexión». El visor privado autocontenido se construye con la
+  capa desactivada (`VITE_SIGARD_BASEMAP=off`) y su build rechaza cualquier URL
+  de mosaicos.
+- **Codificación de zona**: los rellenos son semitransparentes sobre las calles;
+  los radios con registros se marcan con trama diagonal sobre todo el polígono
+  (nunca puntos ni marcadores) y los protegidos sólo con contorno fino punteado y
+  trama suave. Los colores indican radios censales completos; no representan
+  domicilios ni ubicaciones exactas.
 
 La prueba `frontend/security/predictive-view.test.mjs` (incluida en
 `test:backtest`) verifica estas reglas con fixtures ficticias, y
 `frontend/scripts/predictive.browser.mjs` recorre la interfaz en Chromium local;
-sus capturas se guardan como archivos privados ignorados por Git.
+sus capturas se guardan como archivos privados ignorados por Git. Por defecto
+bloquea los mosaicos (modo sin conexión, sin depender de internet); con `--tiles`
+deja pasar sólo mosaicos de OpenStreetMap tras verificar coordenadas, área,
+ausencia de parámetros y de referrer.
 
 La verificación ML 3 usa fixtures exclusivamente ficticias, la regresión existente
 y navegación Chromium local desktop/móvil. PostgreSQL/PostGIS no se inició ni se
