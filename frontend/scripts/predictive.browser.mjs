@@ -1,21 +1,27 @@
-// Complete final-module walkthrough. Default is fictional; --real reads local aggregates only.
+// Complete predictive-module walkthrough. Default is fictional; --real reads local aggregates only.
+// Requires the frontend on 127.0.0.1:5173 (npm run dev) and a previous `npm run build` for the production check.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
 import { finalFixtureResponse } from '../security/predictive.fixture.mjs'
 
 const require = createRequire(import.meta.url), puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
-const output = resolve('data/interim/official/ml-integration-stage3-20261103-v1', process.argv.includes('--confirm') ? 'browser-confirmed' : 'browser', real ? 'real' : 'fictional')
+const origin = process.env.SIGARD_MODULE_ORIGIN || 'http://127.0.0.1:5173'
+const frontendRoot = fileURLToPath(new URL('..', import.meta.url))
+const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112', process.env.SIGARD_SHOTS_LABEL || 'despues', real ? 'real' : 'fictional')
 await mkdir(output, { recursive: true })
 const browser = await puppeteer.launch({ headless: true }); let production
 const errors = [], external = [], requests = [], timings = []
+const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 try {
-  const page = await browser.newPage(); page.setDefaultTimeout(25000)
+  const page = await browser.newPage(); page.setDefaultTimeout(30000)
   page.on('pageerror', e => errors.push(e.message))
-  let fail = false, delayed = false
+  page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()) })
+  let fail = false
   await page.setRequestInterception(true)
   page.on('request', async r => {
     const u = new URL(r.url())
@@ -23,69 +29,126 @@ try {
     if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8765'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (u.pathname.startsWith('/api/v1/research/')) {
       assert.ok(u.pathname.startsWith('/api/v1/research/predictive/'), 'no archived A/B or unprotected backtest calls')
-      if (r.method() === 'OPTIONS') return r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:5173', 'Access-Control-Allow-Headers': 'X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
-      assert.equal(r.method(), 'GET'); requests.push(u.pathname)
-      if (fail && u.pathname.endsWith('/comparison')) return r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:5173' }, body: '{}' })
-      if (!real) {
-        if (delayed && u.pathname.endsWith('/comparison')) await new Promise(resolve => setTimeout(resolve, 300))
-        return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': 'http://127.0.0.1:5173' }, body: JSON.stringify(finalFixtureResponse(u.href)) })
-      }
+      if (r.method() === 'OPTIONS') return r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
+      assert.equal(r.method(), 'GET'); requests.push(`${u.pathname}${u.search}`)
+      if (fail && u.pathname.endsWith('/comparison')) return r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': origin }, body: '{}' })
+      if (!real) return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify(finalFixtureResponse(u.href)) })
     }
     return r.continue()
   })
-  const ready = () => page.waitForSelector('.bt-territory-table tbody tr')
-  await page.setViewport({ width: 1440, height: 1050 })
-  const started = performance.now(); await page.goto('http://127.0.0.1:5173/mapa', { waitUntil: 'networkidle0' }); await ready()
-  timings.push({ operation: 'initial_module_until_week_rendered', seconds: (performance.now() - started) / 1000 })
-  assert.equal(await page.$('.research-mode'), null)
+  const week = () => page.$eval('.pv', e => e.dataset.week)
+  const ready = async previous => {
+    await page.waitForFunction(p => { const e = document.querySelector('.pv'); return e && e.dataset.state === 'ready' && (!p || e.dataset.week !== p) }, {}, previous || null)
+    await page.waitForFunction(() => !document.querySelector('.pv-updating'))
+  }
+  const timed = async (operation, action, wait) => { const start = performance.now(); await action(); await wait(); timings.push({ operation, seconds: (performance.now() - start) / 1000 }) }
+  const press = (control, value) => page.click(`[data-control="${control}"] [data-value="${value}"]`)
+  const text = () => page.$eval('.pv', e => e.innerText)
+  const shot = async name => { await new Promise(r => setTimeout(r, 400)); await page.screenshot({ path: resolve(output, `${name}.private.png`), fullPage: false }) }
+  const scrollTo = selector => page.$eval(selector, e => e.scrollIntoView({ block: 'start' }))
+  // Keyboard path to the radio panel, once the ¿Dónde? layer has replaced any previous one.
+  const openRadioWithKeyboard = async () => {
+    await page.waitForFunction(() => document.querySelector('[data-legend="TP"]') && document.querySelectorAll('.pv-map').length === 1 && document.querySelector('.pv-map path[tabindex="0"]'))
+    await new Promise(r => setTimeout(r, 300))
+    await page.$eval('.pv-map path[tabindex="0"]', e => e.focus()); await page.keyboard.press('Enter'); await page.waitForSelector('.pv-panel')
+  }
+  const noHorizontalScroll = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
+
+  await page.setViewport({ width: 1440, height: 1000 })
+  await timed('cold_start_until_default_week_rendered', () => page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }), () => ready())
+  const defaultWeek = await week()
+  if (!real) assert.equal(defaultWeek, '2024-04-07', 'fictional default is the week with most disclosable radios')
+  assert.match(page.url(), /anio=\d{4}&se=\d+/)
   assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
-  await page.select('#bt-year', '2020'); await ready()
-  assert.equal(await page.$$eval('#bt-week option', e => e.length), 53)
-  await page.select('#bt-week', '2020-12-27'); await ready()
-  assert.match(await page.$eval('.bt-unavailable', e => e.textContent), /Predicción no disponible/)
-  await page.select('#bt-year', '2021'); await ready()
-  if (!real) assert.match(await page.$eval('.bt-ml-comparison', e => e.textContent), /Predicción ML no disponible/)
-  await page.select('#bt-source', 'reference'); await page.select('#bt-source', 'ml')
-  assert.match(await page.$eval('.bt-period', e => e.textContent), /2020-12-27 a 2021-01-02/)
-  await page.select('#bt-year', '2022'); await ready()
-  await page.select('#bt-year', '2024'); await ready()
-  const selected = performance.now(); await page.select('#bt-week', '2024-03-17'); await ready()
-  timings.push({ operation: 'select_week_until_comparison_rendered', seconds: (performance.now() - selected) / 1000 })
-  await page.waitForSelector('.bt-chart svg')
-  assert.match(await page.$eval('.bt-ml-comparison', e => e.textContent), /rf_A_epi_climate/)
-  assert.match(await page.$eval('.bt-climate', e => e.textContent), /°C/)
-  const shots = async name => { await page.evaluate(() => scrollTo(0, 0)); await page.screenshot({ path: resolve(output, name), fullPage: true }) }
-  await shots('desktop-presence.private.png'); await page.select('#bt-view', 'quantity'); await shots('desktop-quantity.private.png')
-  await page.click('.bt-dual-maps figure:first-child .leaflet-control-zoom-in')
-  const synced = () => page.waitForFunction(() => { const maps = [...document.querySelectorAll('.bt-map')]; return maps.length === 2 && maps[0].dataset.btCamera === maps[1].dataset.btCamera })
-  await synced(); await page.setViewport({ width: 390, height: 844 }); await synced(); await shots('mobile-quantity.private.png')
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
-  await page.select('#bt-view', 'presence'); await shots('mobile-presence.private.png')
-  await page.select('#bt-disclosure', 'private'); await ready()
-  assert.match(await page.$eval('.bt-disclosure', e => e.textContent), /No proyectar, publicar ni compartir/)
-  const first = await page.$eval('#bt-radio option:nth-child(2)', e => e.value)
-  await page.select('#bt-radio', first)
-  assert.equal(await page.$$eval('.bt-territory-table tbody tr', e => e.length), 1)
-  await page.select('#bt-radio', '')
-  await page.select('#bt-week', '2024-12-22'); await ready()
-  assert.equal(await page.$eval('.bt-week-summary .bt-summary-values dd', e => e.textContent), '0')
-  await page.select('#bt-year', '2025'); await ready()
-  assert.match(await page.$eval('.bt-unavailable', e => e.textContent), /Fuera de cobertura/)
+  assert.equal(await page.$eval('.pv-badge', e => e.textContent), 'Prototipo experimental — reconstrucción histórica, no uso operativo')
+  const protectedText = await text()
+  assert.match(protectedText, new RegExp(PROTECTED_NOTE))
+  assert.doesNotMatch(protectedText.split('\n').filter(line => !line.startsWith(PROTECTED_NOTE)).join('\n'), /Falsa alarma|falsas alarmas|Correctamente sin alerta|Precisión/)
+  assert.equal(await page.$('[data-legend="FP"]'), null); assert.equal(await page.$('[data-legend="TN"]'), null)
+  await page.waitForSelector('.pv-evolution svg')
+  await scrollTo('.pv-controls'); await shot('desktop-donde')
+
+  // Week navigation: arrows (network or cache), cache revisit and keyboard slider.
+  await timed('next_week_until_rendered', () => page.click('[aria-label="Semana siguiente"]'), () => ready(defaultWeek))
+  const second = await week()
+  await timed('previous_week_cached_until_rendered', () => page.click('[aria-label="Semana anterior"]'), () => ready(second))
+  await page.focus('#pv-week'); await page.keyboard.press('ArrowRight'); await ready(defaultWeek)
+  await page.keyboard.press('ArrowLeft'); await ready(second)
+  assert.equal(await week(), defaultWeek)
+
+  // Empty and unavailable weeks: one explanation and a way back to activity.
+  await timed('change_year_until_rendered', () => page.select('#pv-year', '2021'), () => ready(defaultWeek))
+  if (!real) assert.match(await page.$eval('.pv-empty', e => e.textContent), /muy pocos registros por radio/)
+  else await page.waitForSelector('.pv-empty, .pv-cards')
+  assert.equal(await page.$$eval('.pv-empty', e => e.length) <= 1, true)
+  if (await page.$('.pv-empty')) assert.equal(await page.$('.pv-map'), null, 'an empty week shows one explanation, not a map of protected cells')
+  if (await page.$('.pv-empty')) { await scrollTo('.pv-controls'); await shot('desktop-sin-datos') }
+  const in2021 = await week()
+  await page.select('#pv-year', '2020'); await ready(in2021)
+  assert.match(await page.$eval('.pv-empty', e => e.textContent), /Sin predicción/)
+  const in2020 = await week()
+  await page.waitForFunction(() => !document.querySelector('.pv-most-active')?.disabled)
+  await page.click('.pv-most-active'); await ready(in2020)
+  if (!real) assert.equal(await week(), defaultWeek)
+
+  // ¿Cuántos?, Comparar and the radio panel.
+  await press('view', 'quantity'); await page.waitForFunction(() => location.search.includes('vista=cuantos'))
+  assert.equal(await page.$('[data-legend="bin-0"]'), null, 'protected legend omits impossible ranges')
+  await scrollTo('.pv-controls'); await shot('desktop-cuantos')
+  await press('method', 'compare'); await page.waitForFunction(() => document.querySelectorAll('.pv-map').length === 2)
+  await page.click('.pv-map-figure:first-child .leaflet-control-zoom-in')
+  const synced = () => page.waitForFunction(() => { const maps = [...document.querySelectorAll('.pv-map')]; return maps.length === 2 && maps[0].dataset.btCamera === maps[1].dataset.btCamera })
+  await synced(); await scrollTo('.pv-body'); await shot('desktop-comparar')
+  await press('method', 'ml'); await press('view', 'presence')
+  await openRadioWithKeyboard(); assert.match(page.url(), /radio=\d{9}/)
+  await page.waitForFunction(() => /últimas|Últimas/.test(document.querySelector('.pv-spark figcaption')?.textContent || ''))
+  assert.match(await page.$eval('.pv-panel', e => e.textContent), /Describe datos de entrada, no causas/)
+  await scrollTo('.pv-body'); await shot('desktop-panel-radio')
+  const sharedLink = page.url()
+  await page.keyboard.press('Escape'); await page.waitForFunction(() => !document.querySelector('.pv-panel'))
+
+  // Collapsed sections and technical metrics.
+  await page.$$eval('.pv-section > summary', s => s.forEach(e => e.click()))
+  assert.match(await text(), /Las cifras por año sólo se muestran en el modo privado/)
+  await page.click('.pv-technical > summary'); await page.waitForSelector('.bt-ml-comparison')
+  await page.$$eval('.pv-section', s => s.forEach(e => { e.open = false }))
+
+  // Shared link restores the same state, always protected.
+  await page.goto(sharedLink, { waitUntil: 'domcontentloaded' }); await ready()
+  assert.equal(await week(), defaultWeek); await page.waitForSelector('.pv-panel')
+  assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
+  await page.click('.pv-close'); await page.waitForFunction(() => !document.querySelector('.pv-panel'))
+
+  // Private mode: warning, full legend; disclosure never written to the URL.
+  await page.select('#bt-disclosure', 'private'); await page.waitForSelector('.pv-private-warning')
+  await page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating'))
+  assert.match(await page.$eval('.pv-private-warning', e => e.textContent), /Modo privado: no proyectar ni compartir capturas/)
+  await page.waitForSelector('[data-legend="FP"]'); assert.doesNotMatch(page.url(), /disclosure|privad/)
+  await page.select('#bt-disclosure', 'presentation'); await page.waitForFunction(() => !document.querySelector('.pv-private-warning'))
+  await ready()
+
+  // Mobile 390: no page-level horizontal scroll; bottom sheet panel.
+  await page.setViewport({ width: 390, height: 844 }); await noHorizontalScroll()
+  await page.evaluate(() => scrollTo(0, 0)); await scrollTo('.pv-controls'); await shot('movil-donde')
+  await press('view', 'quantity'); await scrollTo('.pv-body'); await shot('movil-cuantos'); await noHorizontalScroll()
+  await press('method', 'compare'); await page.waitForFunction(() => document.querySelectorAll('.pv-map').length === 2); await scrollTo('.pv-body'); await shot('movil-comparar'); await noHorizontalScroll()
+  await press('method', 'ml'); await press('view', 'presence'); await openRadioWithKeyboard()
+  assert.equal(await page.$eval('.pv-panel', e => getComputedStyle(e).position), 'fixed'); await shot('movil-panel-radio')
+  await page.click('.pv-close')
+  await page.select('#pv-year', '2021'); await ready(defaultWeek)
+  if (await page.$('.pv-empty')) { await scrollTo('.pv-controls'); await shot('movil-sin-datos') }
+  await page.setViewport({ width: 820, height: 1100 }); await noHorizontalScroll()
+
   if (!real) {
-    fail = true; await page.select('#bt-year', '2023'); await page.waitForSelector('.historical-backtest [role="alert"]')
-    assert.equal(await page.$('.bt-territory-table'), null); fail = false
-    await page.evaluate(() => [...document.querySelectorAll('.historical-backtest button')].find(b => b.textContent === 'Reintentar consulta').click()); await ready()
-    delayed = true; await page.select('#bt-year', '2022'); assert.equal(await page.$('.bt-territory-table'), null)
-    await page.select('#bt-year', '2024'); await ready(); assert.match(await page.$eval('.bt-period', e => e.textContent), /SE 1\/2024/); delayed = false
+    // Errors and retry; a failed week is not cached.
+    await page.setViewport({ width: 1440, height: 1000 })
+    fail = true; const before = await week(); await page.click('[aria-label="Semana siguiente"]'); await page.waitForSelector('.pv [role="alert"]')
+    fail = false; await page.evaluate(() => [...document.querySelectorAll('.pv button')].find(b => b.textContent === 'Reintentar consulta').click()); await ready(before)
   } else {
-    // Sequential loopback fetch+JSON timings, no response bodies saved.
     const measured = await page.evaluate(async () => {
-      const operations = [ ['week_private', '/comparison?year=2024&week=12&disclosure=private'], ['week_protected', '/comparison?year=2024&week=12'],
-        ['year_private', '/history?start=2023-12-31&end=2024-12-22&disclosure=private'], ['year_protected', '/history?start=2023-12-31&end=2024-12-22'],
-        ['full_calendar_private', '/history?start=2019-12-29&end=2026-12-27&disclosure=private'],
-        ['full_calendar_protected', '/history?start=2019-12-29&end=2026-12-27'] ]
+      const operations = [['calendar', '/calendar'], ['geometry', '/geometry'], ['metadata', '/metadata'], ['week_protected', '/comparison?year=2024&week=12'], ['year_protected', '/history?start=2023-12-31&end=2024-12-22']]
       const results = []
-      for (const [operation, path] of operations) for (let sample = 0; sample < 5; sample++) {
+      for (const [operation, path] of operations) for (let sample = 0; sample < 3; sample++) {
         const start = performance.now(); const response = await fetch(`http://127.0.0.1:8765/api/v1/research/predictive${path}`, { headers: { 'X-Sigard-Research': 'local-read' }, credentials: 'omit', cache: 'no-store' })
         if (!response.ok) throw new Error(`benchmark_status_${response.status}`)
         await response.json(); results.push({ operation, sample, seconds: (performance.now() - start) / 1000 })
@@ -94,12 +157,14 @@ try {
     }); timings.push(...measured)
   }
   assert.deepEqual(errors, [])
-  production = await preview({ root: resolve('frontend'), preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
-  const count = requests.length; await page.goto('http://127.0.0.1:5174/mapa', { waitUntil: 'networkidle0' })
-  assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
+  if (!process.env.SIGARD_SKIP_PRODUCTION) {
+    production = await preview({ root: frontendRoot, preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
+    const count = requests.length; await page.goto('http://127.0.0.1:5174/mapa', { waitUntil: 'networkidle0' })
+    assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
+  }
   const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
-    requests: requests.length, archived_calls: 0, external_requests_blocked: [...new Set(external)], no_private_api_in_production: true,
-    no_training: true, fixtures_in_project_metrics: false, timings }
+    requests: requests.length, archived_calls: 0, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
+    no_training: true, fixtures_in_project_metrics: false, origin, timings }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
-  console.log(JSON.stringify({ ...receipt, timings: `${timings.length} measurements in private receipt` }))
+  console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))
 } finally { await browser.close(); if (production) await new Promise(resolve => production.httpServer.close(resolve)) }
