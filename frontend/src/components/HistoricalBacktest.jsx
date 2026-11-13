@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { backtestHistory, backtestSetup, backtestWeek, clearBacktestCache, prefetchWeek } from '../services/backtestResults'
 import { experimentalView, formatValue } from '../services/backtestContract.mjs'
@@ -76,7 +76,14 @@ export default function HistoricalBacktest() {
   const stale = !current && weekState?.value?.disclosure?.mode === disclosure ? weekState : null
   const evaluableYears = useMemo(() => weeks ? [...new Set(weeks.filter(w => w.availability_status === 'available').map(w => w.target_year))].sort((a, b) => b - a) : [], [weeks])
 
-  const update = useCallback(patch => setParams(writeUrlState({ ...url, ...patch }), { replace: true }), [setParams, url])
+  // Two quick changes (e.g. method then question) may happen before a re-render: each one
+  // builds on the last written state, not on the URL of the previous render.
+  const latestUrl = useRef(url)
+  useEffect(() => { latestUrl.current = url }, [url])
+  const update = useCallback(patch => {
+    latestUrl.current = { ...latestUrl.current, ...patch }
+    setParams(writeUrlState(latestUrl.current), { replace: true })
+  }, [setParams])
   const loadYear = useCallback((year, signal) => {
     const list = setup.catalog.weeks.filter(w => w.target_year === year); const key = `${disclosure}/${year}`
     return backtestHistory(setup.catalog, list[0].target_week, list.at(-1).target_week, '', signal, disclosure)

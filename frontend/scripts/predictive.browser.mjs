@@ -49,6 +49,12 @@ try {
   // Keyboard path to the radio panel, once the ¿Dónde? layer has replaced any previous one.
   const openRadioWithKeyboard = async () => {
     await page.waitForFunction(() => document.querySelector('[data-legend="TP"]') && document.querySelectorAll('.pv-map').length === 1 && document.querySelector('.pv-map path[tabindex="0"]'))
+      .catch(async error => {
+        const state = await page.evaluate(() => ({ legend: !!document.querySelector('[data-legend="TP"]'), maps: document.querySelectorAll('.pv-map').length,
+          paths: document.querySelectorAll('.pv-map path').length, focusable: document.querySelectorAll('.pv-map path[tabindex="0"]').length,
+          state: document.querySelector('.pv')?.dataset.state, url: location.search }))
+        throw new Error(`${error.message} ${JSON.stringify(state)}`)
+      })
     await new Promise(r => setTimeout(r, 300))
     await page.$eval('.pv-map path[tabindex="0"]', e => e.focus()); await page.keyboard.press('Enter'); await page.waitForSelector('.pv-panel')
   }
@@ -99,7 +105,9 @@ try {
   await page.click('.pv-map-figure:first-child .leaflet-control-zoom-in')
   const synced = () => page.waitForFunction(() => { const maps = [...document.querySelectorAll('.pv-map')]; return maps.length === 2 && maps[0].dataset.btCamera === maps[1].dataset.btCamera })
   await synced(); await scrollTo('.pv-body'); await shot('desktop-comparar')
-  await press('method', 'ml'); await press('view', 'presence')
+  // Regression: two changes in the same tick (before any re-render) must both reach the URL.
+  await page.evaluate(() => { for (const [c, v] of [['method', 'ml'], ['view', 'presence']]) document.querySelector(`[data-control="${c}"] [data-value="${v}"]`).click() })
+  await page.waitForFunction(() => location.search.includes('vista=donde') && location.search.includes('metodo=ml'))
   await openRadioWithKeyboard(); assert.match(page.url(), /radio=\d{9}/)
   await page.waitForFunction(() => /últimas|Últimas/.test(document.querySelector('.pv-spark figcaption')?.textContent || ''))
   assert.match(await page.$eval('.pv-panel', e => e.textContent), /Describe datos de entrada, no causas/)
