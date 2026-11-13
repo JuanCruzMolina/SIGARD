@@ -107,7 +107,7 @@ uploads ni montajes de archivos, cookies o rutas de entrenamiento. Build/preview
 y producción no consultan el paquete. Un clonado del código no incluye datos ni
 autorizaciones privadas transferibles.
 
-La vista predeterminada **Presentación protegida** usa la política técnica
+El modo de divulgación predeterminado, **Protegido** (en «Opciones avanzadas»), usa la política técnica
 `sigard-local-presentation-minimum5-v1`: protege valores menores de cinco,
 incluidos ceros, para no distinguir una celda pequeña positiva de una vacía.
 También protege persistencia, scores/presencia, diferencias y subcuentas que
@@ -121,7 +121,8 @@ ni permiten comparar directamente su rendimiento con el estudio original. Una
 semana sin celdas divulgables queda sin valor; no se convierte en cero.
 
 La opción **Investigación privada · valores exactos** conserva la consulta local
-autorizada del responsable. No debe proyectarse ni compartirse con conteos pequeños.
+autorizada del responsable. No debe proyectarse ni compartirse con conteos pequeños;
+la interfaz lo recuerda con un aviso visible mientras ese modo está activo.
 El filtro de cinco es una salvaguarda del prototipo, no una certificación de
 anonimización ni una autorización de publicación. No se ofrece exportación pública
 del paquete. Un despliegue futuro exigiría control institucional de divulgación,
@@ -270,10 +271,9 @@ referencia. Una incompatibilidad o alteración del archivo semanal/modelo bloque
 la capa ML con motivo explícito, sin sustituirla silenciosamente por persistencia.
 Una alteración del manifiesto raíz o del paquete de referencia bloquea la consulta.
 
-En `/mapa`, el selector **Predicción en mapa y detalle** alterna ML experimental
-y referencia. El segundo mapa conserva los registros. La comparación de métricas
-muestra ambos métodos; la evolución mantiene tres series: ML, persistencia y
-registro. Los huecos ML no se interpolan. La privacidad se aplica antes de calcular
+La interfaz de `/mapa` se describe en «Interfaz del módulo predictivo». La
+evolución mantiene tres series: ML, persistencia y registro. Los huecos ML no se
+interpolan. La privacidad se aplica antes de calcular
 las métricas visibles: cualquier celda pequeña del registro, origen persistente
 o cantidad estimada suprime también ML, scores, confusiones y diferencias. Los
 totales de presentación son subconjuntos variables, nunca totales del estudio.
@@ -282,6 +282,59 @@ Los experimentos conservan `experimental_evaluated`, las referencias
 `reference_selected`; ninguno es `operational_approved`. El endpoint de metadatos
 y las limitaciones describen estas diferencias. No se crean rutas públicas,
 selectores de algoritmos adicionales ni nuevas familias.
+
+### Interfaz del módulo predictivo
+
+La vista local de `/mapa` («Predicción semanal de dengue por radio censal») está
+orientada a usuarios no técnicos y se rotula como prototipo experimental de
+reconstrucción histórica, sin uso operativo. Sólo presenta valores ya protegidos
+por la API; las reglas de redacción están centralizadas en
+`frontend/src/services/predictiveView.mjs` y no calculan métricas nuevas.
+
+- **Controles**: línea de tiempo semanal (`WeekTimeline`) con años evaluables,
+  pregunta **¿Dónde?** / **¿Cuántos?**, método **Modelo ML** / **Método de
+  referencia** / **Comparar** y, en ¿Cuántos?, capa **Esperados** / **Observados**.
+  Sin capa ML disponible sólo se ofrece la referencia. Se indica la fecha hasta la
+  que se usaron datos y el clima de la semana previa (un único punto urbano).
+- **Opciones avanzadas**: modo de divulgación, selección de un radio por código y
+  versiones de dataset/política. El detalle de un radio se abre en `RadioPanel`.
+- **Secciones plegables**: «¿Qué tan bien funciona el modelo?» (`ModelPerformance`:
+  veredicto documentado del cierre de candidatos, cifras por año y métricas
+  técnicas con su nomenclatura TP/FP/FN/TN), «Ver datos en tabla» (`DataTable`) y
+  «Cómo leer esta pantalla y limitaciones».
+- **Semana por defecto**: si la URL no indica una semana, se abre la semana con
+  más radios divulgables en el modo activo dentro del último año evaluable
+  (desempates: más registros, luego la semana más reciente). Al cambiar de año
+  se aplica el mismo criterio. El criterio depende de actividad divulgable, no del
+  desempeño de ningún método. Un botón lleva a la semana más activa entre los
+  años ya cargados.
+- **Estado en URL**: `anio`, `se`, `vista` (`donde`/`cuantos`), `metodo`
+  (`ml`/`referencia`/`comparar`), `capa=observados` y `radio` (nueve dígitos) se
+  leen y escriben con `replace`. Valores inválidos vuelven al predeterminado. El
+  modo de divulgación nunca se lee ni se escribe en la URL: un enlace compartido
+  siempre abre en modo protegido.
+- **Carga**: calendario, geometría y metadatos se piden juntos; la semana nombrada
+  en la URL se anticipa. El historial de otros años se carga de a uno después del
+  primer mapa. Las respuestas se guardan sólo en memoria de la página, con clave
+  que incluye el modo de divulgación; no se usa almacenamiento del navegador y
+  «Reintentar» vacía esa caché.
+- **Modo privado**: al elegir «Investigación privada · valores exactos» se muestra
+  el aviso permanente «Modo privado: no proyectar ni compartir capturas», la
+  leyenda completa (incluidas falsas alarmas y radios correctamente sin alerta)
+  y las cifras por año. Al volver a protegido, el aviso desaparece.
+- **Sesgo de selección en modo protegido**: el modo protegido sólo muestra radios
+  con cinco o más registros, por lo que el subconjunto visible excluye por
+  construcción falsas alarmas y radios sin registros. Por eso, en ese modo las
+  tarjetas hablan de «radios visibles» y no presentan precisión, falsas alarmas,
+  aciertos ni anticipación como desempeño; la leyenda omite categorías y rangos
+  imposibles; las cifras por año sólo aparecen en modo privado, y una semana sin
+  radios divulgables se resume con una sola explicación. «Protegido» nunca
+  significa cero.
+
+La prueba `frontend/security/predictive-view.test.mjs` (incluida en
+`test:backtest`) verifica estas reglas con fixtures ficticias, y
+`frontend/scripts/predictive.browser.mjs` recorre la interfaz en Chromium local;
+sus capturas se guardan como archivos privados ignorados por Git.
 
 La verificación ML 3 usa fixtures exclusivamente ficticias, la regresión existente
 y navegación Chromium local desktop/móvil. PostgreSQL/PostGIS no se inició ni se
