@@ -86,7 +86,7 @@ test('one predictive module opens locally without public data or archived A/B; p
   state.enabled = true
   const local=render(Mapa, [], {})
   assert.match(local, /backtest fixture/)
-  assert.match(local, /Módulo predictivo experimental/)
+  assert.match(local, /Predicción semanal de dengue por radio censal/)
   assert.doesNotMatch(local, /research fixture|research-mode|simulation controls/)
   state.enabled = false
   const publicHtml = render(Mapa, [], props)

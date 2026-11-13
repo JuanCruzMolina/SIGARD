@@ -18,5 +18,5 @@ function PublicMap({ data, selectedCutoffDate, onCutoffChange }) {
 }
 
 export default function Mapa(props) {
-  return localResearchEnabled() ? <div className="content-wrap"><PageIntro title="Módulo predictivo experimental"><p>Dónde y cuántos registros elegibles se estiman para una semana. Compará los resultados históricos con los registros contabilizados, con procedencia y límites explícitos.</p></PageIntro><HistoricalBacktest /></div> : <PublicMap {...props} />
+  return localResearchEnabled() ? <div className="content-wrap"><PageIntro title="Predicción semanal de dengue por radio censal"><p>Elegí una semana y mirá dónde y cuántos registros se esperaban, comparados con lo que ocurrió.</p><p className="pv-badge">Prototipo experimental — reconstrucción histórica, no uso operativo</p></PageIntro><HistoricalBacktest /></div> : <PublicMap {...props} />
 }
