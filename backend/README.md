@@ -71,6 +71,7 @@ GET   /api/v1/public/territorial-context
 GET   /api/v1/public/experimental-spatial-history/{cutoff_date}
 GET   /api/v1/public/metadata
 GET   /api/v1/public/model-evaluation
+GET   /api/v1/public/prevention
 POST  /api/v1/citizen-reports
 GET   /api/v1/citizen-reports/status/{tracking_code}
 POST  /api/v1/geocoding/address
@@ -83,6 +84,12 @@ GET   /api/v1/admin/citizen-reports
 GET   /api/v1/admin/citizen-reports/export.csv
 GET   /api/v1/admin/citizen-reports/{id}
 PATCH /api/v1/admin/citizen-reports/{id}
+GET   /api/v1/admin/prevention
+POST  /api/v1/admin/prevention
+PATCH /api/v1/admin/prevention/{id}
+POST  /api/v1/admin/prevention/{id}/publish
+POST  /api/v1/admin/prevention/{id}/unpublish
+GET   /api/v1/admin/prevention/{id}/history
 ```
 
 Los endpoints epidemiológicos públicos leen exclusivamente el lote marcado
@@ -110,6 +117,70 @@ CSV exporta todos los resultados filtrados, sin paginación, y audita su cantida
 sin filtros conserva la exportación completa. Requiere JWT/rol administrador.
 El alta y la búsqueda de dirección validan longitud después de normalizar espacios;
 un texto vacío normalizado no se persiste ni se consulta al geocodificador.
+
+## Contenido preventivo editable — módulo 6
+
+Código en `app/prevention.py` (validación, rutas) y `app/prevention_seed.py`
+(carga inicial). Migración `migrations/versions/20261114_05_prevention_content.py`
+(`down_revision = 20261020_04`): tablas `prevention_sections` y `prevention_audit`.
+**Preparada y probada en SQLite ficticio y como SQL PostgreSQL sin conexión; no
+aplicada a ninguna base persistente ni ejecutada en PostGIS real.**
+
+Cada sección tiene `slug` inmutable (`^[a-z0-9]+(-[a-z0-9]+)*$`, ≤60), `title`
+(≤120), `body` (≤4000), `position` (0–1000), `source_label` (≤200) y
+`source_url` (≤500, sólo `https://`). Es la **copia de trabajo** (borrador). Al
+publicar se congela una instantánea en `published_json` con `version` creciente;
+la ruta pública lee sólo esa instantánea mientras `status = published`. Editar
+una sección publicada no altera lo público hasta volver a publicar
+(`has_pending_changes`). Despublicar oculta la sección y conserva texto e
+historial.
+
+- `GET /admin/prevention`: secciones con copia de trabajo, estado, versión,
+  instantánea publicada, autor de la última edición/publicación y fechas.
+- `POST /admin/prevention`: crea un borrador (`slug`, `title`, `body`,
+  `position`, `source_label?`, `source_url?`). 409 si el `slug` existe.
+- `PATCH /admin/prevention/{id}`: `revision` obligatorio y campos a cambiar;
+  no admite `slug`, `status` ni campos desconocidos. Revisión distinta → 409
+  (bloqueo optimista con `version_id_col`, también ante escrituras concurrentes).
+- `POST /admin/prevention/{id}/publish` y `/unpublish`: `{revision}`. Publicar
+  exige fuente y enlace sanitario (422) y cambios pendientes (409).
+- `GET /admin/prevention/{id}/history`: auditoría descendente con acción
+  (`seed_import`, `create`, `update`, `publish`, `unpublish`), autor, fecha y
+  estado antes/después.
+- `GET /public/prevention`: `{schema_version: "prevention-sections/1",
+  initialized, content_kind: "general_health_guidance", sections[]}` con
+  `slug, title, body, position, source_label, source_url, version, published_at`.
+  `Cache-Control: public, max-age=60`. Nunca devuelve borradores ni autores.
+
+Todas las rutas admin usan `get_current_admin` (401 sin sesión válida, 403 sin
+rol), `Cache-Control: no-store` y auditoría en la misma transacción.
+
+**Validación** (servidor; el editor la replica sólo como aviso): el cuerpo
+admite texto plano o Markdown restringido —párrafos, listas `- `, `**negrita**`
+y `[texto](https://…)`—. Se **rechaza** (no se reescribe) cualquier etiqueta o
+entidad HTML, caracteres de control, esquemas `javascript:`/`vbscript:`/`data:`/
+`file:` (incluso con espacios intercalados) y enlaces no `https://`. Los
+mensajes de error no repiten el contenido enviado. El frontend renderiza con
+elementos React, sin `dangerouslySetInnerHTML`. Como resguardo heurístico contra
+datos individuales se rechazan correos y números con formato de documento
+(7–8 dígitos o `NN.NNN.NNN`); **no garantiza** la ausencia de datos personales:
+la política del editor exige contenido sanitario general.
+
+**Carga inicial** idempotente por `slug`, sin sobrescribir ediciones:
+
+```powershell
+cd backend
+python -m app.prevention_seed --source ../frontend/public/data/prevention_content.json
+```
+
+Crea cinco secciones publicadas v1 (`prevencion`, `control-vectorial`,
+`sintomas`, `consejos-medicos`, `signos-alarma`) y audita `seed_import` sin
+actor, con SHA-256 del JSON. Teléfonos, fuentes generales y centros de salud
+siguen leyéndose del JSON/GeoJSON estático. `dev:demo` ejecuta la misma carga en
+su SQLite temporal. No se ejecutó contra ninguna base persistente.
+
+`/health/ready` devuelve 503 si faltan las tablas nuevas: desplegar el código
+junto con la migración. El downgrade elimina secciones y auditoría.
 
 ## Verificación ficticia del importador territorial — sin Docker
 

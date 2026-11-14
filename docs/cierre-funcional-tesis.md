@@ -24,7 +24,7 @@ La aceptación formal respecto del anteproyecto queda a cargo de sus responsable
 | 3. Geolocalización/mapas | Completo para el alcance local existente | Completo para demostración | Leaflet, 263 radios públicos aprobados, selección textual/polígono, reinicio de vista; seis rectángulos enteramente ficticios en análisis admin. Ubicación manual de reportes ficticios. Geocodificación externa deshabilitada en demo. |
 | 4. Alertas configurables | Pendiente: avisos preventivos existentes no eran reglas de alerta | Completo experimental local | Crear/editar reglas, umbral de cantidad, radio/horizonte, habilitar/deshabilitar, evaluar manualmente, revisar candidatas, persistir/auditar. Sin alerta epidemiológica oficial, correo, SMS ni publicación automática. |
 | 5. Autenticación/roles | Completo en la API y bandeja local; acceso poco visible en navegación | Completo para el prototipo | Administración visible, login existente, permisos comprobados en servidor en cada ruta, cuentas y revocación existentes; ciudadanía pública/anónima conforme al plan. Un token inventado o usuario no administrador no obtiene datos admin. |
-| 6. Información preventiva | Completo para consulta; edición institucional parcial | Completo para consulta; edición institucional parcial | Prevención, medidas y signos de alarma existentes, 27 centros públicos, directorio, reportes y seguimiento. No se implementó ni se acredita una aprobación/editorial sanitaria institucional. |
+| 6. Información preventiva | Completo para consulta; edición institucional parcial | Completo para consulta; edición administrativa de secciones preventivas completa para demostración (14/11/2026) | Prevención, medidas y signos de alarma editables por administradores: borrador, vista previa, publicación con confirmación, despublicación, versión e historial auditado (autor, fecha, antes/después). La página pública lee la última versión publicada por `/api/v1/public/prevention` y, sin API, usa el JSON estático. 27 centros públicos, teléfonos y fuentes generales siguen estáticos. Migración `20261114_05` probada en SQLite y SQL PostgreSQL sin conexión; no aplicada a una base persistente. No se implementó ni se acredita una aprobación/editorial sanitaria institucional. |
 
 «Completo para demostración» no significa despliegue productivo ni validación
 epidemiológica. No se cuentan controles decorativos como funcionalidades.
@@ -48,6 +48,30 @@ epidemiológica. No se cuentan controles decorativos como funcionalidades.
   detalle disponibles sin depender exclusivamente del color.
 - Página de validación aclara que sus métricas del MVP departamental anterior
   no validan V3 ni una probabilidad territorial. No se alteraron métricas.
+
+### Módulo 6: contenido preventivo editable (14/11/2026)
+
+- **Administración → Contenido preventivo** (`AdminPrevention.jsx`): lista de
+  secciones con estado (borrador, publicada, publicada con cambios), editor con
+  límites y vista previa del Markdown restringido, **Guardar borrador**,
+  **Publicar** y **Despublicar** con confirmación explícita, e historial.
+- Backend: `app/prevention.py`, migración `20261114_05_prevention_content.py`,
+  carga inicial idempotente `app/prevention_seed.py` (contrato en
+  `backend/README.md`, sección «Contenido preventivo editable — módulo 6»).
+- `Prevencion.jsx` renderiza las secciones publicadas; secciones nuevas aparecen
+  en «Más información preventiva». Si la API falla, no está configurada en un
+  build de producción o el almacén no fue inicializado, usa
+  `prevention_content.json` sin mensaje de error. Si la API responde, una sección
+  despublicada no reaparece desde el JSON.
+- Límites: es edición administrativa del prototipo, no circuito editorial
+  sanitario; cualquier administrador activo puede publicar. El filtro de datos
+  personales es heurístico. Teléfonos, fuentes generales y directorio de centros
+  no son editables desde la interfaz.
+- Pruebas: `backend/tests/test_prevention_content.py` (32),
+  `npm.cmd --prefix frontend run test:prevention` (5) y
+  `test:prevention:browser` (flujo dev:demo editar → borrador invisible →
+  publicar → público → despublicar → respaldo estático; capturas escritorio y
+  móvil en `frontend/.tmp/prevention-admin/`, ignorado).
 
 ## Arquitectura efectivamente implementada
 
@@ -168,11 +192,13 @@ npm.cmd --prefix frontend run lint
 npm.cmd --prefix frontend run build
 npm.cmd --prefix frontend run test:security
 npm.cmd --prefix frontend run test:research
+npm.cmd --prefix frontend run test:prevention
 npm.cmd --prefix frontend run test:public-map
 npm.cmd --prefix frontend run test:citizen
 npm.cmd --prefix frontend run test:dev
 npm.cmd --prefix frontend run test:demo
 npm.cmd --prefix frontend run test:demo:browser
+npm.cmd --prefix frontend run test:prevention:browser
 .\backend\.venv\Scripts\python.exe -B backend/tests/publication_isolated.py --backend-regression
 .\backend\.venv\Scripts\python.exe -B tools/check_repository_security.py
 git diff --check

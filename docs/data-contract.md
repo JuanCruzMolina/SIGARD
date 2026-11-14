@@ -370,6 +370,13 @@ síntomas, signos de alarma, conducta recomendada, explicación de control
 vectorial, teléfonos publicados y sus fuentes. Ambos artefactos usan
 `schema_version: 1.0.0` y fueron revisados el `2026-08-19`.
 
+Desde el 14/11/2026 ese JSON es además la **fuente de la carga inicial** y el
+**respaldo estático** de las secciones preventivas editables
+(`prevention-sections/1`, servidas por `GET /api/v1/public/prevention`). Las
+secciones son orientación sanitaria general, no datos epidemiológicos ni
+registros de personas; cada publicación conserva versión, fecha, fuente
+sanitaria y auditoría. El JSON público no se modifica desde la administración.
+
 ### Reporte ciudadano anónimo
 
 `citizen_reports` es una entidad operativa privada y separada. No representa un
