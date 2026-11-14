@@ -157,6 +157,25 @@ def test_altered_v2_artifact_blocks_only_v2_and_keeps_v1_and_reference(bundle):
     assert r['rows'][0]['baseline']['quantity'] == 6
 
 
+def test_unchanged_artifacts_are_not_rehashed_across_requests_but_same_size_edits_block(bundle, monkeypatch):
+    import os
+    from app import experimental_results as er
+    calls = []
+    original = er._digest
+    monkeypatch.setattr(er, '_digest', lambda chunks: calls.append(1) or original(chunks))
+    s = install(bundle)
+    s.week(2021, 1); first = len(calls)
+    s.week(2021, 1); s.week(2021, 1)
+    assert first > 0 and len(calls) == first
+    path = bundle[3] / 'fake-v2-model.private.bin'
+    before = path.stat()
+    path.write_bytes(b'FICTIONAL_V2_NON_EXECUTABLX')  # same size, different bytes
+    os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 1_000_000_000))
+    r = s.week(2021, 1)
+    assert r['ml'][RF2]['reason'] == 'ml_integrity_or_compatibility_blocked'
+    assert r['ml'][RF1]['availability_status'] == 'available'
+
+
 def test_artifacts_above_json_limit_are_hashed_not_rejected(bundle):
     s = install(bundle, artifact=b'F' * (17 * 1024 * 1024))
     assert s.week(2021, 1)['ml'][RF2]['availability_status'] == 'available'

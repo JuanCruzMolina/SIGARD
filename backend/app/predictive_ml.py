@@ -9,7 +9,7 @@ import json
 from datetime import date, timedelta
 
 from .backtest_results import CONTEXT, finite, metrics
-from .experimental_results import ArtifactBlocked, local_bytes, require
+from .experimental_results import ArtifactBlocked, local_bytes, require, verify_local
 
 SCHEMA_V1 = 'sigard-predictive-ml-overlay/1'
 SCHEMA_V2 = 'sigard-predictive-ml-overlay/2'
@@ -27,7 +27,7 @@ ARTIFACT_LIMIT = 64 * 1024 * 1024
 
 
 class MLProjection:
-    """A new instance per request; hash all referenced bytes before use."""
+    """A new instance per request; all referenced bytes are verified (per-process cache) before use."""
     def __init__(self, root, pointer, sha256):
         self.root = root
         pin = json.loads(local_bytes(root, pointer, sha256))
@@ -55,7 +55,6 @@ class MLProjection:
                     promotion=c['promotion']))
         require(len({c['id'] for c in self.candidates}) == len(self.candidates))
         self.by_id = {c['id']: c for c in self.candidates}
-        self.checked = set()
 
     def compatible(self, base):
         require(all(self.doc[k] == base[k] for k in CONTEXT if k != 'schema_version'))
@@ -85,9 +84,8 @@ class MLProjection:
             require(model['features'] == candidate['features'])
             artifact = model['artifact']
             require(artifact['sha256'] == model['artifact_sha256'])
-            if artifact['sha256'] not in self.checked:
-                local_bytes(self.root, artifact['path'], artifact['sha256'], limit=ARTIFACT_LIMIT)
-                self.checked.add(artifact['sha256'])
+            # Full SHA-256 once per process; re-verified whenever path, size or mtime change.
+            verify_local(self.root, artifact['path'], artifact['sha256'], ARTIFACT_LIMIT)
         if self.schema == SCHEMA_V2:
             # The offline top-k resolution must be a complete per-week ranking.
             require(sorted(r['topk_rank'] for r in value['rows']) == list(range(1, 257)))

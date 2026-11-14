@@ -346,7 +346,7 @@ manifiesto (varios por capacidad). Contrato `/2`:
   (`ml_integrity_or_compatibility_blocked`); v1 y la referencia se conservan. Un
   manifiesto que declare promoción, calibración o una regla inválida bloquea el
   módulo (503).
-- Los artefactos sólo se hashean; su límite es 64 MiB (los RF v2 de 2024-q3/q4
+- Los artefactos sólo se hashean (una vez por proceso, ver caché abajo); su límite es 64 MiB (los RF v2 de 2024-q3/q4
   pesan ~20 MB y superaban el límite de 16 MiB de los JSON).
 
 Las métricas por año del servidor reproducen las congeladas: recall@10 2021
@@ -371,12 +371,46 @@ radios con mayor prioridad cada semana». Veredictos fijos (`GLOBAL_VERDICTS`):
 - Ambos: «2024 es una comparación ya observada; ningún modelo está aprobado para
   uso operativo.»
 
-**Rendimiento** (14/11/2026, local, `test:predictive:browser --real`): arranque en
-frío hasta la semana por defecto 4,02–4,38 s en tres corridas (antes de v2:
-2,4–3,8 s). La historia anual protegida tarda ~2,1 s aislada (0,6 s sin ML,
-1,3 s sólo v1) por la lectura y verificación de los JSON semanales y artefactos
-de cada proyección. El calendario bajó de ~1,3 s a ~0,25 s al derivar la
-disponibilidad del manifiesto verificado en lugar de leer 208 semanas.
+**Verificación de integridad con caché por proceso** (14/11/2026,
+`backend/app/experimental_results.py`). Cambio de garantía:
+
+- Antes: cada solicitud recalculaba el SHA-256 completo de cada JSON y artefacto que
+  leía (los artefactos, una vez por solicitud).
+- Ahora: el SHA-256 completo se calcula la primera vez que el proceso usa un archivo
+  y se recuerda por ruta resuelta, tamaño, `st_mtime_ns` y hash esperado. Mientras
+  esos cuatro valores coincidan, no se vuelve a hashear (los artefactos tampoco se
+  vuelven a leer: `verify_local`). Si cambia la ruta, el tamaño, la fecha de
+  modificación o el hash fijado, se verifica de nuevo y se bloquea si no coincide;
+  una verificación fallida nunca se guarda. Las comprobaciones de ruta, enlaces,
+  traversal y límite de tamaño se siguen haciendo en cada lectura.
+- Límite: una modificación local que conserve exactamente tamaño y `st_mtime_ns`
+  (p. ej., restaurar la fecha con `os.utime`) no se detecta hasta reiniciar la API.
+  Es aceptable porque la API es local, de sólo lectura y los archivos privados están
+  bajo control del responsable; reiniciar el proceso fuerza la verificación completa.
+- Pruebas: `backend/tests/test_integrity_cache.py` (sin cambios no re-hashea; mismo
+  tamaño con otra fecha bloquea; otro tamaño u otro hash esperado bloquea; límites y
+  traversal se mantienen) y
+  `test_unchanged_artifacts_are_not_rehashed_across_requests_but_same_size_edits_block`.
+
+**Rendimiento** (14/11/2026, local, `test:predictive:browser`, API reiniciada en cada
+corrida, sin verificación de producción):
+
+| Medición | Real (3 corridas válidas) | Ficticio (3 corridas) |
+|---|---|---|
+| Arranque en frío hasta la semana por defecto | 3,87 / 3,98 / 4,02 s | 1,42 / 1,47 / 1,57 s |
+| Semana siguiente | 0,46–0,50 s | 0,23–0,25 s |
+| Semana anterior (en caché del cliente) | 0,19–0,21 s | 0,15–0,17 s |
+| Cambio de año | 0,35–0,40 s | 0,09–0,14 s |
+
+Una corrida real adicional, la primera tras reiniciar Vite, tardó 6,11 s y no superó
+el umbral de 5 s del script (compilación inicial de Vite); se descartó y se repitió.
+Antes del caché: 4,02–4,38 s. El arranque en frío casi no cambia por diseño: la
+primera solicitud de un proceso verifica todo. En proceso, la semana protegida
+tarda 0,12 s en frío y 0,09 s después; la historia anual protegida tarda
+~1,8–2,1 s con o sin caché (2,2–3,6 s por HTTP), dominada por las comprobaciones
+de rutas y enlaces (~0,75 s) y la lectura/decodificación de los JSON semanales, no
+por el hash. El caché evita re-hashear los artefactos RF v2 (~20 MB) entre
+solicitudes. El calendario sigue en ~0,13 s.
 
 ### Interfaz del módulo predictivo
 
