@@ -225,3 +225,54 @@ class ExperimentalSpatialResult(Base):
     percentile: Mapped[float] = mapped_column(Float, nullable=False)
     relative_level: Mapped[str] = mapped_column(String(20), nullable=False)
     synthetic_scenario: Mapped[str] = mapped_column(String(80), nullable=False)
+
+
+class PreventionSection(Base):
+    """Editable preventive content: a working copy plus the last published snapshot.
+
+    The public API reads only ``published_json`` while ``status`` is published, so
+    later edits to the working copy never leak before an explicit publication.
+    """
+
+    __tablename__ = "prevention_sections"
+    __table_args__ = (
+        CheckConstraint("status IN ('draft', 'published')", name="prevention_sections_status_check"),
+        CheckConstraint("position >= 0 AND position <= 1000", name="prevention_sections_position_check"),
+        CheckConstraint("version >= 0", name="prevention_sections_version_check"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    slug: Mapped[str] = mapped_column(String(60), unique=True, nullable=False)
+    title: Mapped[str] = mapped_column(String(120), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    position: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    source_label: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    source_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="draft", index=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    version: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    published_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    updated_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    published_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+
+    # Optimistic locking: concurrent stale writes fail instead of overwriting.
+    __mapper_args__ = {"version_id_col": revision}
+
+
+class PreventionAudit(Base):
+    __tablename__ = "prevention_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    section_id: Mapped[int] = mapped_column(
+        ForeignKey("prevention_sections.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # NULL only for the system initial import; every admin action has an actor.
+    actor_user_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    action: Mapped[str] = mapped_column(String(32), nullable=False)
+    before_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    after_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)

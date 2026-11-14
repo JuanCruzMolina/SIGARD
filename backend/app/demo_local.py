@@ -81,6 +81,10 @@ def create_demo_app(directory):
     with app.state.SessionLocal() as db:
         db.add(User(email=email, password_hash=hash_password(password), rol="admin"))
         db.commit()
+        # Public, versioned prevention guidance (not a fixture): same idempotent
+        # import as an installation, so the admin editor starts from real text.
+        from app.prevention_seed import seed_from_file
+        seed_from_file(db)
 
     @app.middleware("http")
     async def demo_boundary(request, call_next):

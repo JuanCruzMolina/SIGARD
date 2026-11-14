@@ -13,7 +13,8 @@ from .admin_accounts import lock_account_changes, router as accounts_router
 from .config import get_settings
 from .database import Base, build_engine, build_session_factory
 from .geocoding import router as geocoding_router
-from .models import AdminAccountAudit, CitizenReport, User
+from .models import AdminAccountAudit, CitizenReport, PreventionAudit, PreventionSection, User
+from .prevention import admin_router as prevention_admin_router, public_router as prevention_public_router
 from .public import router as public_router
 from .reports import router as reports_router
 from .security import hash_password
@@ -69,6 +70,8 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     application.include_router(admin_router)
     application.include_router(accounts_router)
     application.include_router(public_router)
+    application.include_router(prevention_admin_router)
+    application.include_router(prevention_public_router)
 
     @application.exception_handler(RequestValidationError)
     async def safe_admin_validation(request, exc):
@@ -102,6 +105,8 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
                 connection.execute(select(User.id, User.token_version).limit(1)).first()
                 connection.execute(select(AdminAccountAudit.id).limit(1)).first()
                 connection.execute(select(CitizenReport.id).limit(1)).first()
+                connection.execute(select(PreventionSection.id, PreventionSection.revision).limit(1)).first()
+                connection.execute(select(PreventionAudit.id).limit(1)).first()
         except SQLAlchemyError:
             raise HTTPException(
                 status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
