@@ -144,3 +144,28 @@ export function transitionPreventionSection(token, id, action, revision) {
 export function getPreventionHistory(token, id, options = {}) {
   return apiRequest(`/api/v1/admin/prevention/${id}/history`, { ...options, headers: adminHeaders(token) })
 }
+
+// Internal alerts (module 4). Only GET/POST/PATCH under /api/v1/admin/alerts; the
+// citizen publication route is never called from the interface.
+const ALERT_PATHS = /^\/(status|rules|rules\/preview|rules\/\d+|evaluations|candidates(\?status=[a-z_]+)?|candidates\/\d+\/(approve|discard)|audit(\?limit=\d+)?)$/
+export function alertsRequest(token, path, options = {}) {
+  if (!ALERT_PATHS.test(path)) return Promise.reject(new Error('Operación de alertas no permitida'))
+  return apiRequest(`/api/v1/admin/alerts${path}`, { ...options, headers: adminHeaders(token) })
+}
+
+export async function downloadAlertsExport(token) {
+  const response = await fetch(`${API_URL}/api/v1/admin/alerts/candidates/export.csv`, {
+    headers: adminHeaders(token), cache: 'no-store', credentials: 'omit',
+  })
+  if (!response.ok) {
+    const error = new Error('No se pudo descargar la exportación.')
+    error.status = response.status
+    throw error
+  }
+  const url = URL.createObjectURL(await response.blob())
+  const anchor = document.createElement('a')
+  anchor.href = url
+  anchor.download = 'sigard-alertas-internas.csv'
+  anchor.click()
+  URL.revokeObjectURL(url)
+}
