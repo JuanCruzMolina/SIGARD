@@ -10,6 +10,7 @@ REGISTRY = Path("data/interim/official/spatial_app_session_v1/registry.private.j
 BACKTEST_REGISTRY = Path("data/interim/official/historical-backtest-session-v1/registry.private.json")
 CONTEXT_REGISTRY = Path("data/interim/official/predictive-context-session-v1/registry.private.json")
 ML_REGISTRY = Path("data/interim/official/ml-integration-stage3-20261103-v1/registry.private.json")
+ML_V2_REGISTRY = Path("data/interim/official/ml-integration-v2-20261114-v1/registry.private.json")
 
 
 def main():
@@ -23,9 +24,11 @@ def main():
         backtest = BacktestResults(BACKTEST_REGISTRY, backtest_hash)
     from .predictive_service import PredictiveService
     context_hash = hashlib.sha256(local_bytes(ROOT, CONTEXT_REGISTRY)).hexdigest() if (ROOT / CONTEXT_REGISTRY).exists() else None
-    ml_hash = hashlib.sha256(local_bytes(ROOT, ML_REGISTRY)).hexdigest() if (ROOT / ML_REGISTRY).exists() else None
+    # Pin each installed overlay registry at startup; every request re-verifies the bytes.
+    ml_registries = [(path, hashlib.sha256(local_bytes(ROOT, path)).hexdigest())
+                     for path in (ML_REGISTRY, ML_V2_REGISTRY) if (ROOT / path).exists()]
     predictive = PredictiveService(backtest, context_registry=CONTEXT_REGISTRY if context_hash else None,
-                                   context_sha256=context_hash, ml_registry=ML_REGISTRY if ml_hash else None, ml_sha256=ml_hash)
+                                   context_sha256=context_hash, ml_registries=ml_registries)
     from .experimental_api import create_research_app
     import uvicorn
 

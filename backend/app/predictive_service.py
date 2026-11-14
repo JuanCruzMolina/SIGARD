@@ -4,9 +4,9 @@ import json
 
 from .backtest_results import BacktestResults, CONTEXT, METHODS, WEEK, metrics
 from .experimental_results import ArtifactBlocked, InvalidDate, local_bytes, require
-from .predictive_ml import MLProjection, CANDIDATES, attach_ml, ml_metrics
+from .predictive_ml import MLProjection, attach_ml, candidate_list, default_candidates, describe, ml_metrics
 
-MODULE = 'sigard-predictive-experimental/1'
+MODULE = 'sigard-predictive-experimental/2'
 DISCLOSURE = 'sigard-local-presentation-minimum5-v1'
 MINIMUM = 5
 LIMITATIONS = [
@@ -23,6 +23,8 @@ LIFECYCLE = [
     {'component': 'V3_h2_h4_and_discarded_variants', 'state': 'archived', 'reason': 'outside_final_h1_scope'},
     {'component': 'rf_A_epi_climate', 'state': 'experimental_evaluated', 'reason': 'not_promoted'},
     {'component': 'residual_h1', 'state': 'experimental_evaluated', 'reason': 'not_promoted'},
+    {'component': 'rf_v2_city_propensity', 'state': 'experimental_not_promoted', 'reason': 'preregistered_P1_P2_P3_not_met'},
+    {'component': 'residual_v2', 'state': 'experimental_not_promoted', 'reason': 'preregistered_Q1_met_Q2_not_met'},
     {'component': 'stage2_RF_A_reference_no_climate', 'state': 'archived', 'reason': 'comparison_evidence'},
     {'component': 'current_2025_2026_and_official_alerts', 'state': 'blocked', 'reason': 'no_accredited_epidemiological_coverage_or_operational_authorization'},
 ]
@@ -45,12 +47,12 @@ class SnapshotReader(BacktestResults):
         return self._catalog_snapshot
 
 
-def protect_week(document, mode):
+def protect_week(document, mode, candidates=()):
     result = dict(document)
     result['disclosure'] = {'policy_version': DISCLOSURE, 'mode': mode, 'minimum_count': MINIMUM,
                             'metrics_scope': 'all_comparable' if mode == 'private' else 'disclosable_subset_not_full_study'}
     if mode == 'private':
-        result['ml_metrics'] = ml_metrics(result['rows'])
+        result['ml_metrics'] = ml_metrics(result['rows'], candidates, mode)
         return result
     # Copy only the aggregate contract objects we change. No model or source object
     # is deserialized; avoiding recursive copies matters for the full calendar.
@@ -61,7 +63,8 @@ def protect_week(document, mode):
         # Includes zero: masking only 1..4 would reveal the presence of small cells.
         # Protect persistence too: it exposes an observed count at the previous origin.
         values = (row['observed']['quantity'], row['observed']['assigned_records'],
-                  row['predicted']['quantity'], row['baseline']['quantity'], row.get('ml', {}).get('quantity'))
+                  row['predicted']['quantity'], row['baseline']['quantity'],
+                  *(values['quantity'] for values in row.get('ml', {}).values()))
         mask = any(value is not None and 0 <= value < MINIMUM for value in values)
         if mask:
             if row['availability_status'] not in ('outside_common_territory', 'outside_coverage'):
@@ -74,8 +77,8 @@ def protect_week(document, mode):
                                'quality_counts': {k: None for k in ('approximate', 'provisional', 'verified')}}
             for key in ('confusion', 'presence_threshold', 'difference', 'absolute_error'): row[key] = None
             if 'ml' in row:
-                row['ml'] = {k: None for k in row['ml']}
-                row['ml_availability'] = {k: 'privacy_suppressed' for k in row['ml_availability']}
+                row['ml'] = {c: dict.fromkeys(values) for c, values in row['ml'].items()}
+                row['ml_availability'] = {c: 'privacy_suppressed' for c in row['ml_availability']}
         else:
             # Quality sub-counts could themselves disclose small cells.
             row['observed']['assigned_records'] = None
@@ -84,29 +87,27 @@ def protect_week(document, mode):
     # Exact complementary totals and metrics would allow subtraction attacks.
     result['department'] = {key: None for key in result['department']}
     result['metrics'] = metrics(result['rows'])
-    result['ml_metrics'] = ml_metrics(result['rows'])
+    result['ml_metrics'] = ml_metrics(result['rows'], candidates, mode)
     result['disclosure']['suppressed_units'] = sum(r['availability_status'] == 'privacy_suppressed' for r in result['rows'])
     return result
 
 
 class PredictiveService:
-    def __init__(self, reader, *, context_registry=None, context_sha256=None, ml_registry=None, ml_sha256=None):
+    def __init__(self, reader, *, context_registry=None, context_sha256=None, ml_registry=None, ml_sha256=None,
+                 ml_registries=()):
         self.reader = reader
         self.context_registry = context_registry; self.context_sha256 = context_sha256
-        self.ml_registry = ml_registry; self.ml_sha256 = ml_sha256
+        # Each registry pins one overlay manifest (v1 stage-2 candidates, v2 corrective candidates).
+        self.ml_registries = [*([(ml_registry, ml_sha256)] if ml_registry else []), *ml_registries]
 
     def _ml(self):
-        return MLProjection(self.reader.root, self.ml_registry, self.ml_sha256) if self.ml_registry else None
+        # A new verified instance per request. Integrity failures of one week are isolated per
+        # projection in attach_ml; a manifest that no longer verifies blocks the module (503).
+        return [MLProjection(self.reader.root, path, sha) for path, sha in self.ml_registries]
 
     @staticmethod
     def _attach(base, ml):
-        try:
-            return attach_ml(base, ml)
-        except (ArtifactBlocked, KeyError, ValueError, TypeError, OSError):
-            result = attach_ml(base, None)
-            for model in result['ml'].values():
-                model['reason'] = 'ml_integrity_or_compatibility_blocked'
-            return result
+        return attach_ml(base, ml)
 
     def _snapshot(self):
         if self.reader is None: raise ArtifactBlocked('predictive_bundle_unavailable')
@@ -118,14 +119,24 @@ class PredictiveService:
         return mode
 
     def catalog(self):
-        catalog = dict(self._snapshot().catalog()); ml = self._ml()
-        if ml: ml.compatible(catalog)
-        catalog['weeks'] = [{**w, 'ml_availability': ml.availability(w['target_week']) if ml else
-                            {c: 'not_available' for c in CANDIDATES}} for w in catalog['weeks']]
-        return {**catalog, 'module_version': MODULE, 'active_methods': METHODS, 'experimental_methods': CANDIDATES,
+        catalog = dict(self._snapshot().catalog()); ml = self._ml(); candidates = candidate_list(ml)
+        for projection in ml: projection.compatible(catalog)
+        def availability(target):
+            merged = {}
+            for projection in ml: merged.update(projection.availability(target))
+            return merged
+        catalog['weeks'] = [{**w, 'ml_availability': availability(w['target_week'])} for w in catalog['weeks']]
+        return {**catalog, 'module_version': MODULE, 'active_methods': METHODS,
+                'experimental_candidates': [describe(c) for c in candidates],
+                'default_candidates': default_candidates(candidates),
                 'training_enabled': False, 'operational_enabled': False}
 
     def geometry(self): return self._snapshot().geometry()
+
+    def _candidates(self):
+        candidates = candidate_list(self._ml())
+        return {'experimental_candidates': [{**describe(c), 'features': c['features']} for c in candidates],
+                'default_candidates': default_candidates(candidates)}
 
     def metadata(self):
         return {**self._snapshot().metadata(), 'module_version': MODULE, 'result_type': 'historical_h1_statistical_reference',
@@ -133,7 +144,7 @@ class PredictiveService:
                 'disclosure_policy': {'version': DISCLOSURE, 'default_mode': 'presentation', 'minimum_count': MINIMUM,
                                      'exact_values_scope': 'authorized_loopback_private_research_only'},
                 'climate_usage': 'context_only_not_used_by_selected_methods',
-                'experimental_methods': CANDIDATES,
+                **self._candidates(),
                 'ml_climate_usage': 'origin_and_prior_weeks_temperature_humidity_precipitation',
                 'ml_climate_evidence': 'presence_brier_improved_vs_no_climate_not_vs_reference_in_development;quantity_increment_not_demonstrated'}
 
@@ -155,12 +166,13 @@ class PredictiveService:
 
     def week(self, year, week, radio=None, mode='presentation'):
         self.mode(mode)
-        result = protect_week(self._attach(self._snapshot().week(year, week, radio), self._ml()), mode)
+        ml = self._ml()
+        result = protect_week(self._attach(self._snapshot().week(year, week, radio), ml), mode, candidate_list(ml))
         return {**result, 'module_version': MODULE, 'result_type': 'historical_h1_statistical_reference',
                 'limitations': LIMITATIONS, 'climate': self._climate(result)}
 
     def history(self, start, end, radio=None, mode='presentation'):
-        self.mode(mode); reader = self._snapshot(); catalog = reader.catalog(); ml = self._ml()
+        self.mode(mode); reader = self._snapshot(); catalog = reader.catalog(); ml = self._ml(); candidates = candidate_list(ml)
         try: first, last = date.fromisoformat(start), date.fromisoformat(end)
         except (ValueError, TypeError): raise InvalidDate() from None
         keys = {w['target_week'] for w in catalog['weeks']}
@@ -168,7 +180,7 @@ class PredictiveService:
         series = []; all_rows = []; years = {}
         for week in catalog['weeks']:
             if start <= week['target_week'] <= end:
-                doc = protect_week(self._attach(reader.week(week['target_year'], week['target_epi_week'], radio), ml), mode)
+                doc = protect_week(self._attach(reader.week(week['target_year'], week['target_epi_week'], radio), ml), mode, candidates)
                 observed = [r['observed']['quantity'] for r in doc['rows'] if r['common_mask']]
                 complete = bool(observed) and all(v is not None for v in observed)
                 totals = doc['metrics']['totals']
@@ -177,15 +189,16 @@ class PredictiveService:
                 series.append({**{k: doc[k] for k in WEEK}, 'observed': observed_total,
                     'predicted': totals['predicted'] if comparable else None, 'baseline': totals['baseline'] if comparable else None,
                     'n_comparable': doc['metrics']['n_comparable'], 'metrics': doc['metrics'],
-                    'ml_predicted': doc['ml_metrics']['totals']['predicted'], 'ml_metrics': doc['ml_metrics'], 'ml': doc['ml'],
+                    'ml_predicted': {c: m['totals']['predicted'] for c, m in doc['ml_metrics'].items()},
+                    'ml_metrics': doc['ml_metrics'], 'ml': doc['ml'],
                     'disclosure_status': 'complete' if complete else 'disclosable_subset' if comparable else 'protected_or_unavailable'})
                 all_rows.extend(doc['rows']); years.setdefault(str(week['target_year']), []).extend(doc['rows'])
         if radio is not None and radio not in catalog['radio_ids']: raise InvalidDate()
         return {**{k: catalog[k] for k in CONTEXT}, 'module_version': MODULE, 'result_type': 'historical_h1_statistical_reference',
                 'evaluation_type': 'event_time_retrospective_reconstruction', 'selected_radio': radio, 'start': start, 'end': end,
-                'series': series, 'metrics': metrics(all_rows), 'ml_metrics': ml_metrics(all_rows),
+                'series': series, 'metrics': metrics(all_rows), 'ml_metrics': ml_metrics(all_rows, candidates, mode),
                 'by_year': {y: metrics(rows) for y, rows in years.items()},
-                'ml_by_year': {y: ml_metrics(rows) for y, rows in years.items()},
+                'ml_by_year': {y: ml_metrics(rows, candidates, mode) for y, rows in years.items()},
                 'disclosure': {'policy_version': DISCLOSURE, 'mode': mode, 'minimum_count': MINIMUM,
                                'metrics_scope': 'all_comparable' if mode == 'private' else 'disclosable_subset_not_full_study'},
                 'limitations': LIMITATIONS}
