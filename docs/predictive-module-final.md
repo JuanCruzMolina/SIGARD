@@ -43,7 +43,9 @@ capacidad sanitaria operativa ni validación externa independiente.
    en loopback 5173 reutiliza el panel histórico, ambos mapas y el gráfico. La
    API pública y la demo ficticia siguen separadas.
 
-Contrato de módulo: `sigard-predictive-experimental/1`, compatible con los campos
+Contrato de módulo: `sigard-predictive-experimental/2` desde el 14/11/2026 (las
+capas ML se indexan por candidato; ver «Integración de candidatos v2»). La versión
+`/1` indexaba ML por capacidad. Compatible con los campos
 de `sigard-historical-backtest/1`. Los resultados identifican `result_type`,
 `predicted` (presencia/score/cantidad separados), `observed`, `baseline`, unidad,
 origen/objetivo, método y versión, política, calidad territorial, disponibilidad,
@@ -133,6 +135,11 @@ autenticación/roles y auditoría propios del alcance sanitario.
 - Referencias seleccionadas: `presence_seasonal` y `count_latest`, h=1.
 - Experimentales evaluados: `rf_A_epi_climate` y `residual_h1`, h=1, disponibles
   para comparación local. Sus salidas no se fusionan ni se multiplican.
+- Experimentales no promovidos (campaña correctiva v2, 14/11/2026):
+  `rf_v2_city_propensity` con regla top-10 y `residual_v2`, h=1. Son los modelos
+  ML por defecto del visor, no la referencia seleccionada; P1–P3 y Q2 del
+  protocolo prerregistrado no se cumplieron. `logit_v2_factors` es interpretativo
+  y no se integra.
 - Dataset y lector histórico verificados; clima de origen; sin entrenamiento
   ni inferencia de estimadores desde HTTP.
 - No promocionados: `rf_A_reference`, `rf_A_epi_climate`, `rf_A_epi_no_climate`,
@@ -283,6 +290,94 @@ Los experimentos conservan `experimental_evaluated`, las referencias
 y las limitaciones describen estas diferencias. No se crean rutas públicas,
 selectores de algoritmos adicionales ni nuevas familias.
 
+## Integración de candidatos v2 (campaña correctiva)
+
+Campaña `sigard-two-capabilities-h1-corrective-20261112-v1`; informe privado
+`data/interim/official/corrective-v2-20261112-v1/informe.private.md`. Decisión
+científica **sin cambios**: ningún candidato promovido. Sin entrenamiento,
+inferencia ni deserialización de estimadores.
+
+**Bundle offline.** `sigard_ml.forecasting.predictive_ml_bundle_v2.compile_bundle(root,
+campaign_folder, reference_reader, new_private_destination)`:
+
+- verifica el hash canónico del protocolo congelado (`a7dc47f9…`, igual al código
+  `motor_protocol_v2.PROTOCOL` y a `protocol-before-fit`), el pin de la matriz v2
+  (`2c09895c…`) en `matrix-before-fit` y en el manifiesto previo al ajuste, los
+  **48 artefactos** del registro (16 bloques × rf_v2, logit_v2, residual_v2; sólo
+  hash) y las 53.248 predicciones guardadas;
+- comprueba universo de 256 radios, h=1, purga (último objetivo < primer origen −28
+  días) y pareo exacto con observación y persistencia del paquete de referencia;
+- resuelve offline la regla **top-10** con el desempate prerregistrado
+  (`motor_features_v2.topk_select`, permutación semillada por semana sobre radios
+  ordenados) y guarda por fila `topk_rank` (1–256); en/fuera del top-10 se deriva
+  como `rank <= k`;
+- antes de escribir exige reproducir exactamente los aciertos y onset congelados de
+  `metrics.private.json` (desarrollo por año y 2024) y el MAE de residual_v2;
+- escribe sólo en un destino nuevo bajo `data/interim/official`: manifiesto
+  `sigard-predictive-ml-overlay/2` con candidatos, regla (`top_k`, k=10, o
+  `count_estimate`), estado `experimental_not_promoted`, evidencias con SHA y un
+  JSON por semana.
+
+Compilado el 14/11/2026 en
+`data/interim/official/ml-integration-v2-20261114-v1/` (`bundle-v2/`, 208 semanas,
+manifiesto `e9752119…`; `registry.private.json` es el puntero que lee el arranque).
+
+**Backend.** `app.research_local` fija al iniciar los punteros v1 y v2 instalados;
+cada petición vuelve a verificar manifiestos, semanas y bytes de artefactos.
+`predictive_ml.MLProjection` lee ambos esquemas y expone candidatos desde cada
+manifiesto (varios por capacidad). Contrato `/2`:
+
+- `ml[candidato]`: capacidad, estado, regla de decisión, campaña, decisión de
+  promoción (`not_promoted`), disponibilidad, versión, ajuste, variables y SHA.
+- `rows[].ml[candidato]`: `presence_score`, `presence`, `presence_threshold` (v1) o
+  `topk_rank` y `onset_eligible` (v2), `quantity`, `confusion`, `difference`,
+  `absolute_error`; `rows[].ml_availability[candidato]`.
+- `ml_metrics[candidato]` por semana; en historia, `ml_predicted[candidato]`,
+  `ml_metrics` y `ml_by_year[año][candidato]`, calculados en el servidor.
+- Candidatos top-k: `ml_metrics[...].topk` con recall@10, onset@10 y precisión@10
+  **sólo en modo privado** (todos los radios comparables). En modo protegido se
+  devuelve `status: private_only_selection_bias` con valores null: la misma regla
+  ya aplicada a precisión y falsas alarmas, porque el subconjunto visible (≥5
+  registros) excluye todas las falsas alarmas y todos los onset (origen 0).
+- `/calendar` y `/metadata`: `experimental_candidates`, `default_candidates`
+  (`rf_v2_city_propensity`, `residual_v2` si están instalados) y
+  `weeks[].ml_availability[candidato]`, derivada del manifiesto verificado.
+- Una alteración de una semana o artefacto bloquea sólo esa proyección
+  (`ml_integrity_or_compatibility_blocked`); v1 y la referencia se conservan. Un
+  manifiesto que declare promoción, calibración o una regla inválida bloquea el
+  módulo (503).
+- Los artefactos sólo se hashean; su límite es 64 MiB (los RF v2 de 2024-q3/q4
+  pesan ~20 MB y superaban el límite de 16 MiB de los JSON).
+
+Las métricas por año del servidor reproducen las congeladas: recall@10 2021
+75/513, 2022 7/47, 2023 32/152 (desarrollo 114/712 = 0,160), 2024 124/1.771;
+onset 7/345, 3/43, 14/127; MAE de residual_v2 0,0673 / 0,0058 / 0,0186 y 2024 0,3525.
+
+**Frontend.** El selector «Modelo ML» se arma con `experimental_candidates` de la
+metadata (filtrado por pregunta) y se guarda en la URL como `modelo`; por defecto
+`rf_v2_city_propensity` en ¿Dónde? y `residual_v2` en ¿Cuántos?. El contrato valida
+estados permitidos, `not_promoted`, regla por capacidad, presencia = `rank <= k`,
+nunca más de k radios y exactamente k cuando los 256 radios son visibles, y la
+retención de recall@k en modo protegido. Ayuda en lenguaje simple: «Marca los 10
+radios con mayor prioridad cada semana». Veredictos fijos (`GLOBAL_VERDICTS`):
+
+- rf_v2: «Resultado similar al método de repetir la semana anterior (recall@10
+  0,160 frente a 0,156; diferencia no significativa). Mejor que los modelos
+  anteriores.»
+- residual_v2: «Error promedio 13,6 % menor que repetir la semana anterior en
+  2021–2023 (diferencia con intervalo de confianza que excluye 0). Subestima
+  semanas de muchos casos.» 13,6 % = (0,035357 − 0,030535) / 0,035357 con los MAE
+  sin redondear; con los redondeados (0,0305/0,0354) se obtendría 13,8 %.
+- Ambos: «2024 es una comparación ya observada; ningún modelo está aprobado para
+  uso operativo.»
+
+**Rendimiento** (14/11/2026, local, `test:predictive:browser --real`): arranque en
+frío hasta la semana por defecto 4,02–4,38 s en tres corridas (antes de v2:
+2,4–3,8 s). La historia anual protegida tarda ~2,1 s aislada (0,6 s sin ML,
+1,3 s sólo v1) por la lectura y verificación de los JSON semanales y artefactos
+de cada proyección. El calendario bajó de ~1,3 s a ~0,25 s al derivar la
+disponibilidad del manifiesto verificado en lugar de leer 208 semanas.
+
 ### Interfaz del módulo predictivo
 
 La vista local de `/mapa` («Predicción semanal de dengue por radio censal») está
@@ -293,7 +388,8 @@ por la API; las reglas de redacción están centralizadas en
 
 - **Controles**: línea de tiempo semanal (`WeekTimeline`) con años evaluables,
   pregunta **¿Dónde?** / **¿Cuántos?**, método **Modelo ML** / **Método de
-  referencia** / **Comparar** y, en ¿Cuántos?, capa **Esperados** / **Observados**.
+  referencia** / **Comparar**, selector **Modelo ML** con los candidatos de la
+  pregunta (v2 por defecto) y, en ¿Cuántos?, capa **Esperados** / **Observados**.
   Sin capa ML disponible sólo se ofrece la referencia. Se indica la fecha hasta la
   que se usaron datos y el clima de la semana previa (un único punto urbano).
 - **Opciones avanzadas**: modo de divulgación, selección de un radio por código y
