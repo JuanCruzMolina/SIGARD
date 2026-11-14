@@ -13,6 +13,7 @@ from .admin_accounts import lock_account_changes, router as accounts_router
 from .config import get_settings
 from .database import Base, build_engine, build_session_factory
 from .geocoding import router as geocoding_router
+from .internal_alerts import router as internal_alerts_router
 from .models import AdminAccountAudit, CitizenReport, PreventionAudit, PreventionSection, User
 from .prevention import admin_router as prevention_admin_router, public_router as prevention_public_router
 from .public import router as public_router
@@ -58,6 +59,8 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     )
     application.state.engine = engine
     application.state.SessionLocal = session_factory
+    # Internal alerts read predictions only when the local launcher attaches a source.
+    application.state.alert_source = None
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
@@ -72,6 +75,7 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     application.include_router(public_router)
     application.include_router(prevention_admin_router)
     application.include_router(prevention_public_router)
+    application.include_router(internal_alerts_router)
 
     @application.exception_handler(RequestValidationError)
     async def safe_admin_validation(request, exc):
