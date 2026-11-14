@@ -3,9 +3,11 @@ import CitizenReportForm from '../components/CitizenReportForm'
 import HealthFacilitiesMap from '../components/HealthFacilitiesMap'
 import { HealthIcon, HomeIcon, PhoneIcon, PinIcon } from '../components/InfoIcons'
 import PreventionGuide from '../components/PreventionGuide'
+import RestrictedMarkdown, { SectionSource } from '../components/RestrictedMarkdown'
 import ReportStatusLookup from '../components/ReportStatusLookup'
 import SymptomsAlert from '../components/SymptomsAlert'
 import { loadPreventionData, PREVENTION_DATA_ERROR } from '../services/preventionData'
+import { KNOWN_SLUGS, sectionsBySlug } from '../services/preventionContent.mjs'
 import '../Prevention.css'
 
 export default function Prevencion() {
@@ -23,7 +25,11 @@ export default function Prevencion() {
     return <main className="loading-state"><span className="spinner" />Cargando información sanitaria…</main>
   }
 
-  const { content, facilities } = data
+  const { content, facilities, sections, sectionsSource } = data
+  const bySlug = sectionsBySlug(sections)
+  const extraSections = sections.filter(section => !KNOWN_SLUGS.includes(section.slug))
+  const hasPrevention = bySlug.prevencion || bySlug['control-vectorial']
+  const hasSymptoms = bySlug.sintomas || bySlug['consejos-medicos'] || bySlug['signos-alarma']
   return (
     <div className="prevention-page">
       <section className="prevention-hero">
@@ -44,8 +50,9 @@ export default function Prevencion() {
       </section>
 
       <nav className="section-nav" aria-label="Secciones de prevención">
-        <a href="#prevenir">Prevención</a>
-        <a href="#sintomas">Síntomas</a>
+        {hasPrevention && <a href="#prevenir">Prevención</a>}
+        {hasSymptoms && <a href="#sintomas">Síntomas</a>}
+        {extraSections.length > 0 && <a href="#mas-informacion">Más información</a>}
         <a href="#centros">Centros de salud</a>
         <a href="#contactos">Teléfonos</a>
         <a href="#reportar">Reporte anónimo</a>
@@ -53,8 +60,12 @@ export default function Prevencion() {
       </nav>
 
       <main className="prevention-content">
-        <PreventionGuide content={content} />
-        <SymptomsAlert content={content} />
+        <PreventionGuide sections={bySlug} />
+        <SymptomsAlert sections={bySlug} emergencyNumber={content.emergency_number} />
+        {extraSections.length > 0 && <section id="mas-informacion" className="info-section extra-sections" aria-labelledby="extra-title">
+          <div className="info-section-heading"><div><h2 id="extra-title">Más información preventiva</h2></div></div>
+          <div className="extra-section-list">{extraSections.map(section => <article key={section.slug} data-slug={section.slug}><h3>{section.title}</h3><RestrictedMarkdown text={section.body}/><SectionSource section={section}/></article>)}</div>
+        </section>}
         <HealthFacilitiesMap collection={facilities} />
 
         <section id="contactos" className="info-section contact-section" aria-labelledby="contacts-title">
@@ -87,6 +98,7 @@ export default function Prevencion() {
           <div>
             <h2 id="source-title">Fuentes sanitarias y operativas</h2>
             <p>Contenido revisado el {content.reviewed_at}. Los datos operativos pueden cambiar.</p>
+            <p className="content-origin" data-source={sectionsSource}>{sectionsSource === 'api' ? 'Las secciones preventivas muestran la última versión publicada por la administración de SIGARD.' : 'Las secciones preventivas muestran la versión estática incluida en el sitio.'} Es orientación general; no reemplaza indicaciones del equipo de salud.</p>
           </div>
           <ul>
             {content.sources.map((source) => (

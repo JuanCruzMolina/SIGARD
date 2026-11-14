@@ -119,3 +119,28 @@ export async function downloadAdminExport(token, filters = {}, options = {}) {
   anchor.click()
   URL.revokeObjectURL(url)
 }
+
+export function getPublicPrevention(options = {}) {
+  return apiRequest('/api/v1/public/prevention', options)
+}
+
+export function listPreventionSections(token, options = {}) {
+  return apiRequest('/api/v1/admin/prevention', { ...options, headers: adminHeaders(token) })
+}
+
+export function createPreventionSection(token, payload) {
+  return apiRequest('/api/v1/admin/prevention', { method: 'POST', headers: adminHeaders(token), body: JSON.stringify(payload) })
+}
+
+export function updatePreventionSection(token, id, payload) {
+  return apiRequest(`/api/v1/admin/prevention/${id}`, { method: 'PATCH', headers: adminHeaders(token), body: JSON.stringify(payload) })
+}
+
+export function transitionPreventionSection(token, id, action, revision) {
+  if (!['publish', 'unpublish'].includes(action)) return Promise.reject(new Error('Acción no permitida'))
+  return apiRequest(`/api/v1/admin/prevention/${id}/${action}`, { method: 'POST', headers: adminHeaders(token), body: JSON.stringify({ revision }) })
+}
+
+export function getPreventionHistory(token, id, options = {}) {
+  return apiRequest(`/api/v1/admin/prevention/${id}/history`, { ...options, headers: adminHeaders(token) })
+}

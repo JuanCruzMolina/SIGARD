@@ -1,3 +1,11 @@
+import { getPublicPrevention } from './citizenReports'
+import { demoMode } from './demoMode'
+import { legacySections, publicSectionsFrom } from './preventionContent.mjs'
+
+// A production build without VITE_API_URL (e.g. Vercel frontend only) never
+// probes localhost; the page then uses the static JSON directly.
+const apiConfigured = demoMode || import.meta.env.DEV || Boolean(import.meta.env.VITE_API_URL)
+
 export const PREVENTION_DATA_ERROR = 'No pudimos cargar la información preventiva. Intentá nuevamente más tarde.'
 
 const DATA_PATHS = {
@@ -33,6 +41,17 @@ function validateFacilities(collection) {
   return collection
 }
 
+// Published sections from the API; any failure silently uses the static JSON.
+async function loadSections(content) {
+  if (apiConfigured) {
+    try {
+      const sections = publicSectionsFrom(await getPublicPrevention({ signal: AbortSignal.timeout(4000) }))
+      if (sections) return { sections, sectionsSource: 'api' }
+    } catch { /* API unavailable: static fallback below, without a visible error. */ }
+  }
+  return { sections: legacySections(content), sectionsSource: 'static' }
+}
+
 export async function loadPreventionData() {
   const [content, facilities] = await Promise.all([
     getJson(DATA_PATHS.content),
@@ -41,5 +60,5 @@ export async function loadPreventionData() {
   if (!content?.prevention?.length || !content?.warning_signs?.length || !content?.sources?.length) {
     throw new Error('Contenido preventivo inválido')
   }
-  return { content, facilities: validateFacilities(facilities) }
+  return { content, facilities: validateFacilities(facilities), ...await loadSections(content) }
 }
