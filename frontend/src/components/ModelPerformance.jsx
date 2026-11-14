@@ -1,6 +1,6 @@
 import { Fragment } from 'react'
 import { confusionNames, formatValue } from '../services/backtestContract.mjs'
-import { formatPlain, globalVerdict } from '../services/predictiveView.mjs'
+import { candidateName, decisionText, formatPlain, globalVerdict } from '../services/predictiveView.mjs'
 import MLComparison from './MLComparison'
 
 // Technical weekly summary (previous main block), now only under "Ver métricas técnicas".
@@ -17,39 +17,45 @@ function TechnicalWeek({ result, view }) {
   </section>
 }
 
-function YearRow({ year, reference, ml, view }) {
+function YearRow({ year, reference, ml, view, topk }) {
   const c = m => m?.presence?.confusion
   const cell = m => {
     if (!m?.n_comparable) return '—'
     if (view === 'quantity') return formatPlain(m.quantity.mae, 3)
     const k = c(m); return `${formatPlain(k.TP)} de ${formatPlain(k.TP + k.FN)} · ${formatPlain(k.FP)} falsas alarmas`
   }
-  return <tr><th scope="row">{year}</th><td>{cell(ml)}</td><td>{cell(reference)}</td></tr>
+  // recall@k / onset@k are server-side over all comparable radios (private mode only).
+  const t = ml?.topk
+  return <tr><th scope="row">{year}</th><td>{cell(ml)}</td>{topk && <td>{t?.recall === null || t?.recall === undefined ? '—' : `${formatPlain(t.recall, 3)} (${formatPlain(t.hits)} de ${formatPlain(t.positives)})`}</td>}
+    {topk && <td>{t?.onset_recall === null || t?.onset_recall === undefined ? '—' : `${formatPlain(t.onset_recall, 3)} (${formatPlain(t.onset_hits)} de ${formatPlain(t.onset_events)})`}</td>}<td>{cell(reference)}</td></tr>
 }
 
-export default function ModelPerformance({ metadata, mode, view, histories, result }) {
-  const verdict = globalVerdict(metadata)
+export default function ModelPerformance({ metadata, mode, view, histories, result, candidate }) {
+  const verdict = globalVerdict(metadata, candidate)
   const years = Object.keys(histories).sort()
+  const info = (metadata.experimental_candidates || []).find(c => c.id === candidate)
+  const topk = view === 'presence' && info?.decision_rule?.type === 'top_k'
   return <div className="pv-performance">
-    <h3>Resultado del estudio</h3>
+    <h3>Resultado del estudio{info ? ` · ${candidateName(candidate)}` : ''}</h3>
     {verdict ? <>{verdict.text.map(t => <p key={t}>{t}</p>)}<p className="pv-caption">Fuente: {verdict.source}.</p></>
       : <p>Los modelos mostrados no tienen un cierre documentado en esta versión del módulo.</p>}
+    {info && <p className="pv-caption">{decisionText(info)} Estado: experimental, no promovido según el protocolo fijado antes de evaluarlo.</p>}
     <h3>Por año {view === 'presence' ? '(¿Dónde?)' : '(¿Cuántos?)'}</h3>
     {mode === 'presentation'
       ? <p>Las cifras por año sólo se muestran en el modo privado: en modo protegido sólo se ven radios con 5 o más registros, y ese subconjunto no permite medir el desempeño.</p>
       : years.length ? <div className="bt-table-scroll"><table>
-        <caption>{view === 'presence' ? 'Radios con registros que cada método anticipó, y falsas alarmas, sumando las semanas de cada año.' : 'Diferencia promedio por radio entre registros esperados y observados.'} Años cargados en esta sesión.</caption>
-        <thead><tr><th scope="col">Año</th><th scope="col">Modelo ML</th><th scope="col">Método de referencia</th></tr></thead>
-        <tbody>{years.map(y => <YearRow key={y} year={y} view={view} reference={histories[y].by_year?.[y]} ml={histories[y].ml_by_year?.[y]} />)}</tbody></table></div>
+        <caption>{view === 'presence' ? 'Radios con registros que cada método anticipó, y falsas alarmas, sumando las semanas de cada año.' : 'Diferencia promedio por radio entre registros esperados y observados.'}{topk ? ' Recall@10: parte de los radios con registros que quedaron entre los 10 marcados; onset@10: lo mismo para radios sin registros la semana anterior.' : ''} Años cargados en esta sesión.</caption>
+        <thead><tr><th scope="col">Año</th><th scope="col">Modelo ML</th>{topk && <th scope="col">Recall@10</th>}{topk && <th scope="col">Onset@10</th>}<th scope="col">Método de referencia</th></tr></thead>
+        <tbody>{years.map(y => <YearRow key={y} year={y} view={view} topk={topk} reference={histories[y].by_year?.[y]} ml={histories[y].ml_by_year?.[y]?.[candidate]} />)}</tbody></table></div>
       : <p role="status">Cargando resultados por año…</p>}
     {result && <details className="pv-technical"><summary>Ver métricas técnicas</summary>
       <p className="pv-caption">Para el tribunal: métricas de la semana elegida con su nomenclatura técnica (TP = acierto, FP = falsa alarma, FN = no anticipado, TN = correctamente sin alerta).</p>
       {result.availability_status === 'available' && result.metrics.n_comparable > 0 && <TechnicalWeek result={result} view={view} />}
-      <MLComparison result={result} view={view} />
+      <MLComparison result={result} view={view} candidate={candidate} />
       <details className="bt-method"><summary>Métodos y versiones</summary><dl>
         <dt>¿Dónde? · referencia</dt><dd>{metadata.method_labels?.presence} · {metadata.selected_methods.presence}</dd>
         <dt>¿Cuántos? · referencia</dt><dd>{metadata.method_labels?.quantity} · {metadata.selected_methods.quantity}</dd>
-        {Object.entries(metadata.experimental_methods || {}).map(([k, v]) => <Fragment key={k}><dt>{k === 'presence' ? '¿Dónde?' : '¿Cuántos?'} · ML experimental</dt><dd>{v}</dd></Fragment>)}
+        {(metadata.experimental_candidates || []).map(c => <Fragment key={c.id}><dt>{c.capability === 'presence' ? '¿Dónde?' : '¿Cuántos?'} · ML experimental</dt><dd>{candidateName(c.id)} · {c.id} · {c.state}{c.campaign ? ` · ${c.campaign}` : ''}</dd></Fragment>)}
         <dt>Dataset</dt><dd>{metadata.dataset_version}</dd><dt>Política epidemiológica</dt><dd>{metadata.data_policy_version}</dd>
         <dt>Versión territorial</dt><dd>{metadata.territory_version} · 263 radios, 256 comparables</dd><dt>Campaña</dt><dd>{metadata.campaign_version}</dd>
         {result.fit_last_target_end && <><dt>Último objetivo usado en el ajuste</dt><dd>{result.fit_last_target_end} · purga de cuatro semanas antes del origen</dd></>}

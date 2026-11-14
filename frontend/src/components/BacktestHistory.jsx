@@ -8,9 +8,10 @@ const SERIES = [
 ]
 
 // City evolution for the selected year. Unknown weeks break the lines; nothing is interpolated.
-export default function BacktestHistory({ series, selected, onSelect, mode, hasML = true }) {
+export default function BacktestHistory({ series, selected, onSelect, mode, hasML = true, mlKey = null }) {
   const lines = SERIES.filter(s => hasML || !s.ml)
-  const points = series.map(w => ({ ...w, ml_predicted: w.ml_predicted ?? null }))
+  // ml_predicted is keyed by candidate; the line shows the selected count estimate only.
+  const points = series.map(w => ({ ...w, ml_predicted: w.ml_predicted?.[mlKey] ?? null }))
   const maximum = Math.max(1, ...points.flatMap(w => lines.map(s => w[s.key])).filter(v => v !== null))
   const step = 800 / Math.max(1, points.length - 1)
   const x = i => 60 + i * step

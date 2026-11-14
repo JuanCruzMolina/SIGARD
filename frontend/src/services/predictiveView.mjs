@@ -19,15 +19,25 @@ export const statusPlain = {
 export const METHOD_HELP = {
   presence_seasonal: 'Método simple: estima según cómo se comportó cada radio en esta época del año en años anteriores. No usa clima.',
   count_latest: 'Método simple: repite lo observado en cada radio la semana anterior. No usa clima.',
-  rf_A_epi_climate: 'Modelo de aprendizaje automático (bosque aleatorio) que combina historia reciente del radio y sus vecinos, época del año y clima de la ciudad.',
+  rf_A_epi_climate: 'Modelo de aprendizaje automático (bosque aleatorio) que combina historia reciente del radio y sus vecinos, época del año y clima de la ciudad. Prioriza los radios cuyo puntaje supera un umbral.',
   residual_h1: 'Modelo de aprendizaje automático que corrige lo observado la semana anterior con historia reciente, época del año y clima de la ciudad.',
+  rf_v2_city_propensity: 'Modelo de aprendizaje automático (bosque aleatorio) que combina la actividad de toda la ciudad, la historia de cada radio y de sus vecinos, la época del año y el clima. Marca los 10 radios con mayor prioridad cada semana.',
+  residual_v2: 'Modelo de aprendizaje automático que corrige lo observado la semana anterior usando la actividad de toda la ciudad, la historia de cada radio, la época del año y el clima.',
+}
+// Short names for the model selector; unknown ids fall back to the id itself.
+export const METHOD_NAMES = {
+  rf_A_epi_climate: 'Bosque aleatorio v1 (umbral)',
+  residual_h1: 'Corrección de la semana anterior v1',
+  rf_v2_city_propensity: 'Bosque aleatorio v2 (10 radios por semana)',
+  residual_v2: 'Corrección de la semana anterior v2',
 }
 
-// Global verdict, fixed text from the documented closure of the candidates shown
-// (docs/predictive-module-final.md and docs/database/ml-candidates-closure.md).
-// Single place to update when a new candidate pair is integrated.
+// Global verdict per candidate: fixed text from the documented closure of each campaign
+// (docs/predictive-module-final.md, ml-candidates-closure and the corrective v2 report).
+// Single place to update when a new candidate is integrated.
+const NOT_OPERATIONAL = '2024 es una comparación ya observada; ningún modelo está aprobado para uso operativo.'
 export const GLOBAL_VERDICTS = [{
-  candidates: { presence: 'rf_A_epi_climate', quantity: 'residual_h1' },
+  candidates: ['rf_A_epi_climate', 'residual_h1'],
   source: 'Cierre documentado de los candidatos (campaña sigard-predictive-motor-h1-20261102-v1)',
   text: [
     'Ninguno de los dos modelos ML superó al método de referencia con la estabilidad exigida por los criterios fijados antes de evaluarlos (años de desarrollo 2021–2023).',
@@ -35,16 +45,50 @@ export const GLOBAL_VERDICTS = [{
     'En ¿Dónde?, agregar clima mejoró el ajuste de las probabilidades frente al mismo modelo sin clima, pero no frente al método de referencia. En ¿Cuántos?, el aporte del clima no está demostrado.',
     '2024 ya se había observado durante el desarrollo: es una comparación, no una validación externa.',
   ],
+}, {
+  candidates: ['rf_v2_city_propensity'],
+  source: 'Campaña correctiva v2 prerregistrada (sigard-two-capabilities-h1-corrective-20261112-v1): no promovido',
+  text: [
+    'Resultado similar al método de repetir la semana anterior (recall@10 0,160 frente a 0,156; diferencia no significativa). Mejor que los modelos anteriores.',
+    NOT_OPERATIONAL,
+  ],
+}, {
+  candidates: ['residual_v2'],
+  source: 'Campaña correctiva v2 prerregistrada (sigard-two-capabilities-h1-corrective-20261112-v1): no promovido',
+  text: [
+    // 13,6 %: (0,035357 − 0,030535) / 0,035357 with the unrounded frozen MAE values.
+    'Error promedio 13,6 % menor que repetir la semana anterior en 2021–2023 (diferencia con intervalo de confianza que excluye 0). Subestima semanas de muchos casos.',
+    NOT_OPERATIONAL,
+  ],
 }]
-export function globalVerdict(metadata) {
-  const methods = metadata?.experimental_methods || {}
-  return GLOBAL_VERDICTS.find(v => Object.entries(v.candidates).every(([k, id]) => methods[k] === id)) || null
+export function candidatesFor(metadata, view) {
+  return (metadata?.experimental_candidates || []).filter(c => c.capability === view)
+}
+// Requested model if it belongs to the question; otherwise the default from metadata.
+export function selectedCandidate(metadata, view, requested) {
+  const ids = candidatesFor(metadata, view).map(c => c.id)
+  if (ids.includes(requested)) return requested
+  const fallback = metadata?.default_candidates?.[view]
+  return ids.includes(fallback) ? fallback : ids[0] || null
+}
+export function globalVerdict(metadata, candidate) {
+  if (!candidate || !(metadata?.experimental_candidates || []).some(c => c.id === candidate)) return null
+  return GLOBAL_VERDICTS.find(v => v.candidates.includes(candidate)) || null
+}
+export const candidateName = id => METHOD_NAMES[id] || id
+export function decisionText(candidate) {
+  const rule = candidate?.decision_rule
+  if (rule?.type === 'top_k') return `Marca los ${rule.k} radios con mayor prioridad cada semana.`
+  if (rule?.type === 'threshold') return 'Prioriza los radios cuyo puntaje supera un umbral fijado en el entrenamiento.'
+  return 'Estima la cantidad de registros de cada radio.'
 }
 
-export function methodSources(metadata, view) {
+export function methodSources(metadata, view, requested) {
   const sources = []
-  const ml = metadata?.experimental_methods?.[view]
-  if (ml) sources.push({ source: 'ml', label: 'Modelo ML', short: 'el modelo ML', method: ml, help: METHOD_HELP[ml] || '' })
+  const id = selectedCandidate(metadata, view, requested)
+  const candidate = candidatesFor(metadata, view).find(c => c.id === id)
+  if (candidate) sources.push({ source: 'ml', label: 'Modelo ML', short: 'el modelo ML', method: id, name: candidateName(id),
+    help: METHOD_HELP[id] || '', candidate })
   const reference = metadata?.selected_methods?.[view]
   sources.push({ source: 'reference', label: 'Método de referencia', short: 'el método de referencia', method: reference,
     name: metadata?.method_labels?.[view] || reference, help: METHOD_HELP[reference] || '' })
@@ -82,6 +126,7 @@ export function mostActiveWeek(series) {
 }
 
 const VIEWS = { donde: 'presence', cuantos: 'quantity' }
+const MODEL = /^[A-Za-z0-9_]{1,60}$/
 const METHODS = { ml: 'ml', referencia: 'reference', comparar: 'compare' }
 const invert = o => Object.fromEntries(Object.entries(o).map(([k, v]) => [v, k]))
 // Disclosure mode is never read from or written to the URL: a shared link always opens protected.
@@ -91,12 +136,14 @@ export function readUrlState(params) {
     year: Number.isInteger(year) && year >= 2000 ? year : null, week: Number.isInteger(week) && week >= 1 && week <= 53 ? week : null,
     view: VIEWS[params.get('vista')] || 'presence', method: METHODS[params.get('metodo')] || 'ml',
     layer: params.get('capa') === 'observados' ? 'observed' : 'expected', radio: /^\d{9}$/.test(radio || '') ? radio : '',
+    model: MODEL.test(params.get('modelo') || '') ? params.get('modelo') : '',
   }
 }
 export function writeUrlState(state) {
   const params = new URLSearchParams()
   if (state.year && state.week) { params.set('anio', String(state.year)); params.set('se', String(state.week)) }
   params.set('vista', invert(VIEWS)[state.view] || 'donde'); params.set('metodo', invert(METHODS)[state.method] || 'ml')
+  if (state.model) params.set('modelo', state.model)
   if (state.layer === 'observed') params.set('capa', 'observados')
   if (state.radio) params.set('radio', state.radio)
   return params
@@ -139,8 +186,9 @@ export function legendItems(view, mode) {
   return [...bins, ...STATUS_ITEMS]
 }
 
-const sourceMetrics = (result, source) => source === 'ml' ? result.ml_metrics : result.metrics
-const sourceAvailable = (result, source, view) => source !== 'ml' || result.ml?.[view]?.availability_status === 'available'
+// Sources carry the candidate id in `method`; ML metrics are keyed by candidate.
+export const sourceMetrics = (result, source) => source.source === 'ml' ? result.ml_metrics?.[source.method] : result.metrics
+export const sourceAvailable = (result, source) => source.source !== 'ml' || result.ml?.[source.method]?.availability_status === 'available'
 
 export function unavailableMessage(result) {
   const status = result.availability_status
@@ -155,7 +203,7 @@ export function summaryCards({ result, view, primary, other, mode }) {
   if (result.availability_status !== 'available') return { kind: 'unavailable', ...unavailableMessage(result) }
   if (!result.metrics.n_comparable) return { kind: 'protected', title: 'Sin detalles divulgables', text: mode === 'presentation' ? PROTECTED_EMPTY : 'No hay radios comparables para esta semana.' }
   const visible = result.metrics.n_comparable
-  const get = s => sourceAvailable(result, s.source, view) ? sourceMetrics(result, s.source) : null
+  const get = s => sourceAvailable(result, s) ? sourceMetrics(result, s) : null
   const p = get(primary), o = other ? get(other) : null
   const missing = s => `${s.label}: sin predicción guardada para esta semana`
   const cards = []
@@ -164,7 +212,7 @@ export function summaryCards({ result, view, primary, other, mode }) {
     if (view === 'presence') {
       const flagged = m => m ? m.presence.confusion.TP + m.presence.confusion.FP : null
       cards.push({ id: 'primary', label: `Priorizados por ${primary.label}`, value: p ? number(flagged(p)) : '—', detail: p ? 'entre los radios visibles' : missing(primary) })
-      cards.push({ id: 'records', label: 'Registros en los radios visibles', value: number(result.metrics.totals.observed), detail: p ? `${primary.label} esperaba ${number(p.totals.predicted)} en los radios visibles` : 'entre los radios visibles' })
+      cards.push({ id: 'records', label: 'Registros en los radios visibles', value: number(result.metrics.totals.observed), detail: p && p.totals.predicted !== null ? `${primary.label} esperaba ${number(p.totals.predicted)} en los radios visibles` : 'entre los radios visibles' })
       if (other) cards.push({ id: 'other', label: `Frente a ${other.label}`, value: o ? `${number(flagged(o))} priorizados` : '—', detail: o ? 'entre los mismos radios visibles' : missing(other), help: other.help })
     } else {
       cards.push({ id: 'primary', label: `Registros esperados por ${primary.label}`, value: p ? number(p.totals.predicted) : '—', detail: p ? 'en los radios visibles' : missing(primary) })
@@ -177,7 +225,8 @@ export function summaryCards({ result, view, primary, other, mode }) {
     const c = m => m.presence.confusion
     cards.push({ id: 'primary', label: `Radios priorizados por ${primary.label}`, value: p ? number(c(p).TP + c(p).FP) : '—', detail: p ? `Radios priorizados que tuvieron registros: ${number(c(p).TP)} · falsas alarmas: ${number(c(p).FP)}` : missing(primary) })
     cards.push({ id: 'anticipated', label: `Radios con registros que ${primary.short} anticipó`, value: p ? `${number(c(p).TP)} de ${number(c(p).TP + c(p).FN)}` : '—', detail: p ? `No anticipados: ${number(c(p).FN)}` : missing(primary) })
-    cards.push({ id: 'records', label: 'Registros esperados en la ciudad', value: p ? number(p.totals.predicted, 1) : '—', detail: `Observados: ${number(result.metrics.totals.observed)} en ${number(visible)} radios comparables` })
+    if (p?.totals.predicted === null) cards.push({ id: 'records', label: 'Registros observados en la ciudad', value: number(result.metrics.totals.observed), detail: `${primary.label} sólo prioriza radios; no estima cantidades · ${number(visible)} radios comparables` })
+    else cards.push({ id: 'records', label: 'Registros esperados en la ciudad', value: p ? number(p.totals.predicted, 1) : '—', detail: `Observados: ${number(result.metrics.totals.observed)} en ${number(visible)} radios comparables` })
     if (other) cards.push({ id: 'other', label: `Frente a ${other.label}`, value: o ? `${number(c(o).TP)} de ${number(c(o).TP + c(o).FN)} anticipados` : '—', detail: o ? `${number(c(o).TP + c(o).FP)} priorizados · ${number(c(o).FP)} falsas alarmas` : missing(other), help: other.help })
   } else {
     cards.push({ id: 'primary', label: 'Registros esperados en la ciudad', value: p ? number(p.totals.predicted, 1) : '—', detail: p ? `${primary.label} · observados: ${number(result.metrics.totals.observed)}` : missing(primary) })

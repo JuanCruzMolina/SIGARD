@@ -83,6 +83,11 @@ try {
   await timed('cold_start_until_default_week_rendered', () => page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }), () => ready())
   const defaultWeek = await week()
   if (!real) assert.equal(defaultWeek, '2024-04-07', 'fictional default is the week with most disclosable radios')
+  assert.ok(timings[0].seconds < 5, `cold start under 5 s (${timings[0].seconds.toFixed(2)} s)`)
+  // Model selector built from metadata: corrective v2 by default, v1 candidates still available.
+  assert.equal(await page.$eval('[data-control="model"] select', e => e.value), 'rf_v2_city_propensity')
+  assert.deepEqual(await page.$$eval('[data-control="model"] option', o => o.map(e => e.value)), ['rf_A_epi_climate', 'rf_v2_city_propensity'])
+  assert.match(await page.$eval('.pv-model-rule', e => e.textContent), /Marca los 10 radios con mayor prioridad cada semana/)
   assert.match(page.url(), /anio=\d{4}&se=\d+/)
   assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
   assert.equal(await page.$eval('.pv-badge', e => e.textContent), 'Prototipo experimental — reconstrucción histórica, no uso operativo')
@@ -137,6 +142,10 @@ try {
 
   // ¿Cuántos?, Comparar and the radio panel.
   await press('view', 'quantity'); await page.waitForFunction(() => location.search.includes('vista=cuantos'))
+  assert.equal(await page.$eval('[data-control="model"] select', e => e.value), 'residual_v2')
+  await page.select('[data-control="model"] select', 'residual_h1'); await page.waitForFunction(() => location.search.includes('modelo=residual_h1'))
+  assert.doesNotMatch(await page.$eval('.pv-model-rule', e => e.textContent), /10 radios/)
+  await page.select('[data-control="model"] select', 'residual_v2'); await page.waitForFunction(() => location.search.includes('modelo=residual_v2'))
   assert.equal(await page.$('[data-legend="bin-0"]'), null, 'protected legend omits impossible ranges')
   await scrollTo('.pv-controls'); await shot('desktop-cuantos')
   await press('method', 'compare'); await page.waitForFunction(() => document.querySelectorAll('.pv-map').length === 2)
@@ -170,6 +179,14 @@ try {
   await page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating'))
   assert.match(await page.$eval('.pv-private-warning', e => e.textContent), /Modo privado: no proyectar ni compartir capturas/)
   await page.waitForSelector('[data-legend="FP"]'); assert.doesNotMatch(page.url(), /disclosure|privad/)
+  // Private mode: recall@10 / onset@10 per year come from the server for the top-k candidate.
+  await page.select('[data-control="model"] select', 'rf_v2_city_propensity'); await page.waitForFunction(() => location.search.includes('modelo=rf_v2_city_propensity'))
+  await page.$eval('#pv-performance > summary', e => e.scrollIntoView()); await page.click('#pv-performance > summary')
+  await page.waitForFunction(() => document.querySelector('#pv-performance').open)
+  await page.waitForFunction(() => /Recall@10/.test(document.querySelector('#pv-performance')?.textContent || '') && /Onset@10/.test(document.querySelector('#pv-performance').textContent))
+  assert.match(await page.$eval('#pv-performance', e => e.textContent), /Resultado similar al método de repetir la semana anterior/)
+  await scrollTo('#pv-performance'); await shot('desktop-privado-rendimiento-v2')
+  await page.$eval('#pv-performance', e => { e.open = false })
   await page.select('#bt-disclosure', 'presentation'); await page.waitForFunction(() => !document.querySelector('.pv-private-warning'))
   await ready()
 

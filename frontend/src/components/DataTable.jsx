@@ -17,20 +17,20 @@ function radioColumns(view, sources) {
   }
   return cols
 }
-const weekColumns = mode => [
+const weekColumns = (mode, mlKey) => [
   { key: 'week', label: 'Semana', value: w => `SE ${w.target_epi_week}/${w.target_year}`, sortValue: w => w.target_week },
   { key: 'visible', label: mode === 'presentation' ? 'Radios visibles' : 'Radios comparables', value: w => w.n_comparable, number: 0 },
   { key: 'observed', label: 'Observados', value: w => w.observed, number: 0 },
-  { key: 'ml', label: 'Esperados · Modelo ML', value: w => w.ml_predicted ?? null, number: 1 },
+  { key: 'ml', label: 'Esperados · Modelo ML', value: w => w.ml_predicted?.[mlKey] ?? null, number: 1 },
   { key: 'reference', label: 'Esperados · Método de referencia', value: w => w.predicted, number: 1 },
 ]
 
-export default function DataTable({ rows, series, view, sources, mode }) {
+export default function DataTable({ rows, series, view, sources, mode, mlKey }) {
   const [by, setBy] = useState('radio')
   const [sort, setSort] = useState({ key: null, dir: 1 })
   const [query, setQuery] = useState('')
   const [showAll, setShowAll] = useState(false)
-  const columns = by === 'radio' ? radioColumns(view, sources) : weekColumns(mode)
+  const columns = by === 'radio' ? radioColumns(view, sources) : weekColumns(mode, mlKey)
   const items = by === 'radio' ? rows : series || []
   const hasData = by === 'radio' ? r => ['TP', 'FP', 'FN', 'TN', 'value'].includes(cellCategory(r.base, view)) : w => w.n_comparable > 0
   const filtered = items.filter(item => (showAll || hasData(item)) && (!query || (by === 'radio' ? item.radio_id : `${item.target_epi_week}`).includes(query.trim())))

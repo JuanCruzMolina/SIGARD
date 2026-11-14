@@ -29,6 +29,9 @@
 .pv-histogram input[type="range"] { width: 100%; margin: .3rem 0 0; accent-color: var(--teal); min-height: 32px; }
 .pv-histogram-caption { margin: 0; font-size: .8rem; color: var(--ink-soft); }
 .pv-toggles { display: flex; flex-wrap: wrap; gap: .8rem 1.2rem; margin-top: .9rem; }
+.pv-model { display: inline-flex; align-items: center; gap: .5rem; min-width: 0; color: var(--navy, #12343b); font-size: .8rem; font-weight: 700; }
+.pv-model select { min-height: 40px; max-width: 100%; padding: .4rem .6rem; border: 1px solid #839591; border-radius: 8px; background: var(--paper, #fff); color: inherit; font: inherit; font-weight: 600; }
+.pv-model-rule { margin: .5rem 0 0; }
 .pv-segmented { display: inline-flex; flex-wrap: wrap; border: 1px solid #839591; border-radius: 8px; overflow: hidden; background: var(--paper); }
 .historical-backtest .pv-segmented button { border: 0; border-radius: 0; border-right: 1px solid var(--line-strong); color: var(--ink); font-weight: 600; }
 .historical-backtest .pv-segmented button:last-child { border-right: 0; }
@@ -163,6 +166,8 @@ svg.pv-skeleton { animation: none; opacity: .5; }
   .pv-year { width: 100%; }
   .pv-year select { flex: 1; }
   .pv-segmented { width: 100%; }
+  .pv-model { width: 100%; flex-direction: column; align-items: stretch; }
+  .pv-model select { width: 100%; }
   .historical-backtest .pv-segmented button { flex: 1; padding: .5rem .4rem; }
   .pv-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
   .pv-card { padding: .7rem .75rem; }

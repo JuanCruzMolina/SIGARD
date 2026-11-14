@@ -4,7 +4,7 @@ import { createServer } from 'node:net'
 import { dirname, join, delimiter } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
-import { validateBacktestCatalog } from '../src/services/backtestContract.mjs'
+import { MODULE_VERSION, validateBacktestCatalog } from '../src/services/backtestContract.mjs'
 
 const frontend = dirname(dirname(fileURLToPath(import.meta.url)))
 const repository = dirname(frontend)
@@ -35,7 +35,7 @@ export async function identifyApi(base = api) {
     if (!catalog.ok || catalog.headers.get('access-control-allow-origin') !== origin
       || catalog.headers.get('cache-control') !== 'no-store, private') return false
     const value = validateBacktestCatalog(await catalog.json())
-    if (value.module_version !== 'sigard-predictive-experimental/1' || value.training_enabled !== false
+    if (value.module_version !== MODULE_VERSION || value.training_enabled !== false
       || value.operational_enabled !== false || value.active_methods?.presence !== 'presence_seasonal'
       || value.active_methods?.quantity !== 'count_latest') return false
     const denied = await request('/api/v1/research/predictive/calendar')

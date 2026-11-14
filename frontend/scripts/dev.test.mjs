@@ -6,7 +6,7 @@ import { identifyApi, portAvailable, spawnOwned, startDevelopment } from './dev.
 import { catalog as generatedCatalog } from '../security/backtest.fixture.mjs'
 
 const origin = 'http://127.0.0.1:5173'
-const catalog = { ...generatedCatalog, module_version: 'sigard-predictive-experimental/1', active_methods: { presence: 'presence_seasonal', quantity: 'count_latest' }, training_enabled: false, operational_enabled: false }
+const catalog = { ...generatedCatalog, module_version: 'sigard-predictive-experimental/2', active_methods: { presence: 'presence_seasonal', quantity: 'count_latest' }, training_enabled: false, operational_enabled: false }
 
 async function serverFor(t, handler) {
   const server = createServer(handler)

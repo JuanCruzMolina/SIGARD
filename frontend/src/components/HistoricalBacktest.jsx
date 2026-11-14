@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { backtestHistory, backtestSetup, backtestWeek, clearBacktestCache, prefetchWeek } from '../services/backtestResults'
 import { experimentalView, formatValue } from '../services/backtestContract.mjs'
-import { dateLabel, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, readUrlState, writeUrlState } from '../services/predictiveView.mjs'
+import { candidateName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
 import WeekTimeline from './WeekTimeline'
 import SummaryCards, { InfoTip } from './SummaryCards'
 import BacktestMaps from './BacktestMaps'
@@ -143,18 +143,23 @@ export default function HistoricalBacktest() {
   }
   const shown = (current || stale)?.value
   const view = url.view
-  const sources = methodSources(setup.metadata, view)
+  const sources = methodSources(setup.metadata, view, url.model)
   const hasML = sources.some(s => s.source === 'ml')
+  const mlSource = sources.find(s => s.source === 'ml')
+  const model = mlSource?.method || null
+  const modelOptions = candidatesFor(setup.metadata, view)
+  // The city evolution line always shows a count estimate: the chosen model in ¿Cuántos?, the default otherwise.
+  const quantityModel = selectedCandidate(setup.metadata, 'quantity', view === 'quantity' ? url.model : '')
   const method = hasML ? url.method : 'reference'
   const ordered = method === 'reference' ? [...sources].reverse() : sources
   const [primary, other] = ordered
-  const display = shown ? Object.fromEntries(sources.map(s => [s.source, experimentalView(shown, s.source)])) : null
+  const display = shown ? Object.fromEntries(sources.map(s => [s.source, experimentalView(shown, s.source, s.method)])) : null
   const panels = display ? (method === 'compare' ? sources : [primary]).map(s => ({ key: s.source, title: s.label,
     subtitle: view === 'presence' ? 'Radios priorizados (relleno) y radios con registros (trama diagonal)' : url.layer === 'observed' && method !== 'compare' ? 'Registros observados por radio' : 'Registros esperados por radio',
     result: display[s.source] })) : []
   const tableRows = display ? shown.rows.map((r, i) => ({ radio_id: r.radio_id, base: r, ...Object.fromEntries(sources.map(s => [s.source, display[s.source].rows[i]])) })) : []
   const radioRow = url.radio && display ? Object.fromEntries(sources.map(s => [s.source, display[s.source].rows.find(r => r.radio_id === url.radio)])) : null
-  const mlMissing = shown && hasML && method !== 'reference' && shown.availability_status === 'available' && shown.ml?.[view]?.availability_status !== 'available'
+  const mlMissing = shown && hasML && method !== 'reference' && shown.availability_status === 'available' && shown.ml?.[model]?.availability_status !== 'available'
   const climate = shown?.climate
   // Weeks with nothing disclosable get one explanation only, not a map of protected cells.
   const hasCells = shown?.availability_status === 'available' && shown.metrics.n_comparable > 0
@@ -168,8 +173,13 @@ export default function HistoricalBacktest() {
         <Segmented name="method" label="Método" value={method} onChange={v => update({ method: v })} options={hasML
           ? [{ value: 'ml', label: 'Modelo ML' }, { value: 'reference', label: 'Método de referencia' }, { value: 'compare', label: 'Comparar' }]
           : [{ value: 'reference', label: 'Método de referencia' }]} />
+        {hasML && method !== 'reference' && <label className="pv-model" data-control="model">Modelo ML
+          <select value={model} onChange={e => update({ model: e.target.value })}>
+            {modelOptions.map(c => <option key={c.id} value={c.id}>{candidateName(c.id)} · {c.state === 'experimental_not_promoted' ? 'no promovido' : 'evaluado, no promovido'}</option>)}
+          </select></label>}
         {view === 'quantity' && method !== 'compare' && <Segmented name="layer" label="Capa del mapa" value={url.layer} onChange={v => update({ layer: v })} options={[{ value: 'expected', label: 'Esperados' }, { value: 'observed', label: 'Observados' }]} />}
       </div>
+      {hasML && method !== 'reference' && mlSource && <p className="pv-caption pv-model-rule">{candidateName(model)}: {decisionText(mlSource.candidate)} Experimental, no aprobado para uso operativo.</p>}
       {selected && <p className="pv-context">
         <span>Datos usados hasta: <strong>{dateLabel(selected.origin_end)}</strong></span>
         {climate?.availability_status === 'available'
@@ -204,16 +214,16 @@ export default function HistoricalBacktest() {
       </div>}
 
     {selected && (historyFor(selected.target_year)?.value
-      ? <BacktestHistory series={historyFor(selected.target_year).value.series} selected={selected} mode={disclosure} hasML={hasML} onSelect={w => goTo(weeks.find(x => x.target_week === w.target_week))} />
+      ? <BacktestHistory series={historyFor(selected.target_year).value.series} selected={selected} mode={disclosure} hasML={Boolean(quantityModel)} mlKey={quantityModel} onSelect={w => goTo(weeks.find(x => x.target_week === w.target_week))} />
       : historyFor(selected.target_year)?.error ? <p role="alert">{historyFor(selected.target_year).error} <button type="button" onClick={retry}>Reintentar</button></p>
       : <p className="pv-caption" role="status">Cargando evolución de la ciudad…</p>)}
 
     <details className="pv-section" id="pv-performance"><summary>¿Qué tan bien funciona el modelo?</summary>
-      <ModelPerformance metadata={setup.metadata} mode={disclosure} view={view} result={shown}
+      <ModelPerformance metadata={setup.metadata} mode={disclosure} view={view} result={shown} candidate={model}
         histories={Object.fromEntries(Object.entries(histories).filter(([k, h]) => k.startsWith(`${disclosure}/`) && h.value).map(([k, h]) => [k.split('/')[1], h.value]))} />
     </details>
     <details className="pv-section"><summary>Ver datos en tabla</summary>
-      {shown ? <DataTable rows={tableRows} series={historyFor(selected?.target_year)?.value?.series} view={view} sources={ordered} mode={disclosure} /> : <p role="status">Cargando…</p>}
+      {shown ? <DataTable rows={tableRows} series={historyFor(selected?.target_year)?.value?.series} view={view} sources={ordered} mode={disclosure} mlKey={quantityModel} /> : <p role="status">Cargando…</p>}
     </details>
     <details className="pv-section"><summary>Cómo leer esta pantalla y limitaciones</summary><Guide /></details>
   </section>
