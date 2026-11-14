@@ -16,6 +16,8 @@
     "test:citizen": "node --test security/citizen-flow.test.mjs",
     "test:citizen:browser": "node scripts/citizen-flow.browser.mjs",
     "test:accounts:browser": "node scripts/admin-accounts.browser.mjs",
+    "test:prevention": "node --test security/prevention-content.test.mjs",
+    "test:prevention:browser": "node scripts/prevention-admin.browser.mjs",
     "test:dev": "node --test scripts/dev.test.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",

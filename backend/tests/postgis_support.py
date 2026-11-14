@@ -49,7 +49,7 @@ def reset_schema(engine):
     with engine.begin() as db:
         if db.scalar(text("SELECT current_setting('cluster_name')")) != run_id():
             raise ValueError("Disposable cluster identity mismatch; reset forbidden")
-        db.execute(text("TRUNCATE admin_account_audit, citizen_report_audit, citizen_reports, usuarios, "
+        db.execute(text("TRUNCATE prevention_audit, prevention_sections, admin_account_audit, citizen_report_audit, citizen_reports, usuarios, "
                         "experimental_spatial_results, territorial_radios, temporal_predictions, "
                         "publication_weeks, publication_batches RESTART IDENTITY CASCADE"))
 

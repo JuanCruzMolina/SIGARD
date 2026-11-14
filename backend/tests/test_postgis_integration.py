@@ -50,13 +50,14 @@ def test_full_migration_chain_up_down_up(engine):
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "migrations"))
     assert not (set(inspect(engine).get_table_names(schema="public")) - {"spatial_ref_sys"})
-    for revision in ("20260819_01", "20260923_02", "20260924_03", "20261020_04"):
+    for revision in ("20260819_01", "20260923_02", "20260924_03", "20261020_04", "20261114_05"):
         command.upgrade(config, revision)
         with engine.connect() as db:
             assert db.scalar(text("SELECT version_num FROM alembic_version")) == revision
     tables = set(inspect(engine).get_table_names(schema="public"))
     assert {"usuarios", "admin_account_audit", "citizen_reports", "citizen_report_audit", "publication_batches",
-            "publication_weeks", "temporal_predictions", "territorial_radios", "experimental_spatial_results"} <= tables
+            "publication_weeks", "temporal_predictions", "territorial_radios", "experimental_spatial_results",
+            "prevention_sections", "prevention_audit"} <= tables
     columns = {c["name"]: c for c in inspect(engine).get_columns("usuarios")}
     assert columns["token_version"]["nullable"] is False
     assert inspect(engine).get_foreign_keys("admin_account_audit")
