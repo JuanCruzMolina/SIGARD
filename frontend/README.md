@@ -170,6 +170,12 @@ npm run lint
 npm run build
 ```
 
+El visor predictivo (`/mapa` en desarrollo local) muestra sólo el modo protegido. El
+control de valores exactos aparece únicamente si `dev` se inicia con `SIGARD_PRIVATE_VIEW=1`
+(`$env:SIGARD_PRIVATE_VIEW='1'; npm.cmd --prefix frontend run dev`); el build de producción
+nunca lo incluye y la API local mantiene su propia protección (modo `presentation` por defecto,
+`private` sólo con la cabecera local).
+
 La vista `/actividad` («Actividad registrada») está desactivada por defecto. Sólo
 aparece si la API pública sirve un paquete autorizado o la fixture ficticia
 (`SIGARD_PUBLIC_ACTIVITY=fixture`). Con Vite activo, `npm run test:public-activity:browser`

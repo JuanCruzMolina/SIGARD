@@ -38,7 +38,7 @@ existentes del repositorio; no se modifican para la sesión.
 | Id | Verificación | Procedimiento | Aprobado si |
 |---|---|---|---|
 | P1 | Reportes: la ubicación exacta sólo está en el panel protegido | E2/E4 y `npm run test:citizen` | El estado público contiene sólo código, estado, fechas y mensaje |
-| P2 | Mínimo 5 en salidas agregadas | Visor en modo «Protegido», alertas y exportación (E6, E9, E10) | Ningún valor exacto entre 1 y 4 visible ni exportado |
+| P2 | Mínimo 5 en salidas agregadas | Visor sólo en modo protegido (sin `SIGARD_PRIVATE_VIEW`), alertas y exportación (E6, E9, E10); `npm run test:backtest` (bundle sin opción de valores exactos) | Ningún valor exacto entre 1 y 4 visible ni exportado; el selector de valores exactos no existe |
 | P3 | Mapa «Actividad registrada» | `npm run test:public-activity`, `test_public_activity.py` e informe de riesgo del paquete | 0 revelaciones; ningún conteo exacto por radio; 2022 excluido |
 | P4 | Desactivado sin autorización | `GET /api/v1/public/activity` sin archivo de autorización | 404 |
 | P5 | Sin datos reales en el sitio público | `npm run test:public-activity` (ausencia en `public` y `dist`) | Aprobado |

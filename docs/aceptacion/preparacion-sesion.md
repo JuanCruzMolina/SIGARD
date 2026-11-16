@@ -71,8 +71,10 @@ Esperar a la línea de «listo» y a las credenciales. Base SQLite temporal; Ctr
 ```powershell
 npm.cmd --prefix frontend run dev
 ```
-Abrir `/mapa`. Comprobar que el modo de divulgación es «Protegido (por defecto)» y tener lista
-la semana asignada para E6.
+Abrir `/mapa`. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
+existir selector de valores exactos. Ese control sólo aparece si `dev` se inicia con
+`SIGARD_PRIVATE_VIEW=1`, y **nunca se usa en la sesión**: verificar que la variable no está
+definida (`$env:SIGARD_PRIVATE_VIEW` vacío). Tener lista la semana asignada para E6.
 
 ### Entorno C — «Actividad registrada» con fixture ficticia
 Con el entorno B en marcha, abrir **otra** terminal. Desde una carpeta temporal propia, para no
@@ -136,6 +138,7 @@ administrativa abierta y destruir el papel con las credenciales de `dev:demo`.
 - [ ] Commit anotado y árbol limpio (`git status --short` vacío).
 - [ ] Verificación previa aprobada y salidas guardadas en la carpeta privada.
 - [ ] Docker apagado; puertos 5173/8000/8765/8766/8767 libres antes de empezar.
+- [ ] `$env:SIGARD_PRIVATE_VIEW` vacío: el visor sólo ofrece modo protegido.
 - [ ] Cuenta de `dev:alerts` creada y probada.
 - [ ] Sin archivo de autorización real (o, si existe, número y SHA anotados en el acta).
 - [ ] Tarjetas E1–E10 impresas con la semana y el umbral asignados.

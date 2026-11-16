@@ -92,10 +92,10 @@ de ellos tuvieron registros (“Acierto”) y cuántos radios con registros no e
 - lee los tres valores de la leyenda o del resumen, con tolerancia 0;
 - explica que es una **reconstrucción histórica**, no un pronóstico actual.
 
-**Modo de divulgación:** debe permanecer en «Protegido (por defecto)». La opción «Investigación
-privada · valores exactos» de «Opciones avanzadas» es de uso interno del equipo y no se usa en
-la sesión. Si la persona la activa, el observador registra un **error grave**, vuelve a
-«Protegido» y anota en observaciones que la opción está a la vista.
+**Modo de divulgación:** sólo modo protegido. Con `npm run dev` el control de «valores exactos»
+no existe en la interfaz: sólo aparece si el equipo inicia `dev` con `SIGARD_PRIVATE_VIEW=1`,
+lo que **no** se hace en la sesión. El observador comprueba que «Opciones avanzadas» muestra
+«Modo de divulgación: protegido».
 
 **Error crítico:** que el sistema presente los resultados como casos confirmados o como
 situación actual sin aclararlo.
