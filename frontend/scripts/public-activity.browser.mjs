@@ -8,6 +8,7 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { proxyRequest } from './browser-proxy.mjs'
+import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { blockLabel, blockRange, periodBanner, periodText } from '../src/services/publicActivity.mjs'
 
 const require = createRequire(import.meta.url)
@@ -130,6 +131,10 @@ try {
     assert.ok(!/\b2022-B\d\d\b/.test(await page.$eval('#pa-block', e => e.innerHTML)))
   })
 
+  await check('teclado: bloque, radio y tablas alcanzables con Tab', async () => {
+    for (const selector of ['#pa-block', '#pa-radio', '.pa-series summary']) assert.ok(await tabReaches(page, selector), `${selector} alcanzable con Tab`)
+  })
+
   await check('selector de radio, serie semanal y tablas equivalentes', async () => {
     await page.select('#pa-radio', 'FICT-001')
     await page.waitForFunction(() => document.querySelector('.pa-radio p')?.textContent.includes('Radio FICT-001'))
@@ -161,6 +166,9 @@ try {
         .filter(e => e.getBoundingClientRect().right > innerWidth + 1).map(e => e.className || e.tagName).slice(0, 5))
       assert.deepEqual(clipped, [], `elementos cortados a ${width}px`)
       await accessibility(page, `activity-${width}`)
+      const full = await auditAccessibility(page, 'main')
+      assert.deepEqual(full.unnamed, [], `actividad: controles sin nombre (${width}px)`)
+      assert.deepEqual(full.lowContrast, [], `actividad: contraste insuficiente (${width}px)`)
       await page.screenshot({ path: resolve(output, `activity-fixture-${width}.png`), fullPage: true })
       await page.evaluate(() => window.scrollTo(0, document.body.scrollHeight))
       await delay(100)
@@ -186,8 +194,8 @@ try {
     assert.equal(await page.$('.main-nav a[href="/actividad"]'), null)
     await page.screenshot({ path: resolve(output, 'activity-disabled-1440.png') })
     await page.click('.main-nav a[href="/mapa"]')
-    await page.waitForSelector('.page-intro h1')
-    assert.notEqual(await page.$eval('.page-intro h1', e => e.textContent), 'Actividad registrada')
+    // Wait for the route change: the previous heading is still in the DOM right after the click.
+    await page.waitForFunction(() => location.pathname === '/mapa' && document.querySelector('.page-intro h1')?.textContent !== 'Actividad registrada')
   })
   assert.deepEqual(report.pageErrors, [])
   assert.equal(enabled.errors(), '')

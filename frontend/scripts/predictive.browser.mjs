@@ -150,7 +150,8 @@ try {
 
   // ¿Cuántos?, Comparar and the radio panel.
   await press('view', 'quantity'); await page.waitForFunction(() => location.search.includes('vista=cuantos'))
-  assert.equal(await page.$eval('[data-control="model"] select', e => e.value), 'residual_v2')
+  // The URL changes before React re-renders the model options: wait for the default quantity model.
+  await page.waitForFunction(() => document.querySelector('[data-control="model"] select')?.value === 'residual_v2', { timeout: 10000 })
   await page.select('[data-control="model"] select', 'residual_h1'); await page.waitForFunction(() => location.search.includes('modelo=residual_h1'))
   assert.doesNotMatch(await page.$eval('.pv-model-rule', e => e.textContent), /10 radios/)
   await page.select('[data-control="model"] select', 'residual_v2'); await page.waitForFunction(() => location.search.includes('modelo=residual_v2'))

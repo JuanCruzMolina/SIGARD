@@ -1,7 +1,8 @@
 """Disposable loopback API for the public activity browser check, never deployment.
 
 ``--fixture`` serves the generated fictional activity package; without it the view must be
-disabled (no authorization file exists in the temporary folder). Reads no .env, uses a
+disabled (no authorization file exists in the temporary folder). ``--prevention`` also loads
+the versioned public prevention guidance (not a fixture) so its page is served by the API. Reads no .env, uses a
 temporary SQLite store and never touches real packages. Stdin EOF shuts it down.
 """
 
@@ -37,6 +38,12 @@ def main():
         from app.main import create_app
 
         app = create_app()
+        if "--prevention" in sys.argv:
+            from app.database import Base
+            from app.prevention_seed import seed_from_file
+            Base.metadata.create_all(app.state.engine)
+            with app.state.SessionLocal() as db:
+                seed_from_file(db)
         listener = socket.socket()
         listener.bind(("127.0.0.1", 0))
         listener.listen(128)

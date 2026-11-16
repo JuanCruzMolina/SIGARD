@@ -9,6 +9,7 @@ import { createRequire } from 'node:module'
 import { access, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { alertsRuntime, ALERTS_API } from './dev-alerts.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
 
@@ -103,6 +104,15 @@ try {
   await clickText('Alertas internas')
   await page.waitForFunction(() => document.querySelector('.alerts-banner')?.textContent.includes('Ningún algoritmo publica alertas'))
   await page.waitForFunction(() => document.querySelectorAll('.alerts-evaluate option').length > 0)
+  for (const width of [1440, 390]) {
+    await page.setViewport({ width, height: 1000 })
+    const audit = await auditAccessibility(page, 'main')
+    assert.deepEqual(audit.unnamed, [], `alertas: controles sin nombre (${width}px)`)
+    assert.deepEqual(audit.lowContrast, [], `alertas: contraste insuficiente (${width}px)`)
+  }
+  await page.setViewport({ width: 1440, height: 1000 })
+  assert.ok(await tabReaches(page, '.alerts-evaluate select, .alerts-evaluate button'), 'la evaluación se alcanza con Tab')
+  checkpoint('Alerts panel: names, contrast and keyboard reachability')
   await tab('how')
   const how = await page.$eval('.alerts-how', node => node.textContent)
   for (const term of ['Canal', 'Periodicidad', 'Origen del umbral', 'Responsable de aprobación', 'Falsas alarmas', 'automatización queda fuera del alcance']) assert.ok(how.includes(term), term)

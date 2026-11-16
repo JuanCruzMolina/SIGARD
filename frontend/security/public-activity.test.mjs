@@ -51,6 +51,12 @@ test('view is disabled by default: 404, network failure or invalid package', asy
     resetActivityCache()
     assert.deepEqual(await loadActivity(fetcher), { enabled: false })
   }
+  // A probe that never answers is aborted and fails closed instead of staying pending.
+  resetActivityCache()
+  const hanging = (url, options) => new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason)))
+  const started = Date.now()
+  assert.deepEqual(await loadActivity(hanging, 50), { enabled: false })
+  assert.ok(Date.now() - started < 2000)
   resetActivityCache()
   const enabled = await loadActivity(response(200, sample()))
   assert.equal(enabled.enabled, true)
