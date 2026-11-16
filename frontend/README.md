@@ -66,6 +66,15 @@ reportes ciudadanos y administración del puerto 8000 sigue siendo independiente
 Este comando sólo coordina desarrollo: build, preview y producción conservan
 su comportamiento. Ver [arquitectura y cierre del módulo final](../docs/predictive-module-final.md).
 
+Si existe el paquete privado de historia anual precalculada
+(`data/interim/official/predictive-history-v1/`, ver «Historia anual precalculada» en el mismo
+documento), la API lo instala y sirve la serie anual sin recalcularla.
+
+Medición de rendimiento (criterio c, p95 < 5 s): `npm.cmd --prefix frontend run test:performance`
+mide sobre el servidor de desarrollo; `-- --target production` repite las mismas operaciones con
+`vite build` + `vite preview` (bundles de medición en la carpeta privada, nunca en `dist`). Resultados
+en [verificación final](../docs/verificacion-final.md) §3.
+
 ### Demostración integral descartable
 
 Desde `frontend/`:

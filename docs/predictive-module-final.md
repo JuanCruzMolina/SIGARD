@@ -196,6 +196,36 @@ Las credenciales se leen del archivo privado existente, nunca de documentación
 ni argumentos con contraseñas. Iniciar sólo el clúster privado 55439 cuando sea
 necesario y apagarlo si se inició para esa operación. Docker y 5432 no se usan.
 
+### Historia anual precalculada (P6.1)
+
+La serie anual de todo el territorio (`/history` con el rango completo de un año del
+catálogo y sin `radio`) era la respuesta más lenta: proyecta y protege cada semana del año
+(unos 3–6,5 s por año) y, con 5 usuarios a la vez, las solicitudes se serializaban en el
+proceso local. Ahora se precalcula offline con el mismo código del servicio:
+
+```powershell
+cd backend
+.\.venv\Scripts\python.exe -B -m app.predictive_history build    # crea el paquete (no sobrescribe)
+.\.venv\Scripts\python.exe -B -m app.predictive_history verify   # almacenada == calculada, todos los años y modos
+```
+
+- Paquete privado `data/interim/official/predictive-history-v1/`: un archivo por año del
+  catálogo y modo de divulgación (`presentation`, `private`), 14 en total, cada uno listado
+  en `manifest.private.json` con su SHA-256; `registry.private.json` fija el manifiesto.
+- El manifiesto queda **ligado a sus entradas**: SHA-256 del registro del backtest, de cada
+  registro de candidatos ML y del código que produce la historia (`predictive_service.py`,
+  `backtest_results.py`, `predictive_ml.py`, `predictive_history.py`). Si cualquiera cambia,
+  la historia anual responde 503 hasta reconstruir el paquete.
+- `app.research_local` instala el paquete si existe. Con el paquete instalado la API **sólo lee
+  y verifica** la historia anual, con el mismo mecanismo de verificación y caché por proceso
+  (`local_bytes`): nunca la recalcula. Un archivo, manifiesto o registro alterado bloquea (503);
+  un año del catálogo ausente del manifiesto también bloquea.
+- Otros rangos y la historia de un radio (panel del radio) se siguen proyectando por solicitud
+  (alrededor de 1,2 s por radio y año); precalcularlas requeriría unos 3 700 archivos.
+- Sin entrenamiento, inferencia, SQL ni lectura de fuentes: sólo proyecta los paquetes ya fijados.
+- Pruebas: `backend/tests/test_predictive_history.py` (fixtures ficticias con candidatos v1 y v2).
+  Con los paquetes reales, `verify` confirmó 14/14 historias idénticas (16/11/2026).
+
 ## Validación, rendimiento y límites pendientes
 
 Las pruebas ficticias verifican privacidad, consistencia, contratos, calendario,

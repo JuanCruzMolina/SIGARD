@@ -1,15 +1,16 @@
 # Verificación final antes de las pruebas de aceptación (P6)
 
-Fecha: 16/11/2026 · Rama `entrenamiento-ML` · Etiqueta `v0.9.0-aceptacion`.
+Fecha: 16/11/2026 · Rama `entrenamiento-ML` · Etiquetas `v0.9.0-aceptacion` (P6) y
+`v0.9.1-aceptacion` (P6.1: historia anual precalculada, rendimiento en producción, criterios
+literales y límites documentados).
 
 Estados usados: **Cumple** (implementado y verificado con la prueba citada) · **Parcial** (cumple con
 límites declarados) · **Distinto** (se resolvió de otra forma que lo prometido, con justificación) ·
 **Pendiente** (no cubierto).
 
-> El texto original del anteproyecto no está en el repositorio: `PRODUCT.md` cita una ruta de otro
-> equipo. La matriz parte de `PRODUCT.md`, `docs/plan-proyecto.md`, el punto 13 del tutor y las
-> consignas de esta etapa. Los criterios (a), (b) y (d) se registran como **pendientes de
-> transcripción literal**, para no atribuirles un contenido inventado.
+> La matriz de módulos parte de `PRODUCT.md`, `docs/plan-proyecto.md`, el punto 13 del tutor y las
+> consignas de esta etapa. Los criterios de aceptación de §2 se transcriben literalmente del
+> anteproyecto (texto provisto por el responsable el 16/11/2026).
 
 ## 1. Módulos del anteproyecto
 
@@ -22,31 +23,54 @@ límites declarados) · **Distinto** (se resolvió de otra forma que lo prometid
 | 5. Gestión de usuarios por roles | Acceso detallado sólo autenticado y autorizado | Rol `admin` con JWT HS256 versionado, alta/rotación/desactivación con confirmación, último administrador protegido | `test_admin_accounts.py`, `test_route_authorization.py`, `test:accounts:browser` (normal e integral) | §4 | **Cumple** (con la diferencia de §5: ciudadanía anónima) |
 | 6. Información sanitaria administrable | Contenido preventivo editable | Borrador, publicación con versión, despublicación y auditoría (`prevention.py`); página pública desde la API con respaldo estático | `test_prevention_content.py`, `test:prevention`, `test:prevention:browser`; migración 05 y carga inicial en PostGIS (§2) | `backend/README.md` § módulo 6 | **Cumple** |
 
-## 2. Criterios de evaluación
+## 2. Criterios de aceptación del anteproyecto
 
-| Criterio | Especificación | Implementación / prueba | Evidencia | Estado |
-|---|---|---|---|---|
-| (a) | Pendiente de transcripción literal del anteproyecto | — | — | **Pendiente** |
-| (b) | Pendiente de transcripción literal del anteproyecto | — | — | **Pendiente** |
-| (c) Rendimiento | p95 < 5 s por operación, 1 y 5 usuarios, 30 repeticiones (punto 13 del tutor) | `frontend/scripts/performance.browser.mjs` (`npm run test:performance`) | §3 | **Parcial**: 11 de 12 mediciones cumplen; la carga del visor con 5 usuarios no cumple |
-| (d) | Pendiente de transcripción literal del anteproyecto | — | — | **Pendiente** |
+Texto literal:
+
+> «Los criterios mínimos de aceptación del prototipo serán: (a) todos los módulos descritos deben
+> estar operativos en un entorno de prueba; (b) el modelo predictivo debe estar entrenado, evaluado
+> y documentado, demostrando mediante métricas estándar una capacidad predictiva superior a la de
+> un modelo de referencia (baseline) apropiado para el problema predictivo abordado; (c) el sistema
+> debe responder en menos de 5 segundos ante consultas sobre el mapa de riesgo; y (d) el prototipo
+> debe superar las pruebas de aceptación con al menos dos referentes del Ministerio de Salud de
+> La Rioja.»
+
+| Criterio | Evidencia | Estado |
+|---|---|---|
+| (a) Módulos operativos en un entorno de prueba | Matriz de §1: los seis módulos funcionan en el entorno de prueba local (`dev`, `dev:demo`, `dev:alerts` y API ficticia), con sus pruebas automáticas y recorridos de navegador aprobados (§6). Los estados *Parcial* y *Distinto* de §1 describen alcance (uso local y retrospectivo, niveles por radio en lugar de mapa de calor), no falta de funcionamiento | **Cumple**, con las diferencias declaradas en §5 |
+| (b) Modelo entrenado, evaluado y documentado, superior a un baseline | **Cantidad:** `residual_v2` obtiene MAE 0,030535 frente a 0,035357 de `count_latest` (persistencia) en desarrollo 2021–2023: 13,6 % menor, ΔMAE −0,00482 con IC95 [−0,00823; −0,00195]. Evaluación walk-forward con purga temporal, protocolo prerregistrado (commit `947f71c`) y verificación independiente (28/28 cifras coinciden). **Presencia:** `rf_v2_city_propensity` empata con la persistencia (recall@10 0,160 frente a 0,156; diferencia no significativa). El criterio adicional Q2 del protocolo (error en conteos altos y sesgo) **no se cumplió** (sesgo −0,0081), por lo que ningún candidato se promovió a uso operativo. Documentación: `docs/predictive-module-final.md` («Integración de candidatos v2») y `docs/database/ml-candidates-closure.md` | **Cumple para cantidad**; presencia sin superioridad demostrada |
+| (c) Respuesta < 5 s en consultas sobre el mapa de riesgo | §3: 6 operaciones, 1 y 5 usuarios, p95 sobre 30 repeticiones, en desarrollo y en producción | **Cumple en producción** (12/12 mediciones bajo 5 s, 1 y 5 usuarios); en el servidor de desarrollo, 3 cargas en frío con 5 usuarios no cumplen (§3) |
+| (d) Aceptación con al menos dos referentes del Ministerio | Kit en `docs/aceptacion/` (protocolo, escenarios, SUS, criterios, acta y planilla) | **Pendiente** de las sesiones de aceptación |
 
 ## 3. Rendimiento (criterio c)
 
-**Script reproducible:** `frontend/scripts/performance.browser.mjs`. Se ejecuta con
-`npm.cmd --prefix frontend run test:performance`; `--only a,b` repite operaciones y `--reps N` cambia
-la cantidad de repeticiones. Levanta sus propios entornos y registra sólo tiempos en
-`data/interim/official/performance-v1/` (privado).
+**Script reproducible:** `frontend/scripts/performance.browser.mjs`.
+- Desarrollo: `npm.cmd --prefix frontend run test:performance`.
+- Producción: `npm.cmd --prefix frontend run test:performance -- --target production`.
+- `--only a,b` repite operaciones y `--reps N` cambia la cantidad de repeticiones.
+- Levanta sus propios entornos y registra sólo tiempos en `data/interim/official/performance-v1/`
+  (privado; producción en `production/`).
 
 **Entorno:**
 - AMD Ryzen 5 5500 (12 hilos), 16 GB de RAM, Windows 11 (10.0.26300), Node 24.15.0, Chromium 152 headless.
-- Todo en el mismo equipo: Vite **en modo desarrollo** (sin bundle de producción), APIs locales uvicorn de un solo proceso.
-- Se excluyen las teselas de calles y las fuentes web externas, para que la red de Internet no influya.
+- Todo en el mismo equipo, con otras aplicaciones de escritorio abiertas; APIs locales uvicorn de un solo proceso.
+- **Desarrollo:** servidor de Vite (módulos sin empaquetar).
+- **Producción:** `vite build` (React de producción, minificado) servido con `vite preview` en el
+  mismo origen, con las mismas APIs.
+  - El visor predictivo no forma parte de los bundles públicos: exige la compuerta de
+    investigación local (`import.meta.env.DEV`).
+  - Para medirlo se compiló un bundle de medición que abre sólo esa compuerta.
+  - Los bundles de medición quedan en la carpeta privada y nunca en `dist`.
+- Se bloquean los orígenes externos (teselas y fuentes web, todos https) para que la red de
+  Internet no influya.
+- **Sin interceptación de solicitudes:** el frontend apunta directamente a la API ficticia mediante
+  `VITE_API_URL` (ver la lectura del resultado).
 
 **Volumen:**
 - 263 radios oficiales en la geometría del visor.
 - 208 semanas evaluables 2021–2024 (catálogo de 366 semanas).
 - Visor y alertas con la API predictiva local en modo protegido.
+- Historia anual precalculada instalada (`docs/predictive-module-final.md`, «Historia anual precalculada»).
 - «Actividad registrada» con la fixture ficticia (24 celdas + 1 fuera del área, 45 bloques).
 
 **Método:**
@@ -54,35 +78,46 @@ la cantidad de repeticiones. Levanta sus propios entornos y registra sólo tiemp
 - 30 rondas con 5 usuarios concurrentes, cada uno en su propio contexto de navegador (150 muestras).
 - p95 por rango más cercano.
 - Las cargas se miden en frío: contexto nuevo por muestra, desde la navegación hasta el contenido completo.
-- El cambio de semana y la consulta de radio se miden sobre un visor ya cargado, después de que terminaron sus cargas de fondo.
+- El cambio de semana y la consulta de radio se miden sobre un visor ya cargado, después de que
+  terminaron sus cargas de fondo.
 - Una muestra que supera 30 s se registra como falla (≥ 30 000 ms); nunca se descarta.
 
-| Operación | Condición de fin | 1 usuario p95 | 5 usuarios p95 (máx.) | Umbral 5 s |
-|---|---|---|---|---|
-| Carga de «Actividad registrada» (fixture) | 25 polígonos y serie dibujados | 970 ms | 4 246 ms (4 444) | **Cumple** |
-| Carga de prevención | 27 establecimientos y contenido de la API | 990 ms | 4 215 ms (4 270) | **Cumple** |
-| Carga del visor | semana lista y ≥ 263 polígonos | 3 023 ms | **33 548 ms** (33 673; 48/150 muestras > 30 s) | **No cumple con 5 usuarios** |
-| Cambio de semana (visor cargado) | semana nueva lista | 400 ms | 676 ms (698) | **Cumple** |
-| Consulta de radio (visor cargado) | panel del radio | 184 ms | 370 ms (953) | **Cumple** |
-| Panel de alertas | panel con semanas evaluables | 333 ms | 307 ms (320) | **Cumple** |
+**Resultados del 16/11/2026** (p95 en ms; entre paréntesis, el máximo):
+
+| Operación | Condición de fin | Dev, 1 usuario | Dev, 5 usuarios | Producción, 1 usuario | Producción, 5 usuarios |
+|---|---|---|---|---|---|
+| Carga de «Actividad registrada» (fixture) | 25 polígonos y serie dibujados | 1 339 (1 813) | **6 266** (7 123) | 604 (667) | 1 146 (1 215) |
+| Carga de prevención | 27 establecimientos y contenido de la API | 1 367 (1 374) | **6 829** (7 034) | 350 (366) | 1 415 (1 476) |
+| Carga del visor | semana lista y ≥ 263 polígonos | 1 954 (1 973) | **7 558** (7 903) | 815 (822) | 2 949 (30 685; 1/150 > 30 s) |
+| Cambio de semana (visor cargado) | semana nueva lista | 258 (278) | 739 (789) | 180 (186) | 569 (660) |
+| Consulta de radio (visor cargado) | panel del radio | 161 (175) | 307 (328) | 81 (135) | 279 (346) |
+| Panel de alertas | panel con semanas evaluables | 195 (211) | 306 (326) | 174 (205) | 267 (291) |
+| **Umbral 5 s** | | cumple 6/6 | **cumple 3/6** | cumple 6/6 | **cumple 6/6** |
 
 **Lectura del resultado:**
-- La carga del visor **no cumple** el umbral con 5 usuarios concurrentes. La API predictiva local
-  recalcula y vuelve a verificar la integridad de cada semana en cada pedido; esta decisión de diseño
-  impide que un archivo alterado se sirva desde un caché. `/history` tarda unos 6,5 s por año con un
-  usuario y unos 34 s con 5, porque las solicitudes se serializan en un solo proceso.
-- Con un usuario, que es el uso previsto en las sesiones de aceptación (un participante a la vez),
-  cumple holgadamente.
-- La corrección posible es un caché por proceso indexado por los hashes ya verificados, o una
-  historia precalculada en el bundle offline. Ambas modifican la política de integridad y quedan
-  **pendientes de decisión**.
-- Las cargas con 5 usuarios rondan 4,2 s porque Vite en modo desarrollo sirve los módulos sin
-  empaquetar a 5 navegadores en frío a la vez. En producción (bundle estático) se espera menos, pero
-  **no se midió**.
-- La primera corrida midió el cambio de semana mientras el visor seguía cargando historias de fondo
-  (p95 826 ms, con 1 muestra > 30 s). Se corrigió la preparación y se volvió a medir.
-- El panel de alertas con 5 usuarios se midió en una corrida aparte, porque el límite de inicio de
-  sesión (5 por 15 min) impedía 6 sesiones. Ahora se inicia una sola sesión y se reutiliza el token.
+- **Producción cumple las 12 mediciones.** Con 5 usuarios, la carga del visor tiene p95 2,9 s
+  (en P6, en modo desarrollo, fue 33,5 s).
+- **Desarrollo con 5 usuarios no cumple** en las tres cargas en frío (6,3–7,6 s). Las tres incluyen
+  «Actividad registrada» y prevención, que no usan la API predictiva. El cuello de botella es el
+  servidor de Vite, que sirve cientos de módulos sin empaquetar a 5 navegadores en frío a la vez;
+  no es la API. Las operaciones sobre un visor ya cargado cumplen también en desarrollo.
+- **Historia anual precalculada.** La API ya no recalcula la serie anual: `/history` pasó de unos
+  6,5 s por año a 0,08 s con un usuario, y a 0,33 s con 5 solicitudes simultáneas medidas
+  directamente contra la API.
+- **Arnés de medición corregido.** La interceptación de solicitudes de Chromium (Puppeteer, y
+  también un patrón `Fetch` de CDP limitado a la API ficticia) hacía fallar en forma intermitente
+  solicitudes concurrentes a la API predictiva con `net::ERR_FAILED`, a los ~10 ms y antes de
+  llegar a la API. Eso dejaba entre el 10 % y el 80 % de las cargas del visor con 5 usuarios
+  detenidas hasta el límite de 30 s.
+  - Sin interceptación, 60/60 cargas terminaron en 2,4–3,3 s.
+  - Parte de las 48 fallas de P6 se debían a este artefacto; la otra parte, al recálculo de la
+    historia, que la API ya no hace.
+- **Observación abierta.** En producción, 1 de 150 cargas con 5 usuarios terminó con «No se pudo
+  conectar con la API local». La consulta inicial falló y la página ofreció «Reintentar», pero la
+  muestra no se recuperó sola y se contó como falla de 30 s. No se reprodujo en desarrollo
+  (0/150). Se registra sin descartarla.
+- Con un usuario, el uso previsto en las sesiones de aceptación, todas las operaciones cumplen
+  en ambos modos.
 
 ## 4. Medidas de seguridad prometidas
 
@@ -93,7 +128,7 @@ la cantidad de repeticiones. Levanta sus propios entornos y registra sólo tiemp
 | Auditoría | Auditoría de reportes (actualización, exportación y, desde P6, **consulta del detalle**), de cuentas (sin credenciales), de contenido preventivo (antes/después) y de alertas | `test_citizen_reports.py::test_admin_detail_view_is_audited_without_report_content`, `test_admin_accounts.py`, `test_prevention_content.py`, `test_internal_alerts.py` | **Cumple** (consulta de detalle corregida en P6) |
 | Alta de administradores | Sólo un administrador autenticado crea cuentas, con su contraseña; sin registro público ni recuperación por correo; bootstrap sólo con base vacía | `test_admin_accounts.py`, `test:accounts:browser` | **Cumple** |
 | Revocación de tokens | `token_version` en rotación y desactivación; sesión propia cerrada | `test_admin_accounts.py::test_rotation_revokes_every_old_token_and_password`, `test:accounts:browser` | **Cumple** |
-| Retención | Reportes con `retention_until` (180 días por defecto) y purga diaria fuera del proceso web (`app/retention.py`) | `test_citizen_reports.py::test_retention_removes_only_expired_reports` | **Parcial**: la tarea programada de producción no está desplegada |
+| Retención | Reportes con `retention_until` (180 días por defecto) y purga diaria fuera del proceso web (`app/retention.py`) | `test_citizen_reports.py::test_retention_removes_only_expired_reports` | **Parcial**: el comando existe y está probado; la tarea programada diaria queda para el despliegue institucional (el prototipo no tiene servidor de producción propio) |
 | Cabeceras y CSP | API: `nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: no-referrer`, `no-store` en admin; Vercel: CSP, Permissions-Policy, Referrer-Policy y X-Frame-Options | `test_admin_accounts.py`, `test:security`, revisión de `frontend/vercel.json` | **Cumple** (HSTS depende del dominio de despliegue) |
 | Límites de entrada | Esquemas Pydantic con longitudes máximas, límites de frecuencia en reportes, geocodificación y login, CSV con neutralización de fórmulas | `test_citizen_reports.py`, `test_admin_accounts.py::test_password_confirmation_uses_existing_rate_limiter` | **Cumple** |
 | Sin datos reales en el sitio público | Recursos públicos aprobados por hash; paquete de actividad sólo vía API autorizada; modo de valores exactos fuera del bundle | `test:security`, `test:public-activity`, `test:backtest` (`private-view.test.mjs`) | **Cumple** |
@@ -122,8 +157,8 @@ la cantidad de repeticiones. Levanta sus propios entornos y registra sólo tiemp
 | 1b. Modo integral de cuentas | Adaptado al módulo predictivo; 11/11 comprobaciones, 0 defectos | `SIGARD_INTEGRAL_REVIEW=1 SIGARD_EXPECT_STABLE=1 test:accounts:browser` |
 | 1c. Falla intermitente de cuentas | Causa: `net::ERR_FAILED` al reescribir la URL con `request.continue` mientras otra solicitud interceptada se abortaba. Corregido con proxy desde Node | 0 fallas en 30 corridas (antes 1 cada 10–15); `browser-proxy.test.mjs` |
 | 2. Migraciones en PostgreSQL 16.15 / PostGIS 3.4.2 | Base nueva `sigard_public_migration_test` en 55439: cadena completa, carga inicial de prevención (5 secciones, idempotente), bajada/subida de 05 y 06, candidata «publicada» rechazada (23514), umbral < 5 rechazado, API lista; base eliminada y clúster detenido | `backend/tests/postgres_migration_check.py` (11/11 pasos) |
-| 2. Pruebas PostGIS omitidas (6) | **No ejecutadas**: requieren el runner descartable con Docker (puerto 5435, identidad propia); no se debilitaron sus guardas ni se inició Docker | — |
-| 4. Rendimiento | 11 de 12 mediciones cumplen p95 < 5 s; la carga del visor con 5 usuarios no cumple | §3 |
+| 2. Pruebas PostGIS omitidas (6) | **Límite documentado, no ejecutadas**: requieren el runner descartable con Docker (puerto 5435, identidad propia) y `AGENTS.md` prohíbe iniciar Docker. La cadena de migraciones sí se verificó en PostGIS real (`postgres_migration_check.py`, 11/11). No se debilitaron sus guardas | `AGENTS.md`; punto 2 anterior |
+| 4. Rendimiento (P6.1) | Producción: 12/12 mediciones bajo 5 s. Desarrollo: 9/12 (las cargas en frío con 5 usuarios superan 5 s por el servidor de Vite). Historia anual precalculada y arnés sin interceptación | §3 |
 | 5. Seguridad | 27 rutas administrativas exigen rol; 401 sin token o con token falso en todas; superficie pública explícita; auditoría de consulta de detalle agregada; auditoría del repositorio sin candidatos sensibles (197 controles) | `test_route_authorization.py`, `check_repository_security.py` |
 | 5. Accesibilidad | Nombres accesibles, contraste AA de todo el texto visible y alcance por teclado en administración de prevención, alertas y actividad (1440 y 390 px) | `browser-a11y.mjs` en `test:prevention:browser`, `test:alerts:browser`, `test:public-activity:browser` |
 | 6. Frontend | lint y build; `test:security` 15, `test:public-map` 5, `test:public-activity` 5, `test:research` 21, `test:dev` 21, `test:backtest` 22, `test:citizen` 4, `test:prevention` 5, `test:alerts` 5, `test:demo` 13: todo aprobado | — |
@@ -133,7 +168,7 @@ la cantidad de repeticiones. Levanta sus propios entornos y registra sólo tiemp
 
 Límites:
 - Sin lector de pantalla real ni dispositivo móvil físico.
-- Rendimiento medido en modo desarrollo, no en producción.
+- Rendimiento medido en un solo equipo, con cliente y servidores en la misma máquina.
 - PostGIS verificado en el clúster local, no en un servidor institucional.
 
 ## 7. Defectos
@@ -150,13 +185,21 @@ Límites:
 | Carreras en `predictive.browser` y `public-activity.browser` | Lectura inmediatamente después del cambio de URL/ruta | Espera explícita del estado final | Corridas repetidas |
 | `postgres_migration_check.py` escribía el resultado en la carpeta temporal | Ruta relativa resuelta después de cambiar de directorio | Rutas resueltas al inicio | Corrida final con evidencia |
 
+### Corregidos en P6.1
+
+| Defecto | Causa | Corrección | Regresión |
+|---|---|---|---|
+| Carga del visor con 5 usuarios > 5 s | `/history` recalculaba la serie anual en cada pedido (≈ 6,5 s por año), serializado en el proceso local | Historia anual precalculada offline, ligada a sus entradas y verificada con el mismo mecanismo; la API sólo lee | `test_predictive_history.py` (idéntica para todos los años, modos y candidatos; alterada o desactualizada bloquea); `verify` real 14/14 |
+| Medición del visor distorsionada por el arnés | La interceptación de solicitudes de Chromium hacía fallar solicitudes concurrentes a la API predictiva (`net::ERR_FAILED`) | `performance.browser.mjs` sin interceptación: `VITE_API_URL` a la API ficticia y bloqueo de orígenes https | Corridas de 30 repeticiones en desarrollo y producción |
+
 ### Pendientes
 
 | Pendiente | Impacto | Propuesta |
 |---|---|---|
-| Carga del visor con 5 usuarios concurrentes > 5 s | Criterio (c) parcial; no afecta sesiones con un participante a la vez | Decidir entre un caché por proceso indexado por los hashes verificados y una historia precalculada offline |
-| 6 pruebas PostGIS que requieren el runner con Docker | Cubiertas en parte por `postgres_migration_check.py` | Correrlas cuando se autorice Docker o un servidor descartable |
-| Criterios (a), (b) y (d) del anteproyecto | Matriz incompleta | Transcribir el texto literal del anteproyecto |
-| Rendimiento en producción (bundle estático) | No medido | Repetir el script contra `vite preview` |
-| Retención: tarea programada de producción | Sólo el comando existe | Programarla en el despliegue institucional |
+| Cargas en frío con 5 usuarios en el servidor de desarrollo (6,3–7,6 s) | No afecta producción ni sesiones con un participante a la vez | Usar el bundle de producción si se prueban varias sesiones simultáneas |
+| 1 de 150 cargas del visor en producción terminó con «No se pudo conectar» | La página ofrece «Reintentar»; no se recupera sola | Observar en las sesiones de aceptación; evaluar un reintento automático de las consultas iniciales |
+| Historia por radio (panel del radio) calculada por pedido (≈ 1,2 s por radio y año) | Fuera de las 6 operaciones medidas; puede tardar más con varias sesiones | Precalcular sólo si las sesiones lo requieren (≈ 3 700 archivos) |
+| 6 pruebas PostGIS que requieren el runner con Docker | Límite documentado: `AGENTS.md` prohíbe iniciar Docker; la cadena de migraciones se verificó en PostGIS real (11/11) | Correrlas cuando se autorice Docker o un servidor descartable |
+| Criterio (d): pruebas de aceptación con dos referentes del Ministerio | Aceptación pendiente | Realizar las sesiones con el kit de `docs/aceptacion/` |
+| Retención: tarea programada de producción | El comando existe y está probado | Programarla en el despliegue institucional |
 | Autorización institucional para el mapa con datos reales | La vista queda desactivada | Formalizar con el Ministerio |

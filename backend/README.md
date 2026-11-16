@@ -507,7 +507,9 @@ compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo
 por defecto es 180 días. En Docker se ejecuta mediante el servicio temporal
 `retention`; en producción debe configurarse un cron o tarea equivalente como
-condición obligatoria de salida.
+condición obligatoria de salida. El prototipo no tiene servidor de producción propio:
+la tarea programada queda a cargo del despliegue institucional (estado registrado en
+`docs/verificacion-final.md` §4).
 
 Los límites antiabuso en memoria sirven para una sola instancia del MVP. Antes
 de escalar horizontalmente deben reemplazarse por un almacén efímero compartido
