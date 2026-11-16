@@ -11,6 +11,7 @@ BACKTEST_REGISTRY = Path("data/interim/official/historical-backtest-session-v1/r
 CONTEXT_REGISTRY = Path("data/interim/official/predictive-context-session-v1/registry.private.json")
 ML_REGISTRY = Path("data/interim/official/ml-integration-stage3-20261103-v1/registry.private.json")
 ML_V2_REGISTRY = Path("data/interim/official/ml-integration-v2-20261114-v1/registry.private.json")
+HISTORY_REGISTRY = Path("data/interim/official/predictive-history-v1/registry.private.json")
 
 
 def main():
@@ -27,8 +28,13 @@ def main():
     # Pin each installed overlay registry at startup; bytes are verified per process (re-hashed on change).
     ml_registries = [(path, hashlib.sha256(local_bytes(ROOT, path)).hexdigest())
                      for path in (ML_REGISTRY, ML_V2_REGISTRY) if (ROOT / path).exists()]
+    # Precomputed annual histories (built with `python -m app.predictive_history build`): read and
+    # verified per request, bound to the registries above and to the service code.
+    from .predictive_history import HistoryStore
+    history = (HistoryStore(ROOT, HISTORY_REGISTRY, hashlib.sha256(local_bytes(ROOT, HISTORY_REGISTRY)).hexdigest())
+               if backtest is not None and (ROOT / HISTORY_REGISTRY).exists() else None)
     predictive = PredictiveService(backtest, context_registry=CONTEXT_REGISTRY if context_hash else None,
-                                   context_sha256=context_hash, ml_registries=ml_registries)
+                                   context_sha256=context_hash, ml_registries=ml_registries, history_store=history)
     from .experimental_api import create_research_app
     import uvicorn
 

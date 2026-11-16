@@ -4,6 +4,7 @@ import json
 
 from .backtest_results import BacktestResults, CONTEXT, METHODS, WEEK, metrics
 from .experimental_results import ArtifactBlocked, InvalidDate, local_bytes, require
+from .predictive_history import year_bounds
 from .predictive_ml import MLProjection, attach_ml, candidate_list, default_candidates, describe, ml_metrics
 
 MODULE = 'sigard-predictive-experimental/2'
@@ -94,8 +95,10 @@ def protect_week(document, mode, candidates=()):
 
 class PredictiveService:
     def __init__(self, reader, *, context_registry=None, context_sha256=None, ml_registry=None, ml_sha256=None,
-                 ml_registries=()):
+                 ml_registries=(), history_store=None):
         self.reader = reader
+        # Optional precomputed annual histories (predictive_history); verified on every read.
+        self.history_store = history_store
         self.context_registry = context_registry; self.context_sha256 = context_sha256
         # Each registry pins one overlay manifest (v1 stage-2 candidates, v2 corrective candidates).
         self.ml_registries = [*([(ml_registry, ml_sha256)] if ml_registry else []), *ml_registries]
@@ -177,6 +180,9 @@ class PredictiveService:
         except (ValueError, TypeError): raise InvalidDate() from None
         keys = {w['target_week'] for w in catalog['weeks']}
         if start not in keys or end not in keys or first > last: raise InvalidDate()
+        if radio is None and self.history_store is not None and (start, end) in year_bounds(catalog).values():
+            # Annual whole-territory history: only read and verified, never recomputed here.
+            return self.history_store.history(self, catalog, start, end, mode)
         series = []; all_rows = []; years = {}
         for week in catalog['weeks']:
             if start <= week['target_week'] <= end:
