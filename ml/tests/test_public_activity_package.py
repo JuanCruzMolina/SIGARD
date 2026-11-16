@@ -196,3 +196,29 @@ def test_real_build_requires_private_configuration(tmp_path, capsys):
     code = ap.main(['build', '--connection', str(tmp_path / 'c.json'), '--config', str(tmp_path / 'k.json'),
                     '--output', str(tmp_path / 'out')])
     assert code == 1 and json.loads(capsys.readouterr().out)['reason'] == 'private_configuration_required'
+
+
+def test_load_inputs_reads_only_analytics_views_available_to_the_reader(monkeypatch):
+    import pandas as pd
+    from sigard_ml.data_access import postgres
+    statements = []
+    start, end = date(2021, 1, 3), date(2021, 1, 9)
+
+    def query(self, statement, parameters=()):
+        statements.append(statement)
+        if 'consolidacion_dataset' in statement:
+            return pd.DataFrame([{'entrada_sha256': 'f' * 64}])
+        if 'NOT mascara_comun' in statement:
+            return pd.DataFrame([{'codigo': 'FICT-900'}])
+        if 'consolidacion_radio_semana' in statement:
+            return pd.DataFrame([dict(radio_codigo='FICT-001', anio=2021, numero=1, inicio=start, fin=end, registros_asignados=2,
+                                      cobertura_estado='covered_observed', poblacion_contexto_2022=float('nan'))])
+        return pd.DataFrame([dict(anio=2021, numero=1, inicio=start, fin=end, cantidad_sigard=3)])
+    monkeypatch.setattr(postgres.MLRepository, 'query', query)
+    radio_weeks, city_weeks, outside, populations = ap.load_inputs(object(), 'fictional', 'f' * 64)
+    assert all('territory.' not in s and 'epidemiology.' not in s for s in statements)
+    assert all('analytics.' in s for s in statements)
+    assert outside == ['FICT-900'] and populations == {'FICT-001': None}
+    assert radio_weeks[0]['count'] == 2 and city_weeks[0]['count'] == 3
+    with pytest.raises(PackageBlocked, match='verified_stage1'):
+        ap.load_inputs(object(), 'fictional', '0' * 64)

@@ -332,8 +332,9 @@ def load_inputs(conn, version, input_sha256):
         ORDER BY radio_codigo,inicio''', (version,))
     city = repo.query('''SELECT anio,numero,inicio,fin,cantidad_sigard FROM analytics.consolidacion_departamento
         WHERE dataset_version=%s AND anio BETWEEN 2020 AND 2024 ORDER BY inicio''', (version,))
-    outside = repo.query('''SELECT r.codigo FROM analytics.consolidacion_territorio t JOIN territory.radio_censal r ON r.id=t.radio_id
-        WHERE t.dataset_version=%s AND NOT t.mascara_comun ORDER BY 1''', (version,))
+    # Only analytics views: the read-only analytics role has no access to the territory schema.
+    outside = repo.query('''SELECT DISTINCT radio_codigo AS codigo FROM analytics.consolidacion_radio_semana
+        WHERE dataset_version=%s AND NOT mascara_comun ORDER BY 1''', (version,))
     known = lambda value: value is not None and value == value  # noqa: E731 - NaN from pandas is unknown
     radio_weeks = [dict(radio_id=str(r.radio_codigo), year=int(r.anio), week=int(r.numero), start=r.inicio, end=r.fin,
                         count=None if r.cobertura_estado == 'out_of_coverage' else int(r.registros_asignados))
