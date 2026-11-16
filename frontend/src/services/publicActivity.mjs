@@ -71,11 +71,14 @@ export function levelCounts(block, radioIds) {
 }
 
 let pending = null
-// One request per page load; {enabled:false} for 404, network failure or an invalid package.
-export function loadActivity(fetcher = fetch) {
+export const PROBE_TIMEOUT_MS = 5000
+// One request per page load; {enabled:false} for 404, network failure, an invalid package or a
+// slow API. The probe runs on every page, so it must never stay pending: a busy API (for example
+// while a local service preloads) would otherwise keep the page loading indefinitely.
+export function loadActivity(fetcher = fetch, timeoutMs = PROBE_TIMEOUT_MS) {
   pending ??= (async () => {
     try {
-      const response = await fetcher(`${API_URL}/api/v1/public/activity`, { credentials: 'omit', cache: 'no-store' })
+      const response = await fetcher(`${API_URL}/api/v1/public/activity`, { credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) })
       if (!response.ok) return { enabled: false }
       return { enabled: true, activity: validateActivity(await response.json()) }
     } catch {

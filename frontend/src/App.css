@@ -1,7 +1,7 @@
 :root {
   --ink: #183033;
   --ink-soft: #405b5d;
-  --muted: #607577;
+  --muted: #52676a; /* >= 4.9:1 on every light surface (WCAG AA); #607577 gave 4.43 on --canvas */
   --line: #d6e1de;
   --line-strong: #b9cbc7;
   --paper: #fffefa;
