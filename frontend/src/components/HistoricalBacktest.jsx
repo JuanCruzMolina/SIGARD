@@ -11,6 +11,7 @@ import RadioPanel from './RadioPanel'
 import ModelPerformance from './ModelPerformance'
 import DataTable from './DataTable'
 import './HistoricalBacktest.css'
+import { privateViewEnabled } from '../services/privateView'
 
 function Segmented({ label, options, value, onChange, name }) {
   return <div className="pv-segmented" role="group" aria-label={label} data-control={name}>
@@ -189,9 +190,10 @@ export default function HistoricalBacktest() {
       </p>}
       <details className="pv-advanced"><summary>Opciones avanzadas</summary>
         <div className="pv-advanced-body">
-          <label htmlFor="bt-disclosure">Modo de divulgación</label>
-          <select id="bt-disclosure" value={disclosure} onChange={e => setDisclosure(e.target.value)}>
-            <option value="presentation">Protegido (por defecto)</option><option value="private">Investigación privada · valores exactos</option></select>
+          {privateViewEnabled ? <><label htmlFor="bt-disclosure">Modo de divulgación</label>
+            <select id="bt-disclosure" value={disclosure} onChange={e => setDisclosure(e.target.value)}>
+              <option value="presentation">Protegido (por defecto)</option><option value="private">Investigación privada · valores exactos</option></select></>
+            : <p className="pv-caption" data-disclosure="presentation"><strong>Modo de divulgación: protegido.</strong></p>}
           <p className="pv-caption">{disclosure === 'presentation' ? 'Se ocultan valores muy pequeños para proteger la privacidad: menores de 5, incluidos ceros, y los que permitirían deducirlos. Es una salvaguarda del prototipo, no una autorización institucional de publicación.' : 'Consulta exacta restringida al equipo autorizado en este equipo local. No proyectar, publicar ni compartir conteos pequeños. No habilita uso sanitario operativo.'}</p>
           <label htmlFor="pv-radio">Ver un radio</label>
           <select id="pv-radio" value={url.radio} onChange={e => update({ radio: e.target.value })}><option value="">Ninguno</option>

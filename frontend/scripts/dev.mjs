@@ -97,6 +97,10 @@ export function spawnOwned(command, args, options = {}) {
   }
 }
 
+export function privateViewRequested(env = process.env) {
+  return env.SIGARD_PRIVATE_VIEW === '1'
+}
+
 export const developmentRuntime = {
   portAvailable,
   identifyApi,
@@ -111,7 +115,9 @@ export const developmentRuntime = {
   }),
   async createVite() {
     const { createServer: createViteServer } = await import('vite')
-    return createViteServer({ root: frontend, configFile: join(frontend, 'vite.config.js') })
+    // Exact values in the viewer only with an explicit local opt-in (SIGARD_PRIVATE_VIEW=1).
+    return createViteServer({ root: frontend, configFile: join(frontend, 'vite.config.js'),
+      define: { 'import.meta.env.SIGARD_PRIVATE_VIEW': JSON.stringify(privateViewRequested()) } })
   },
   log: message => console.log(`[SIGARD] ${message}`),
 }
