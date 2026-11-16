@@ -23,11 +23,19 @@ const origin = process.env.SIGARD_MODULE_ORIGIN || 'http://127.0.0.1:5173'
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url))
 const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112', process.env.SIGARD_SHOTS_LABEL || 'despues', real ? 'real' : 'fictional', tilesOnline ? 'con-calles' : 'sin-conexion')
 await mkdir(output, { recursive: true })
+const privateView = process.env.SIGARD_PRIVATE_VIEW === '1'
+let assertProtectedMode
 const browser = await puppeteer.launch({ headless: true }); let production
 const errors = [], external = [], requests = [], timings = [], tileRequests = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 try {
   const page = await browser.newPage(); page.setDefaultTimeout(30000)
+  assertProtectedMode = async () => {
+    if (privateView) return assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
+    assert.equal(await page.$('#bt-disclosure'), null, 'el selector de valores exactos no debe existir sin SIGARD_PRIVATE_VIEW=1')
+    assert.equal(await page.$('option[value="private"]'), null)
+    assert.ok(await page.$('[data-disclosure="presentation"]'))
+  }
   page.on('pageerror', e => errors.push(e.message))
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()) })
   let fail = false
@@ -89,7 +97,7 @@ try {
   assert.deepEqual(await page.$$eval('[data-control="model"] option', o => o.map(e => e.value)), ['rf_A_epi_climate', 'rf_v2_city_propensity'])
   assert.match(await page.$eval('.pv-model-rule', e => e.textContent), /Marca los 10 radios con mayor prioridad cada semana/)
   assert.match(page.url(), /anio=\d{4}&se=\d+/)
-  assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
+  await assertProtectedMode()
   assert.equal(await page.$eval('.pv-badge', e => e.textContent), 'Prototipo experimental — reconstrucción histórica, no uso operativo')
   const protectedText = await text()
   assert.match(protectedText, new RegExp(PROTECTED_NOTE))
@@ -171,24 +179,27 @@ try {
   // Shared link restores the same state, always protected.
   await page.goto(sharedLink, { waitUntil: 'domcontentloaded' }); await ready()
   assert.equal(await week(), defaultWeek); await page.waitForSelector('.pv-panel')
-  assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
+  await assertProtectedMode()
   await page.click('.pv-close'); await page.waitForFunction(() => !document.querySelector('.pv-panel'))
 
-  // Private mode: warning, full legend; disclosure never written to the URL.
-  await page.select('#bt-disclosure', 'private'); await page.waitForSelector('.pv-private-warning')
-  await page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating'))
-  assert.match(await page.$eval('.pv-private-warning', e => e.textContent), /Modo privado: no proyectar ni compartir capturas/)
-  await page.waitForSelector('[data-legend="FP"]'); assert.doesNotMatch(page.url(), /disclosure|privad/)
-  // Private mode: recall@10 / onset@10 per year come from the server for the top-k candidate.
-  await page.select('[data-control="model"] select', 'rf_v2_city_propensity'); await page.waitForFunction(() => location.search.includes('modelo=rf_v2_city_propensity'))
-  await page.$eval('#pv-performance > summary', e => e.scrollIntoView()); await page.click('#pv-performance > summary')
-  await page.waitForFunction(() => document.querySelector('#pv-performance').open)
-  await page.waitForFunction(() => /Recall@10/.test(document.querySelector('#pv-performance')?.textContent || '') && /Onset@10/.test(document.querySelector('#pv-performance').textContent))
-  assert.match(await page.$eval('#pv-performance', e => e.textContent), /Resultado similar al método de repetir la semana anterior/)
-  await scrollTo('#pv-performance'); await shot('desktop-privado-rendimiento-v2')
-  await page.$eval('#pv-performance', e => { e.open = false })
-  await page.select('#bt-disclosure', 'presentation'); await page.waitForFunction(() => !document.querySelector('.pv-private-warning'))
-  await ready()
+  // Exact values only when dev was started with SIGARD_PRIVATE_VIEW=1; hidden otherwise.
+  if (privateView) {
+    // Private mode: warning, full legend; disclosure never written to the URL.
+    await page.select('#bt-disclosure', 'private'); await page.waitForSelector('.pv-private-warning')
+    await page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating'))
+    assert.match(await page.$eval('.pv-private-warning', e => e.textContent), /Modo privado: no proyectar ni compartir capturas/)
+    await page.waitForSelector('[data-legend="FP"]'); assert.doesNotMatch(page.url(), /disclosure|privad/)
+    // Private mode: recall@10 / onset@10 per year come from the server for the top-k candidate.
+    await page.select('[data-control="model"] select', 'rf_v2_city_propensity'); await page.waitForFunction(() => location.search.includes('modelo=rf_v2_city_propensity'))
+    await page.$eval('#pv-performance > summary', e => e.scrollIntoView()); await page.click('#pv-performance > summary')
+    await page.waitForFunction(() => document.querySelector('#pv-performance').open)
+    await page.waitForFunction(() => /Recall@10/.test(document.querySelector('#pv-performance')?.textContent || '') && /Onset@10/.test(document.querySelector('#pv-performance').textContent))
+    assert.match(await page.$eval('#pv-performance', e => e.textContent), /Resultado similar al método de repetir la semana anterior/)
+    await scrollTo('#pv-performance'); await shot('desktop-privado-rendimiento-v2')
+    await page.$eval('#pv-performance', e => { e.open = false })
+    await page.select('#bt-disclosure', 'presentation'); await page.waitForFunction(() => !document.querySelector('.pv-private-warning'))
+    await ready()
+  }
 
   // Mobile 390: no page-level horizontal scroll; bottom sheet panel.
   await page.setViewport({ width: 390, height: 844 }); await noHorizontalScroll()

@@ -7,6 +7,7 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { proxyRequest } from './browser-proxy.mjs'
 import { blockLabel, blockRange, periodBanner, periodText } from '../src/services/publicActivity.mjs'
 
 const require = createRequire(import.meta.url)
@@ -39,7 +40,7 @@ async function openPage(browser, port) {
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url = new URL(request.url())
-    if (url.port === '8000' && url.pathname.startsWith('/api/v1/')) return request.continue({ url: `http://127.0.0.1:${port}${url.pathname}${url.search}` })
+    if (url.port === '8000' && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
     if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http')) { report.external.push(url.origin); return request.abort() }
     return request.continue()
   })
