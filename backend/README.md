@@ -71,6 +71,7 @@ GET   /api/v1/public/territorial-context
 GET   /api/v1/public/experimental-spatial-history/{cutoff_date}
 GET   /api/v1/public/metadata
 GET   /api/v1/public/model-evaluation
+GET   /api/v1/public/activity          (404 salvo autorización privada; ver docs/actividad-registrada-publica.md)
 GET   /api/v1/public/prevention
 POST  /api/v1/citizen-reports
 GET   /api/v1/citizen-reports/status/{tracking_code}

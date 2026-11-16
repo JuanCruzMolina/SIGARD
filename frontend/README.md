@@ -164,10 +164,17 @@ no deben interpretarse como atención disponible en tiempo real.
 npm run test:dev
 npm run test:research
 npm run test:public-map
+npm run test:public-activity
 npm run test:citizen
 npm run lint
 npm run build
 ```
+
+La vista `/actividad` («Actividad registrada») está desactivada por defecto. Sólo
+aparece si la API pública sirve un paquete autorizado o la fixture ficticia
+(`SIGARD_PUBLIC_ACTIVITY=fixture`). Con Vite activo, `npm run test:public-activity:browser`
+la recorre con la fixture. Contrato y reglas de supresión en
+[docs/actividad-registrada-publica.md](../docs/actividad-registrada-publica.md).
 
 El cierre del recorrido ciudadano incluye validación/recuperación del formulario,
 código copiable y seguimiento sin resultados obsoletos; la bandeja administrativa
