@@ -227,22 +227,13 @@ try {
       await page.setViewport({width:1440,height:1000})
     })
   }
-  if(!postgis) await check('público y A/B sin tokens, 263 radios, historial y métricas',async()=>{
-    await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
-    await click('MVP sintético y contexto')
-    await page.waitForSelector('.public-radio-control select')
-    assert.equal(await page.$$eval('.leaflet-overlay-pane path.leaflet-interactive',n=>n.length),263)
+  // Desde 8e3c545/409ee85, /mapa en desarrollo local muestra el módulo predictivo
+  // rediseñado; el panel A/B se prueba aislado en research-panel.browser.mjs.
+  if(!postgis) await check('módulo predictivo local sin tokens administrativos',async()=>{
+    await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
+    assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('sigard_admin_token')),null)
-    await click('Investigación local A/B')
-    await page.waitForSelector('.metric-comparison tbody tr')
-    await page.select('#research-model','B')
-    await page.waitForFunction(()=>document.querySelector('.research-provenance strong')?.textContent==='Modelo B')
-    const radio=await page.$eval('#research-radio',e=>e.options[1].value)
-    await page.select('#research-radio',radio)
-    await page.waitForSelector('.radio-score-pair')
-    await click('Ver evolución temporal')
-    await page.waitForSelector('.radio-timeline svg')
-    assert.equal(await page.$$eval('.analysis-values tbody tr',n=>n.length),20)
   })
   await check('login protegido, estado inicial y último administrador',async()=>{
     await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})
