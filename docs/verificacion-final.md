@@ -197,7 +197,7 @@ Límites:
 | Pendiente | Impacto | Propuesta |
 |---|---|---|
 | Cargas en frío con 5 usuarios en el servidor de desarrollo (6,3–7,6 s) | No afecta producción ni sesiones con un participante a la vez | Usar el bundle de producción si se prueban varias sesiones simultáneas |
-| 1 de 150 cargas del visor en producción terminó con «No se pudo conectar» | La página ofrece «Reintentar»; no se recupera sola | Observar en las sesiones de aceptación; evaluar un reintento automático de las consultas iniciales |
+| 1 de 150 cargas del visor en producción terminó con «No se pudo conectar» | Mitigado en P6.2: las lecturas iniciales (visor, actividad, prevención) se reintentan una vez a los 500 ms ante falla de red o 5xx (`readRetry.mjs`); escrituras y 4xx nunca | Observar en las sesiones de aceptación; no se volvió a medir el rendimiento |
 | Historia por radio (panel del radio) calculada por pedido (≈ 1,2 s por radio y año) | Fuera de las 6 operaciones medidas; puede tardar más con varias sesiones | Precalcular sólo si las sesiones lo requieren (≈ 3 700 archivos) |
 | 6 pruebas PostGIS que requieren el runner con Docker | Límite documentado: `AGENTS.md` prohíbe iniciar Docker; la cadena de migraciones se verificó en PostGIS real (11/11) | Correrlas cuando se autorice Docker o un servidor descartable |
 | Criterio (d): pruebas de aceptación con dos referentes del Ministerio | Aceptación pendiente | Realizar las sesiones con el kit de `docs/aceptacion/` |
