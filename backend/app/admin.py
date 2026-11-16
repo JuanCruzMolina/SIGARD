@@ -141,12 +141,17 @@ def export_reports(
 def report_detail(
     report_id: str,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin),
+    admin: User = Depends(get_current_admin),
 ):
     report = db.get(CitizenReport, report_id)
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
-    return AdminReportDetail.model_validate(report)
+    detail = AdminReportDetail.model_validate(report)
+    # Viewing the exact location is a sensitive administrative query: it is audited without
+    # copying any report content into the audit trail.
+    db.add(CitizenReportAudit(report_id=report.id, actor_user_id=admin.id, action="view_detail"))
+    db.commit()
+    return detail
 
 
 @router.patch("/citizen-reports/{report_id}", response_model=AdminReportDetail)
