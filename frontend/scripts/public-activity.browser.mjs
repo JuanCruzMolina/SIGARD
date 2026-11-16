@@ -34,13 +34,18 @@ function startFixture(enabled) {
   return { ready, errors: () => errors, async stop() { child.stdin.end('stop\n'); if (!await Promise.race([closed.then(() => true), delay(5000).then(() => false)])) child.kill() } }
 }
 
-async function openPage(browser, port) {
+// `failActivity`: answer the first N activity requests with 503 (transient-failure retry check).
+async function openPage(browser, port, { failActivity = 0 } = {}) {
   const page = await browser.newPage()
   page.setDefaultTimeout(15000)
   page.on('pageerror', e => report.pageErrors.push(e.message))
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url = new URL(request.url())
+    if (url.port === '8000' && url.pathname === '/api/v1/public/activity' && failActivity > 0 && request.method() === 'GET') {
+      failActivity -= 1; report.injected503 = (report.injected503 || 0) + 1
+      return request.respond({ status: 503, headers: { 'access-control-allow-origin': origin }, body: '' })
+    }
     if (url.port === '8000' && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
     if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http')) { report.external.push(url.origin); return request.abort() }
     return request.continue()
@@ -87,6 +92,24 @@ try {
     await page.waitForSelector('.pa-series svg .pa-bar')
     report.timings.cold_start_ms = Date.now() - start
     assert.ok(report.timings.cold_start_ms < 5000, `carga ${report.timings.cold_start_ms} ms`)
+  })
+
+  await check('reintento: una falla transitoria (503) y la vista igual muestra los datos', async () => {
+    const retry = await openPage(browser, port, { failActivity: 1 })
+    await retry.setViewport({ width: 1440, height: 1000 })
+    await retry.goto(`${origin}/actividad`, { waitUntil: 'domcontentloaded' })
+    await retry.waitForFunction(n => document.querySelectorAll('.pa-map path.leaflet-interactive').length === n, {}, fixture.geometry.features.length)
+    assert.equal(await retry.$('.pa-disabled'), null)
+    await retry.close()
+  })
+
+  await check('dos fallas seguidas: la vista falla cerrada (no habilitada)', async () => {
+    const failing = await openPage(browser, port, { failActivity: 2 })
+    await failing.setViewport({ width: 1440, height: 1000 })
+    await failing.goto(`${origin}/actividad`, { waitUntil: 'domcontentloaded' })
+    await failing.waitForSelector('.pa-disabled')
+    assert.equal(await failing.$('.pa-map path.leaflet-interactive'), null)
+    await failing.close()
   })
 
   const expectBannerAndPeriod = async block => {

@@ -1,11 +1,13 @@
 import { demoMode } from './demoMode'
+import { fetchRead } from './readRetry.mjs'
 
 const API_URL = (demoMode ? 'http://127.0.0.1:8766' : import.meta.env.VITE_API_URL || 'http://localhost:8000').replace(/\/$/, '')
 
 async function apiRequest(path, options = {}) {
   let response
   try {
-    response = await fetch(`${API_URL}${path}`, {
+    // GETs get one retry on a network failure or 5xx; writes are sent exactly once.
+    response = await fetchRead(`${API_URL}${path}`, {
       ...options, cache: 'no-store', credentials: 'omit',
       headers: { 'Content-Type': 'application/json', ...options.headers },
     })
