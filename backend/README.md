@@ -71,6 +71,7 @@ GET   /api/v1/public/territorial-context
 GET   /api/v1/public/experimental-spatial-history/{cutoff_date}
 GET   /api/v1/public/metadata
 GET   /api/v1/public/model-evaluation
+GET   /api/v1/public/activity          (404 salvo autorización privada; ver docs/actividad-registrada-publica.md)
 GET   /api/v1/public/prevention
 POST  /api/v1/citizen-reports
 GET   /api/v1/citizen-reports/status/{tracking_code}
@@ -123,8 +124,10 @@ un texto vacío normalizado no se persiste ni se consulta al geocodificador.
 Código en `app/prevention.py` (validación, rutas) y `app/prevention_seed.py`
 (carga inicial). Migración `migrations/versions/20261114_05_prevention_content.py`
 (`down_revision = 20261020_04`): tablas `prevention_sections` y `prevention_audit`.
-**Preparada y probada en SQLite ficticio y como SQL PostgreSQL sin conexión; no
-aplicada a ninguna base persistente ni ejecutada en PostGIS real.**
+Probada en SQLite ficticio y como SQL PostgreSQL sin conexión y, desde P6
+(16/11/2026), **verificada en PostgreSQL 16.15 / PostGIS 3.4.2 real** junto con la
+migración `20261114_06_internal_alerts` (ver «Verificación de migraciones en
+PostGIS real» más abajo). No está aplicada a ninguna base persistente.
 
 Cada sección tiene `slug` inmutable (`^[a-z0-9]+(-[a-z0-9]+)*$`, ≤60), `title`
 (≤120), `body` (≤4000), `position` (0–1000), `source_label` (≤200) y
@@ -177,10 +180,33 @@ Crea cinco secciones publicadas v1 (`prevencion`, `control-vectorial`,
 `sintomas`, `consejos-medicos`, `signos-alarma`) y audita `seed_import` sin
 actor, con SHA-256 del JSON. Teléfonos, fuentes generales y centros de salud
 siguen leyéndose del JSON/GeoJSON estático. `dev:demo` ejecuta la misma carga en
-su SQLite temporal. No se ejecutó contra ninguna base persistente.
+su SQLite temporal. En P6 se ejecutó en una base PostGIS descartable (5 secciones,
+idempotente al repetirla); no se ejecutó contra ninguna base persistente.
 
 `/health/ready` devuelve 503 si faltan las tablas nuevas: desplegar el código
 junto con la migración. El downgrade elimina secciones y auditoría.
+
+### Verificación de migraciones en PostGIS real (P6, 16/11/2026)
+
+`backend/tests/postgres_migration_check.py` aprobó **11/11 pasos** sobre una base nueva y
+descartable (`sigard_public_migration_test`) del clúster local `127.0.0.1:55439`
+(PostgreSQL 16.15, PostGIS 3.4.2):
+
+- cadena Alembic completa `20260819_01` → `20261114_06`;
+- carga inicial de prevención (`app.prevention_seed`): 5 secciones, idempotente al repetirla;
+- bajada y subida de las migraciones **05** (contenido preventivo) y **06** (alertas internas);
+- restricciones verificadas en el motor real: estado de prevención inválido, candidata de alerta
+  `published`/`publicada`/`approved_public` y umbral menor a 5 rechazados con `23514` (`CHECK`);
+  la misma inserción con un estado válido (`pending`) llega a la clave foránea (`23503`), lo que
+  confirma que el rechazo anterior proviene del `CHECK`;
+- API iniciada sobre esa base: `/health/ready` 200, prevención pública 200 y rutas
+  administrativas 401 sin token.
+
+La base se eliminó y el clúster se detuvo al terminar. El script exige ese clúster, una base que no
+exista y la elimina siempre; no usa el PostgreSQL de 5432 ni Docker. Evidencia privada:
+`data/interim/official/public-migration-postgis-20261116/result.private.json`. Las 6 pruebas
+PostGIS del runner con Docker (puerto 5435) siguen omitidas por la regla de no iniciar Docker
+(`docs/verificacion-final.md` §6).
 
 ## Verificación ficticia del importador territorial — sin Docker
 
@@ -506,7 +532,9 @@ compiló en modo offline para PostgreSQL/PostGIS mediante Alembic.
 La segunda orden debe programarse diariamente fuera del proceso web. El plazo
 por defecto es 180 días. En Docker se ejecuta mediante el servicio temporal
 `retention`; en producción debe configurarse un cron o tarea equivalente como
-condición obligatoria de salida.
+condición obligatoria de salida. El prototipo no tiene servidor de producción propio:
+la tarea programada queda a cargo del despliegue institucional (estado registrado en
+`docs/verificacion-final.md` §4).
 
 Los límites antiabuso en memoria sirven para una sola instancia del MVP. Antes
 de escalar horizontalmente deben reemplazarse por un almacén efímero compartido

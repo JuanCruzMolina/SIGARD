@@ -58,23 +58,49 @@ test('service stays loopback/read-only; no clinical/public fixture or HTTP fitti
 })
 
 test('presentation rejects leaked small values; exact private response cannot masquerade as protected', () => {
-  const value=result();value.module_version='sigard-predictive-experimental/1';value.disclosure={mode:'private'}
+  const value=result();value.module_version='sigard-predictive-experimental/2';value.disclosure={mode:'private'}
   assert.equal(validateBacktestWeek(value,catalog,weeks[1],'private'),value)
   assert.throws(()=>validateBacktestWeek(value,catalog,weeks[1],'presentation'))
   value.disclosure.mode='presentation';value.department={observed_total:null}
   assert.throws(()=>validateBacktestWeek(value,catalog,weeks[1],'presentation'))
 })
 
+const blank = () => ({ presence_score: null, presence: null, presence_threshold: null, topk_rank: null, onset_eligible: null, quantity: null, confusion: null, difference: null, absolute_error: null })
+const model = (capability, decision_rule) => ({ capability, decision_rule, state: 'experimental_not_promoted', calibrated: false, promotion: { decision: 'not_promoted' }, availability_status: 'available', fit_last_target_end: '2020-11-21' })
+
 test('missing ML never substitutes the reference, and ML decimals remain independent', () => {
   const r = result()
-  assert.equal(experimentalView(r).rows[0].predicted.quantity, null)
+  assert.equal(experimentalView(r, 'ml', 'FICTIONAL_count').rows[0].predicted.quantity, null)
   assert.equal(experimentalView(r, 'reference').rows[0].predicted.quantity, .75)
-  r.rows[0].ml = { quantity: 1.25, presence: 1, presence_score: .8, presence_threshold: .5, difference: 1.25, absolute_error: 1.25, confusion: 'FP' }
+  r.ml = { FICTIONAL_count: model('quantity', { type: 'count_estimate' }) }
+  r.rows[0].ml = { FICTIONAL_count: { ...blank(), quantity: 1.25, difference: 1.25, absolute_error: 1.25 } }
   assert.equal(validateBacktestWeek(r, catalog, weeks[1]), r)
-  assert.equal(experimentalView(r).rows[0].predicted.quantity, 1.25)
+  assert.equal(experimentalView(r, 'ml', 'FICTIONAL_count').rows[0].predicted.quantity, 1.25)
+  assert.equal(experimentalView(r, 'ml', 'FICTIONAL_other').rows[0].predicted.quantity, null)
   assert.equal(r.rows[0].predicted.quantity, .75)
-  r.rows[0].ml.difference = 0
+  r.rows[0].ml.FICTIONAL_count.difference = 0
   assert.throws(() => validateBacktestWeek(r, catalog, weeks[1]))
+})
+
+test('top-k contract: presence follows the rank, never more than k, exactly k when all radios are visible', () => {
+  const r = result()
+  r.ml = { FICTIONAL_topk: model('presence', { type: 'top_k', k: 10 }) }
+  const rank = new Map(r.rows.filter(x => x.common_mask).map((x, i) => [x.radio_id, i + 1]))
+  for (const row of r.rows) {
+    const k = rank.get(row.radio_id), p = k ? Number(k <= 10) : null, y = row.observed.presence
+    row.ml = { FICTIONAL_topk: k && row.availability_status === 'available' ? { ...blank(), presence: p, presence_score: 1 - k / 1000, topk_rank: k, onset_eligible: false, confusion: p && y ? 'TP' : p ? 'FP' : y ? 'FN' : 'TN' } : blank() }
+  }
+  assert.equal(validateBacktestWeek(r, catalog, weeks[1]), r)
+  const changed = structuredClone(r); changed.rows[10].ml.FICTIONAL_topk.presence = 1; changed.rows[10].ml.FICTIONAL_topk.confusion = 'FP'
+  assert.throws(() => validateBacktestWeek(changed, catalog, weeks[1]), 'rank 11 cannot be flagged')
+  const fewer = structuredClone(r); fewer.ml.FICTIONAL_topk.decision_rule.k = 11
+  assert.throws(() => validateBacktestWeek(fewer, catalog, weeks[1]), 'all radios visible requires exactly k')
+  const threshold = structuredClone(r); threshold.rows[0].ml.FICTIONAL_topk.presence_threshold = .5
+  assert.throws(() => validateBacktestWeek(threshold, catalog, weeks[1]))
+  const unknown = structuredClone(r); unknown.rows[0].ml.FICTIONAL_unknown = blank()
+  assert.throws(() => validateBacktestWeek(unknown, catalog, weeks[1]))
+  const promoted = structuredClone(r); promoted.ml.FICTIONAL_topk.promotion.decision = 'promoted'
+  assert.throws(() => validateBacktestWeek(promoted, catalog, weeks[1]))
 })
 
 test('future ML adjustment and ML outputs on a protected cell are rejected', () => {

@@ -4,6 +4,7 @@ import hashlib
 import importlib.util
 import json
 import math
+import os
 import re
 import sys
 from datetime import date, timedelta
@@ -49,21 +50,77 @@ def require(condition):
         raise ArtifactBlocked("Artefactos experimentales bloqueados")
 
 
-def local_bytes(root, relative, expected=None, limit=16 * 1024 * 1024):
-    """Hash and decode the SAME bounded bytes; reject links and traversal."""
+# Per-process verification cache: resolved path -> (size, mtime_ns, sha256). A full SHA-256 is
+# computed the first time; it is reused only while path, size and modification time are
+# unchanged and the expected digest is the same. Any change re-hashes and blocks on mismatch.
+_VERIFIED = {}
+CHUNK = 1024 * 1024
+
+
+def clear_verification_cache():
+    _VERIFIED.clear()
+
+
+def _digest(chunks):
+    digest = hashlib.sha256()
+    for chunk in chunks:
+        digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _safe_path(root, relative, limit):
     root = root.resolve()
     path = root / relative
     require(not Path(relative).is_absolute() and ".." not in Path(relative).parts)
     require(path.resolve().is_relative_to(root))
     require(not any(part.is_symlink() or part.is_junction() for part in [path, *path.parents] if part != root.parent))
     require(path.is_file() and path.stat().st_size <= limit)
+    return path
+
+
+def _expected(expected):
+    require(isinstance(expected, str) and re.fullmatch(r"[a-f0-9]{64}", expected) is not None)
+
+
+def _stamp(path, info, expected):
+    return str(path.resolve()), (info.st_size, info.st_mtime_ns, expected)
+
+
+def _remember(key, stamp, actual):
+    if actual == stamp[2]:
+        _VERIFIED[key] = stamp
+    else:
+        _VERIFIED.pop(key, None)
+        require(False)
+
+
+def local_bytes(root, relative, expected=None, limit=16 * 1024 * 1024):
+    """Read the bounded bytes; with `expected`, verify them (cached per process). Reject links and traversal."""
+    path = _safe_path(root, relative, limit)
     with path.open("rb") as source:
+        info = os.fstat(source.fileno())
         value = source.read(limit + 1)
     require(len(value) <= limit)
     if expected is not None:
-        require(isinstance(expected, str) and re.fullmatch(r"[a-f0-9]{64}", expected) is not None)
-        require(hashlib.sha256(value).hexdigest() == expected)
+        _expected(expected)
+        key, stamp = _stamp(path, info, expected)
+        if _VERIFIED.get(key) != stamp or len(value) != info.st_size:
+            _remember(key, stamp, _digest([value]))
     return value
+
+
+def verify_local(root, relative, expected, limit):
+    """Verify a file's SHA-256 without returning it; unchanged cached files are not re-read."""
+    path = _safe_path(root, relative, limit)
+    _expected(expected)
+    key, stamp = _stamp(path, path.stat(), expected)
+    if _VERIFIED.get(key) == stamp:
+        return
+    with path.open("rb") as source:
+        info = os.fstat(source.fileno())
+        require(info.st_size <= limit)
+        actual = _digest(iter(lambda: source.read(CHUNK), b""))
+    _remember(*_stamp(path, info, expected), actual)
 
 
 def calendar(root):

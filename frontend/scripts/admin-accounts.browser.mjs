@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { proxyRequest } from './browser-proxy.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -50,6 +51,8 @@ try {
   await page.setViewport({width:1440,height:1000})
   page.on('pageerror', e=>{report.pageErrors.push(e.message);if(integral) (report.pageErrorStacks??=[]).push(e.stack)})
   page.on('console', m=>{if(m.type()==='error' && /React|hydration|unique.*key/i.test(m.text())) report.reactErrors.push(m.text())})
+  const failedRequests = []
+  page.on('requestfailed', r => failedRequests.push({method:r.method(),url:r.url().replace(/^https?:\/\/[^/]+/,''),error:r.failure()?.errorText,at:Date.now()}))
   let failListing = false
   let rejectReportOperation = null
   await page.setRequestInterception(true)
@@ -62,12 +65,25 @@ try {
       if (failListing && url.pathname==='/api/v1/admin/users' && request.method()==='GET') {
         return request.respond({status:503,contentType:'application/json',headers:{'access-control-allow-origin':frontendOrigin},body:JSON.stringify({detail:'API ficticia temporalmente no disponible.'})})
       }
-      return request.continue({url:api+url.pathname+url.search})
+      return proxyRequest(request,api+url.pathname+url.search)
     }
     if(postgis && !['127.0.0.1','localhost'].includes(url.hostname) && url.protocol.startsWith('http')) return request.abort()
     return request.continue()
   })
-  const check = async (name, run) => {await run();report.checks.push(name)}
+  // On failure keep the page state (fictitious data only) to diagnose intermittent errors.
+  const check = async (name, run) => {
+    try {await run()} catch(error) {
+      await mkdir(output,{recursive:true})
+      const state=await page.evaluate(()=>({path:location.pathname,busy:document.querySelector('.account-list')?.getAttribute('aria-busy')??null,
+        messages:[...document.querySelectorAll('[role="alert"],[role="status"]')].map(e=>e.textContent.trim()).filter(Boolean),
+        rows:[...document.querySelectorAll('.account-list tbody tr')].map(r=>r.textContent.trim().slice(0,120)),
+        heading:document.querySelector('h1')?.textContent??null})).catch(()=>null)
+      await writeFile(resolve(output,`stage${stage}-failure.json`),JSON.stringify({check:name,error:error.message,state,failedRequests,at:new Date().toISOString()},null,2))
+      await page.screenshot({path:resolve(output,`stage${stage}-failure.png`)}).catch(()=>{})
+      throw error
+    }
+    report.checks.push(name)
+  }
   const click = text => page.evaluate(text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text).click(),text)
   const fill = async (selector,value) => {await page.click(selector);await page.keyboard.down('Control');await page.keyboard.press('KeyA');await page.keyboard.up('Control');await page.keyboard.press('Backspace');if(value) await page.type(selector,value)}
   const accountLoaded = () => page.waitForFunction(()=>document.querySelector('.account-list')?.getAttribute('aria-busy')==='false')
@@ -139,39 +155,29 @@ try {
     assert.equal(geometry.body.features[0].geometry.type,'Polygon')
   })
   if(integral) {
-    await check('API pública temporal, selección por teclado y capas/semanas alineadas',async()=>{
-      await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
-      await click('MVP sintético y contexto')
-      await page.waitForSelector('.public-radio-control select')
+    // Since 8e3c545/409ee85, /mapa in local development is the redesigned predictive module;
+    // the temporary public API is exercised through the dashboard, which reads it first.
+    await check('API pública temporal en el tablero y módulo predictivo rediseñado accesible',async()=>{
+      await page.goto(frontendOrigin+'/dashboard',{waitUntil:'networkidle0'})
+      await page.waitForSelector('.page-intro h1')
       assert.match(await page.$eval('.site-footer',e=>e.textContent),/API stage15-test-publication/)
-      // A tooltip focus listener made Chromium tab through every polygon.
-      // The map controls must lead directly to the existing textual selector.
-      await page.focus('.map-layout .leaflet-container')
-      let selectorReached = false
-      for (let step=0;step<12;step++) {
-        await page.keyboard.press('Tab')
-        if (await page.evaluate(()=>document.activeElement?.matches('.public-radio-control select'))) { selectorReached=true;break }
-        assert.equal(await page.evaluate(()=>document.activeElement?.matches('path.leaflet-interactive')),false)
-      }
-      assert.equal(selectorReached,true,'El selector público debe alcanzarse sin recorrer los polígonos')
-      await page.focus('.public-radio-control select')
-      await page.keyboard.press('Home');await page.keyboard.press('ArrowDown');await page.keyboard.press('Enter');await page.keyboard.press('Escape')
-      const radio=await page.$eval('.public-radio-control select',e=>e.value)
-      assert.ok(radio)
-      await page.waitForFunction(id=>document.querySelector('.radio-details h2')?.textContent===`Radio ${id}`,{},radio)
-      await accessibility('public-radio-keyboard')
-      await click('Contexto territorial')
-      assert.match(await page.$eval('.radio-details',e=>e.textContent),/Densidad poblacional/)
-      await click('Simulación espacial')
-      const week=await page.$eval('#cutoff-week',e=>[...e.options].find(o=>o.value!==e.value).value)
-      await page.select('#cutoff-week',week)
-      assert.equal(await page.$eval('.public-radio-control select',e=>e.value),radio)
-      assert.match(await page.$eval('.radio-details',e=>e.textContent),/No representa casos observados/)
+      await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
+      await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
+      assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
+      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
+      // Keyboard: the year control is reachable and changes the selected week.
+      const before=await page.evaluate(()=>location.search)
+      const index=await page.$eval('#pv-year',e=>e.selectedIndex)
+      await page.focus('#pv-year')
+      await page.keyboard.press(index>0?'ArrowUp':'ArrowDown')
+      await page.waitForFunction(previous=>location.search!==previous,{},before)
+      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
+      await accessibility('predictive-module-keyboard')
       await mkdir(output,{recursive:true})
       for(const width of [1440,390]) {
         await page.setViewport({width,height:1000})
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-        await page.screenshot({path:resolve(output,`stage15-public-${width}.png`),fullPage:true})
+        await page.screenshot({path:resolve(output,`stage15-predictive-${width}.png`),fullPage:false})
       }
       await page.setViewport({width:1440,height:1000})
       for(const route of ['/dashboard','/validacion','/metodologia','/mapa']) {
@@ -227,22 +233,13 @@ try {
       await page.setViewport({width:1440,height:1000})
     })
   }
-  if(!postgis) await check('público y A/B sin tokens, 263 radios, historial y métricas',async()=>{
-    await page.goto('http://127.0.0.1:5173/mapa',{waitUntil:'networkidle0'})
-    await click('MVP sintético y contexto')
-    await page.waitForSelector('.public-radio-control select')
-    assert.equal(await page.$$eval('.leaflet-overlay-pane path.leaflet-interactive',n=>n.length),263)
+  // Desde 8e3c545/409ee85, /mapa en desarrollo local muestra el módulo predictivo
+  // rediseñado; el panel A/B se prueba aislado en research-panel.browser.mjs.
+  if(!postgis) await check('módulo predictivo local sin tokens administrativos',async()=>{
+    await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
+    assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('sigard_admin_token')),null)
-    await click('Investigación local A/B')
-    await page.waitForSelector('.metric-comparison tbody tr')
-    await page.select('#research-model','B')
-    await page.waitForFunction(()=>document.querySelector('.research-provenance strong')?.textContent==='Modelo B')
-    const radio=await page.$eval('#research-radio',e=>e.options[1].value)
-    await page.select('#research-radio',radio)
-    await page.waitForSelector('.radio-score-pair')
-    await click('Ver evolución temporal')
-    await page.waitForSelector('.radio-timeline svg')
-    assert.equal(await page.$$eval('.analysis-values tbody tr',n=>n.length),20)
   })
   await check('login protegido, estado inicial y último administrador',async()=>{
     await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})

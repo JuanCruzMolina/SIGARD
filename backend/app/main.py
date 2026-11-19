@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +14,11 @@ from .admin_accounts import lock_account_changes, router as accounts_router
 from .config import get_settings
 from .database import Base, build_engine, build_session_factory
 from .geocoding import router as geocoding_router
+from .internal_alerts import router as internal_alerts_router
 from .models import AdminAccountAudit, CitizenReport, PreventionAudit, PreventionSection, User
 from .prevention import admin_router as prevention_admin_router, public_router as prevention_public_router
 from .public import router as public_router
+from .public_activity import DEFAULT_AUTHORIZATION, DEFAULT_PACKAGE, router as public_activity_router
 from .reports import router as reports_router
 from .security import hash_password
 from .schemas import AdminLogin
@@ -58,6 +61,13 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     )
     application.state.engine = engine
     application.state.SessionLocal = session_factory
+    # Internal alerts read predictions only when the local launcher attaches a source.
+    application.state.alert_source = None
+    application.state.public_activity = {
+        "mode": "fixture" if settings.sigard_public_activity == "fixture" else None,
+        "package_dir": Path(settings.public_activity_dir) if settings.public_activity_dir else DEFAULT_PACKAGE,
+        "authorization": Path(settings.public_activity_authorization) if settings.public_activity_authorization else DEFAULT_AUTHORIZATION,
+    }
     application.add_middleware(
         CORSMiddleware,
         allow_origins=settings.allowed_origins,
@@ -70,8 +80,10 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     application.include_router(admin_router)
     application.include_router(accounts_router)
     application.include_router(public_router)
+    application.include_router(public_activity_router)
     application.include_router(prevention_admin_router)
     application.include_router(prevention_public_router)
+    application.include_router(internal_alerts_router)
 
     @application.exception_handler(RequestValidationError)
     async def safe_admin_validation(request, exc):
