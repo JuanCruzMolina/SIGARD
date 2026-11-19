@@ -83,22 +83,6 @@ def test_admin_export_matches_filters_and_invalid_dates_do_not_export(client):
         assert [json.loads(row.changes_json)["count"] for row in audits] == [1, 0]
 
 
-def test_admin_detail_view_is_audited_without_report_content(client):
-    from app.models import CitizenReportAudit
-    from test_admin_accounts import add_user, headers
-    admin = add_user(client)
-    created = client.post("/api/v1/citizen-reports", json=VALID_REPORT).json()
-    base = "/api/v1/admin/citizen-reports"
-    report_id = client.get(base, headers=headers(admin)).json()["items"][0]["id"]
-    assert client.get(f"{base}/{report_id}").status_code == 401
-    assert client.get(f"{base}/00000000-0000-0000-0000-000000000000", headers=headers(admin)).status_code == 404
-    detail = client.get(f"{base}/{report_id}", headers=headers(admin))
-    assert detail.status_code == 200 and detail.json()["tracking_code"] == created["tracking_code"]
-    with client.app.state.SessionLocal() as db:
-        audits = db.scalars(select(CitizenReportAudit).where(CitizenReportAudit.action == "view_detail")).all()
-    assert [(a.report_id, a.actor_user_id, a.changes_json) for a in audits] == [(report_id, admin.id, None)]
-
-
 def test_anonymous_report_and_public_status_do_not_expose_location(client):
     response = client.post(
         "/api/v1/citizen-reports",

@@ -5,7 +5,7 @@ All routes require the existing DB-verified administrator role. State and audit
 live in the same owned SQLite and are deleted with its session.
 """
 import csv
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 import io
 import json
 import uuid
@@ -16,7 +16,6 @@ from sqlalchemy import Column, Integer, JSON, MetaData, String, Table, insert, s
 from sqlalchemy.orm import Session
 from typing import Literal
 
-from .alert_rules import audit_entry, meets_threshold, window_outcome
 from .database import get_db
 from .models import User
 from .security import get_current_admin
@@ -107,7 +106,8 @@ def save_state(db,key,value):
 
 
 def record(db,admin,action,details):
-    db.execute(insert(audit).values(**audit_entry(admin.id,action,details)))
+    db.execute(insert(audit).values(actor_id=admin.id,action=action,
+        created_at=datetime.now(timezone.utc).isoformat(),details=details))
 
 
 def query_fixture(counts,target_date,horizon,method):
@@ -220,8 +220,7 @@ def attach_demo_workspace(app):
             if not rule['enabled'] or rule['horizon']!=payload.horizon:
                 continue
             for row in result['radios']:
-                # Shared rule logic; the demo uses a single-week window.
-                if rule['radio_id'] in ('all',row['radio_id']) and window_outcome([meets_threshold(row['expected_count'],rule['threshold'])])=='fired':
+                if rule['radio_id'] in ('all',row['radio_id']) and row['expected_count'] is not None and row['expected_count']>=rule['threshold']:
                     candidates.append(dict(id=str(uuid.uuid4()),rule_id=rule['id'],rule_name=rule['name'],
                         radio_id=row['radio_id'],expected_count=row['expected_count'],target_week=result['target_week'],
                         threshold=rule['threshold'],status='experimental_candidate',official=False))

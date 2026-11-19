@@ -29,11 +29,3 @@ def client(tmp_path):
     with TestClient(app) as test_client:
         yield test_client
     Base.metadata.drop_all(app.state.engine)
-
-
-@pytest.fixture(autouse=True)
-def _fresh_integrity_cache():
-    from app.experimental_results import clear_verification_cache
-    clear_verification_cache()
-    yield
-    clear_verification_cache()

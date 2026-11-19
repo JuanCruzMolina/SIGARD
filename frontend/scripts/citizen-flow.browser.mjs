@@ -5,7 +5,6 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { proxyRequest } from './browser-proxy.mjs'
 import { setTimeout as delay } from 'node:timers/promises'
 import { portAvailable, spawnOwned } from './dev.mjs'
 
@@ -70,7 +69,7 @@ try {
         if (holdStatus && request.method() === 'GET' && url.pathname.includes('/citizen-reports/status/')) { heldStatus = request; return }
         if (holdDetail && request.method() === 'GET' && /^\/api\/v1\/admin\/citizen-reports\/[^/]+$/.test(url.pathname) && !url.pathname.endsWith('export.csv')) { heldDetail = request; holdDetail = false; return }
         if (listFails && request.method() === 'GET' && url.pathname === '/api/v1/admin/citizen-reports') return request.respond({ status: 503, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify({ detail: 'Fallo ficticio de listado.' }) })
-        return proxyRequest(request, api + url.pathname + url.search)
+        return request.continue({ url: api + url.pathname + url.search })
       }
       if (url.protocol.startsWith('http') && !['localhost', '127.0.0.1'].includes(url.hostname)) return request.abort()
       return request.continue()

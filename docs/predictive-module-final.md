@@ -43,9 +43,7 @@ capacidad sanitaria operativa ni validación externa independiente.
    en loopback 5173 reutiliza el panel histórico, ambos mapas y el gráfico. La
    API pública y la demo ficticia siguen separadas.
 
-Contrato de módulo: `sigard-predictive-experimental/2` desde el 14/11/2026 (las
-capas ML se indexan por candidato; ver «Integración de candidatos v2»). La versión
-`/1` indexaba ML por capacidad. Compatible con los campos
+Contrato de módulo: `sigard-predictive-experimental/1`, compatible con los campos
 de `sigard-historical-backtest/1`. Los resultados identifican `result_type`,
 `predicted` (presencia/score/cantidad separados), `observed`, `baseline`, unidad,
 origen/objetivo, método y versión, política, calidad territorial, disponibilidad,
@@ -135,11 +133,6 @@ autenticación/roles y auditoría propios del alcance sanitario.
 - Referencias seleccionadas: `presence_seasonal` y `count_latest`, h=1.
 - Experimentales evaluados: `rf_A_epi_climate` y `residual_h1`, h=1, disponibles
   para comparación local. Sus salidas no se fusionan ni se multiplican.
-- Experimentales no promovidos (campaña correctiva v2, 14/11/2026):
-  `rf_v2_city_propensity` con regla top-10 y `residual_v2`, h=1. Son los modelos
-  ML por defecto del visor, no la referencia seleccionada; P1–P3 y Q2 del
-  protocolo prerregistrado no se cumplieron. `logit_v2_factors` es interpretativo
-  y no se integra.
 - Dataset y lector histórico verificados; clima de origen; sin entrenamiento
   ni inferencia de estimadores desde HTTP.
 - No promocionados: `rf_A_reference`, `rf_A_epi_climate`, `rf_A_epi_no_climate`,
@@ -195,36 +188,6 @@ destino privado nuevo y puntero SHA-256 en
 Las credenciales se leen del archivo privado existente, nunca de documentación
 ni argumentos con contraseñas. Iniciar sólo el clúster privado 55439 cuando sea
 necesario y apagarlo si se inició para esa operación. Docker y 5432 no se usan.
-
-### Historia anual precalculada (P6.1)
-
-La serie anual de todo el territorio (`/history` con el rango completo de un año del
-catálogo y sin `radio`) era la respuesta más lenta: proyecta y protege cada semana del año
-(unos 3–6,5 s por año) y, con 5 usuarios a la vez, las solicitudes se serializaban en el
-proceso local. Ahora se precalcula offline con el mismo código del servicio:
-
-```powershell
-cd backend
-.\.venv\Scripts\python.exe -B -m app.predictive_history build    # crea el paquete (no sobrescribe)
-.\.venv\Scripts\python.exe -B -m app.predictive_history verify   # almacenada == calculada, todos los años y modos
-```
-
-- Paquete privado `data/interim/official/predictive-history-v1/`: un archivo por año del
-  catálogo y modo de divulgación (`presentation`, `private`), 14 en total, cada uno listado
-  en `manifest.private.json` con su SHA-256; `registry.private.json` fija el manifiesto.
-- El manifiesto queda **ligado a sus entradas**: SHA-256 del registro del backtest, de cada
-  registro de candidatos ML y del código que produce la historia (`predictive_service.py`,
-  `backtest_results.py`, `predictive_ml.py`, `predictive_history.py`). Si cualquiera cambia,
-  la historia anual responde 503 hasta reconstruir el paquete.
-- `app.research_local` instala el paquete si existe. Con el paquete instalado la API **sólo lee
-  y verifica** la historia anual, con el mismo mecanismo de verificación y caché por proceso
-  (`local_bytes`): nunca la recalcula. Un archivo, manifiesto o registro alterado bloquea (503);
-  un año del catálogo ausente del manifiesto también bloquea.
-- Otros rangos y la historia de un radio (panel del radio) se siguen proyectando por solicitud
-  (alrededor de 1,2 s por radio y año); precalcularlas requeriría unos 3 700 archivos.
-- Sin entrenamiento, inferencia, SQL ni lectura de fuentes: sólo proyecta los paquetes ya fijados.
-- Pruebas: `backend/tests/test_predictive_history.py` (fixtures ficticias con candidatos v1 y v2).
-  Con los paquetes reales, `verify` confirmó 14/14 historias idénticas (16/11/2026).
 
 ## Validación, rendimiento y límites pendientes
 
@@ -320,128 +283,6 @@ Los experimentos conservan `experimental_evaluated`, las referencias
 y las limitaciones describen estas diferencias. No se crean rutas públicas,
 selectores de algoritmos adicionales ni nuevas familias.
 
-## Integración de candidatos v2 (campaña correctiva)
-
-Campaña `sigard-two-capabilities-h1-corrective-20261112-v1`; informe privado
-`data/interim/official/corrective-v2-20261112-v1/informe.private.md`. Decisión
-científica **sin cambios**: ningún candidato promovido. Sin entrenamiento,
-inferencia ni deserialización de estimadores.
-
-**Bundle offline.** `sigard_ml.forecasting.predictive_ml_bundle_v2.compile_bundle(root,
-campaign_folder, reference_reader, new_private_destination)`:
-
-- verifica el hash canónico del protocolo congelado (`a7dc47f9…`, igual al código
-  `motor_protocol_v2.PROTOCOL` y a `protocol-before-fit`), el pin de la matriz v2
-  (`2c09895c…`) en `matrix-before-fit` y en el manifiesto previo al ajuste, los
-  **48 artefactos** del registro (16 bloques × rf_v2, logit_v2, residual_v2; sólo
-  hash) y las 53.248 predicciones guardadas;
-- comprueba universo de 256 radios, h=1, purga (último objetivo < primer origen −28
-  días) y pareo exacto con observación y persistencia del paquete de referencia;
-- resuelve offline la regla **top-10** con el desempate prerregistrado
-  (`motor_features_v2.topk_select`, permutación semillada por semana sobre radios
-  ordenados) y guarda por fila `topk_rank` (1–256); en/fuera del top-10 se deriva
-  como `rank <= k`;
-- antes de escribir exige reproducir exactamente los aciertos y onset congelados de
-  `metrics.private.json` (desarrollo por año y 2024) y el MAE de residual_v2;
-- escribe sólo en un destino nuevo bajo `data/interim/official`: manifiesto
-  `sigard-predictive-ml-overlay/2` con candidatos, regla (`top_k`, k=10, o
-  `count_estimate`), estado `experimental_not_promoted`, evidencias con SHA y un
-  JSON por semana.
-
-Compilado el 14/11/2026 en
-`data/interim/official/ml-integration-v2-20261114-v1/` (`bundle-v2/`, 208 semanas,
-manifiesto `e9752119…`; `registry.private.json` es el puntero que lee el arranque).
-
-**Backend.** `app.research_local` fija al iniciar los punteros v1 y v2 instalados;
-cada petición vuelve a verificar manifiestos, semanas y bytes de artefactos.
-`predictive_ml.MLProjection` lee ambos esquemas y expone candidatos desde cada
-manifiesto (varios por capacidad). Contrato `/2`:
-
-- `ml[candidato]`: capacidad, estado, regla de decisión, campaña, decisión de
-  promoción (`not_promoted`), disponibilidad, versión, ajuste, variables y SHA.
-- `rows[].ml[candidato]`: `presence_score`, `presence`, `presence_threshold` (v1) o
-  `topk_rank` y `onset_eligible` (v2), `quantity`, `confusion`, `difference`,
-  `absolute_error`; `rows[].ml_availability[candidato]`.
-- `ml_metrics[candidato]` por semana; en historia, `ml_predicted[candidato]`,
-  `ml_metrics` y `ml_by_year[año][candidato]`, calculados en el servidor.
-- Candidatos top-k: `ml_metrics[...].topk` con recall@10, onset@10 y precisión@10
-  **sólo en modo privado** (todos los radios comparables). En modo protegido se
-  devuelve `status: private_only_selection_bias` con valores null: la misma regla
-  ya aplicada a precisión y falsas alarmas, porque el subconjunto visible (≥5
-  registros) excluye todas las falsas alarmas y todos los onset (origen 0).
-- `/calendar` y `/metadata`: `experimental_candidates`, `default_candidates`
-  (`rf_v2_city_propensity`, `residual_v2` si están instalados) y
-  `weeks[].ml_availability[candidato]`, derivada del manifiesto verificado.
-- Una alteración de una semana o artefacto bloquea sólo esa proyección
-  (`ml_integrity_or_compatibility_blocked`); v1 y la referencia se conservan. Un
-  manifiesto que declare promoción, calibración o una regla inválida bloquea el
-  módulo (503).
-- Los artefactos sólo se hashean (una vez por proceso, ver caché abajo); su límite es 64 MiB (los RF v2 de 2024-q3/q4
-  pesan ~20 MB y superaban el límite de 16 MiB de los JSON).
-
-Las métricas por año del servidor reproducen las congeladas: recall@10 2021
-75/513, 2022 7/47, 2023 32/152 (desarrollo 114/712 = 0,160), 2024 124/1.771;
-onset 7/345, 3/43, 14/127; MAE de residual_v2 0,0673 / 0,0058 / 0,0186 y 2024 0,3525.
-
-**Frontend.** El selector «Modelo ML» se arma con `experimental_candidates` de la
-metadata (filtrado por pregunta) y se guarda en la URL como `modelo`; por defecto
-`rf_v2_city_propensity` en ¿Dónde? y `residual_v2` en ¿Cuántos?. El contrato valida
-estados permitidos, `not_promoted`, regla por capacidad, presencia = `rank <= k`,
-nunca más de k radios y exactamente k cuando los 256 radios son visibles, y la
-retención de recall@k en modo protegido. Ayuda en lenguaje simple: «Marca los 10
-radios con mayor prioridad cada semana». Veredictos fijos (`GLOBAL_VERDICTS`):
-
-- rf_v2: «Resultado similar al método de repetir la semana anterior (recall@10
-  0,160 frente a 0,156; diferencia no significativa). Mejor que los modelos
-  anteriores.»
-- residual_v2: «Error promedio 13,6 % menor que repetir la semana anterior en
-  2021–2023 (diferencia con intervalo de confianza que excluye 0). Subestima
-  semanas de muchos casos.» 13,6 % = (0,035357 − 0,030535) / 0,035357 con los MAE
-  sin redondear; con los redondeados (0,0305/0,0354) se obtendría 13,8 %.
-- Ambos: «2024 es una comparación ya observada; ningún modelo está aprobado para
-  uso operativo.»
-
-**Verificación de integridad con caché por proceso** (14/11/2026,
-`backend/app/experimental_results.py`). Cambio de garantía:
-
-- Antes: cada solicitud recalculaba el SHA-256 completo de cada JSON y artefacto que
-  leía (los artefactos, una vez por solicitud).
-- Ahora: el SHA-256 completo se calcula la primera vez que el proceso usa un archivo
-  y se recuerda por ruta resuelta, tamaño, `st_mtime_ns` y hash esperado. Mientras
-  esos cuatro valores coincidan, no se vuelve a hashear (los artefactos tampoco se
-  vuelven a leer: `verify_local`). Si cambia la ruta, el tamaño, la fecha de
-  modificación o el hash fijado, se verifica de nuevo y se bloquea si no coincide;
-  una verificación fallida nunca se guarda. Las comprobaciones de ruta, enlaces,
-  traversal y límite de tamaño se siguen haciendo en cada lectura.
-- Límite: una modificación local que conserve exactamente tamaño y `st_mtime_ns`
-  (p. ej., restaurar la fecha con `os.utime`) no se detecta hasta reiniciar la API.
-  Es aceptable porque la API es local, de sólo lectura y los archivos privados están
-  bajo control del responsable; reiniciar el proceso fuerza la verificación completa.
-- Pruebas: `backend/tests/test_integrity_cache.py` (sin cambios no re-hashea; mismo
-  tamaño con otra fecha bloquea; otro tamaño u otro hash esperado bloquea; límites y
-  traversal se mantienen) y
-  `test_unchanged_artifacts_are_not_rehashed_across_requests_but_same_size_edits_block`.
-
-**Rendimiento** (14/11/2026, local, `test:predictive:browser`, API reiniciada en cada
-corrida, sin verificación de producción):
-
-| Medición | Real (3 corridas válidas) | Ficticio (3 corridas) |
-|---|---|---|
-| Arranque en frío hasta la semana por defecto | 3,87 / 3,98 / 4,02 s | 1,42 / 1,47 / 1,57 s |
-| Semana siguiente | 0,46–0,50 s | 0,23–0,25 s |
-| Semana anterior (en caché del cliente) | 0,19–0,21 s | 0,15–0,17 s |
-| Cambio de año | 0,35–0,40 s | 0,09–0,14 s |
-
-Una corrida real adicional, la primera tras reiniciar Vite, tardó 6,11 s y no superó
-el umbral de 5 s del script (compilación inicial de Vite); se descartó y se repitió.
-Antes del caché: 4,02–4,38 s. El arranque en frío casi no cambia por diseño: la
-primera solicitud de un proceso verifica todo. En proceso, la semana protegida
-tarda 0,12 s en frío y 0,09 s después; la historia anual protegida tarda
-~1,8–2,1 s con o sin caché (2,2–3,6 s por HTTP), dominada por las comprobaciones
-de rutas y enlaces (~0,75 s) y la lectura/decodificación de los JSON semanales, no
-por el hash. El caché evita re-hashear los artefactos RF v2 (~20 MB) entre
-solicitudes. El calendario sigue en ~0,13 s.
-
 ### Interfaz del módulo predictivo
 
 La vista local de `/mapa` («Predicción semanal de dengue por radio censal») está
@@ -452,8 +293,7 @@ por la API; las reglas de redacción están centralizadas en
 
 - **Controles**: línea de tiempo semanal (`WeekTimeline`) con años evaluables,
   pregunta **¿Dónde?** / **¿Cuántos?**, método **Modelo ML** / **Método de
-  referencia** / **Comparar**, selector **Modelo ML** con los candidatos de la
-  pregunta (v2 por defecto) y, en ¿Cuántos?, capa **Esperados** / **Observados**.
+  referencia** / **Comparar** y, en ¿Cuántos?, capa **Esperados** / **Observados**.
   Sin capa ML disponible sólo se ofrece la referencia. Se indica la fecha hasta la
   que se usaron datos y el clima de la semana previa (un único punto urbano).
 - **Opciones avanzadas**: modo de divulgación, selección de un radio por código y

@@ -2,11 +2,11 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
-import { identifyApi, portAvailable, privateViewRequested, spawnOwned, startDevelopment } from './dev.mjs'
+import { identifyApi, portAvailable, spawnOwned, startDevelopment } from './dev.mjs'
 import { catalog as generatedCatalog } from '../security/backtest.fixture.mjs'
 
 const origin = 'http://127.0.0.1:5173'
-const catalog = { ...generatedCatalog, module_version: 'sigard-predictive-experimental/2', active_methods: { presence: 'presence_seasonal', quantity: 'count_latest' }, training_enabled: false, operational_enabled: false }
+const catalog = { ...generatedCatalog, module_version: 'sigard-predictive-experimental/1', active_methods: { presence: 'presence_seasonal', quantity: 'count_latest' }, training_enabled: false, operational_enabled: false }
 
 async function serverFor(t, handler) {
   const server = createServer(handler)
@@ -194,10 +194,4 @@ test('real owned process tree is terminated and an unrelated listener survives',
   await owned.exited
   assert.equal(await portAvailable(childPort), true)
   assert.equal(await portAvailable(port), false)
-})
-
-test('private exact-values view requires the explicit SIGARD_PRIVATE_VIEW=1 opt-in', () => {
-  assert.equal(privateViewRequested({}), false)
-  for (const value of ['0', 'true', 'yes', 'on', ' 1', '']) assert.equal(privateViewRequested({ SIGARD_PRIVATE_VIEW: value }), false)
-  assert.equal(privateViewRequested({ SIGARD_PRIVATE_VIEW: '1' }), true)
 })

@@ -66,15 +66,6 @@ reportes ciudadanos y administración del puerto 8000 sigue siendo independiente
 Este comando sólo coordina desarrollo: build, preview y producción conservan
 su comportamiento. Ver [arquitectura y cierre del módulo final](../docs/predictive-module-final.md).
 
-Si existe el paquete privado de historia anual precalculada
-(`data/interim/official/predictive-history-v1/`, ver «Historia anual precalculada» en el mismo
-documento), la API lo instala y sirve la serie anual sin recalcularla.
-
-Medición de rendimiento (criterio c, p95 < 5 s): `npm.cmd --prefix frontend run test:performance`
-mide sobre el servidor de desarrollo; `-- --target production` repite las mismas operaciones con
-`vite build` + `vite preview` (bundles de medición en la carpeta privada, nunca en `dist`). Resultados
-en [verificación final](../docs/verificacion-final.md) §3.
-
 ### Demostración integral descartable
 
 Desde `frontend/`:
@@ -173,23 +164,10 @@ no deben interpretarse como atención disponible en tiempo real.
 npm run test:dev
 npm run test:research
 npm run test:public-map
-npm run test:public-activity
 npm run test:citizen
 npm run lint
 npm run build
 ```
-
-El visor predictivo (`/mapa` en desarrollo local) muestra sólo el modo protegido. El
-control de valores exactos aparece únicamente si `dev` se inicia con `SIGARD_PRIVATE_VIEW=1`
-(`$env:SIGARD_PRIVATE_VIEW='1'; npm.cmd --prefix frontend run dev`); el build de producción
-nunca lo incluye y la API local mantiene su propia protección (modo `presentation` por defecto,
-`private` sólo con la cabecera local).
-
-La vista `/actividad` («Actividad registrada») está desactivada por defecto. Sólo
-aparece si la API pública sirve un paquete autorizado o la fixture ficticia
-(`SIGARD_PUBLIC_ACTIVITY=fixture`). Con Vite activo, `npm run test:public-activity:browser`
-la recorre con la fixture. Contrato y reglas de supresión en
-[docs/actividad-registrada-publica.md](../docs/actividad-registrada-publica.md).
 
 El cierre del recorrido ciudadano incluye validación/recuperación del formulario,
 código copiable y seguimiento sin resultados obsoletos; la bandeja administrativa

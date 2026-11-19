@@ -23,11 +23,6 @@ PRIVATE_PATHS = [
     "data/raw/fictional.csv", "data/interim/official/report.md", "data/processed/official/rows.geojson",
     "ml/artifacts/official/predictions.json", "reports/private/report.md", "docs/private/report.md",
     "backend/instance/local.db", "config/local/settings.json",
-    # Internal alerts: persistent private SQLite of dev:alerts (never versioned).
-    "data/interim/official/internal-alerts-v1/alerts.private.sqlite3",
-    "data/interim/official/internal-alerts-v1/alerts.private.sqlite3-journal",
-    "data/interim/official/internal-alerts-v1/alerts.private.sqlite3-wal",
-    "data/interim/official/internal-alerts-v1/backup.sqlite3",
 ]
 PUBLIC_CODE_PATHS = [".env.example", "frontend/.env.example", "ml/configs/official.example.json",
     "ml/configs/official.spatial-research.example.json", "ml/configs/fictional.example.toml",
@@ -41,7 +36,6 @@ DOCKER_PRIVATE_PATHS = [".env.local", "nested/.env.secret", "configs/settings.pr
     ".agents/skills/fictional/SKILL.md", "skills-lock.json"]
 DOCKER_PRIVATE_PATHS += [".ENV.backup", "config/SETTINGS.PRIVATE.YAML", "exports/fictional.JOBLIB", "exports/fictional.PARQUET"]
 DOCKER_PRIVATE_PATHS += ["exports/individual_locations.geojson", ".npmrc", "nested/.aws/credentials"]
-DOCKER_PRIVATE_PATHS += ["data/interim/official/internal-alerts-v1/alerts.private.sqlite3"]
 
 
 def git_ignored(root, path):

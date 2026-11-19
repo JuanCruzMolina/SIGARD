@@ -1,5 +1,4 @@
 import { localResearchEnabled } from './experimentalResults'
-import { fetchRead } from './readRetry.mjs'
 import { validateBacktestCatalog, validateBacktestGeometry, validateBacktestMetadata, validateBacktestWeek, validateBacktestHistory } from './backtestContract.mjs'
 
 async function request(path, signal) {
@@ -7,8 +6,7 @@ async function request(path, signal) {
   const timeout = AbortSignal.timeout(20000)
   let response
   try {
-    // One retry on a network failure or 5xx; the error below only appears if it fails too.
-    response = await fetchRead(`http://127.0.0.1:8765/api/v1/research/predictive${path}`, {
+    response = await fetch(`http://127.0.0.1:8765/api/v1/research/predictive${path}`, {
       method: 'GET', headers: { 'X-Sigard-Research': 'local-read' }, cache: 'no-store', credentials: 'omit',
       redirect: 'error', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
     })

@@ -19,11 +19,6 @@ class Settings(BaseSettings):
     geocoding_rate_limit: int = 10
     admin_login_rate_limit: int = 5
     municipal_receiver_confirmed: bool = False
-    # Public activity view: disabled unless a private authorization binds the package manifest.
-    # Only the literal value "fixture" changes behaviour, and only to serve fictional data.
-    sigard_public_activity: str | None = None
-    public_activity_dir: str | None = None
-    public_activity_authorization: str | None = None
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
