@@ -276,3 +276,87 @@ class PreventionAudit(Base):
     before_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     after_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class InternalAlertRule(Base):
+    """Administrator-defined rule over already integrated predictions (internal channel only)."""
+
+    __tablename__ = "internal_alert_rules"
+    __table_args__ = (
+        CheckConstraint("capability IN ('presence', 'quantity')", name="internal_alert_rules_capability_check"),
+        CheckConstraint("consecutive_weeks >= 1 AND consecutive_weeks <= 4", name="internal_alert_rules_consecutive_check"),
+        CheckConstraint("(capability = 'presence' AND threshold IS NULL) OR (capability = 'quantity' AND threshold >= 5)",
+                        name="internal_alert_rules_threshold_check"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    name: Mapped[str] = mapped_column(String(80), nullable=False)
+    capability: Mapped[str] = mapped_column(String(20), nullable=False)
+    model: Mapped[str] = mapped_column(String(64), nullable=False)
+    radio_ids: Mapped[list | None] = mapped_column(JSON, nullable=True)  # NULL = whole common territory
+    threshold: Mapped[float | None] = mapped_column(Float, nullable=True)
+    consecutive_weeks: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    updated_by_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __mapper_args__ = {"version_id_col": revision}
+
+
+class InternalAlertEvaluation(Base):
+    __tablename__ = "internal_alert_evaluations"
+    __table_args__ = (CheckConstraint("status IN ('completed', 'no_data')", name="internal_alert_evaluations_status_check"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    target_week: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    status: Mapped[str] = mapped_column(String(20), nullable=False)
+    source_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    summary_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    triggered_by_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+
+
+class InternalAlertCandidate(Base):
+    """Only disclosed (protected) values are stored. There is no published state."""
+
+    __tablename__ = "internal_alert_candidates"
+    __table_args__ = (
+        CheckConstraint("status IN ('pending', 'approved_internal', 'discarded')", name="internal_alert_candidates_status_check"),
+        CheckConstraint("discard_reason IS NULL OR discard_reason IN ('false_alarm', 'insufficient_context', 'duplicate', 'other')",
+                        name="internal_alert_candidates_reason_check"),
+        UniqueConstraint("rule_id", "rule_revision", "target_week", "radio_id", name="uq_internal_alert_candidate"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    rule_id: Mapped[int] = mapped_column(ForeignKey("internal_alert_rules.id"), nullable=False, index=True)
+    rule_revision: Mapped[int] = mapped_column(Integer, nullable=False)
+    rule_json: Mapped[dict] = mapped_column(JSON, nullable=False)
+    evaluation_id: Mapped[int] = mapped_column(ForeignKey("internal_alert_evaluations.id"), nullable=False)
+    target_week: Mapped[date] = mapped_column(Date, nullable=False, index=True)
+    radio_id: Mapped[str] = mapped_column(String(16), nullable=False)
+    evidence_json: Mapped[list] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(String(20), nullable=False, default="pending", index=True)
+    decision_comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    discard_reason: Mapped[str | None] = mapped_column(String(30), nullable=True)
+    decided_by_user_id: Mapped[int | None] = mapped_column(ForeignKey("usuarios.id"), nullable=True)
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False)
+    revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+
+    __mapper_args__ = {"version_id_col": revision}
+
+
+class InternalAlertAudit(Base):
+    __tablename__ = "internal_alert_audit"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_user_id: Mapped[int] = mapped_column(ForeignKey("usuarios.id"), nullable=False)
+    action: Mapped[str] = mapped_column(String(40), nullable=False)
+    entity: Mapped[str] = mapped_column(String(20), nullable=False)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    before_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    after_json: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, nullable=False, index=True)

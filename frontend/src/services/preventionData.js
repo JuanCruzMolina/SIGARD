@@ -1,5 +1,6 @@
 import { getPublicPrevention } from './citizenReports'
 import { demoMode } from './demoMode'
+import { fetchRead } from './readRetry.mjs'
 import { legacySections, publicSectionsFrom } from './preventionContent.mjs'
 
 // A production build without VITE_API_URL (e.g. Vercel frontend only) never
@@ -14,7 +15,7 @@ const DATA_PATHS = {
 }
 
 async function getJson(path) {
-  const response = await fetch(path, { cache: 'no-cache' })
+  const response = await fetchRead(path, { cache: 'no-cache' })
   if (!response.ok) throw new Error(`No se pudo cargar ${path}`)
   return response.json()
 }

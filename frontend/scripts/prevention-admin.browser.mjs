@@ -6,6 +6,7 @@ import { createRequire } from 'node:module'
 import { access, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { demoRuntime } from './dev-demo.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
 
@@ -92,6 +93,16 @@ try {
   assert.equal(await page.$$eval('.prevention-section-list li button', nodes => nodes.length), 5)
   await page.click('.prevention-section-list li button')
   await page.waitForFunction(() => document.querySelector('.prevention-history li')?.textContent.includes('Carga inicial'))
+  for (const width of [1440, 390]) {
+    await page.setViewport({ width, height: 1000 })
+    const audit = await auditAccessibility(page, 'main')
+    assert.deepEqual(audit.unnamed, [], `controles sin nombre (${width}px)`)
+    assert.deepEqual(audit.lowContrast, [], `contraste insuficiente (${width}px)`)
+  }
+  await page.setViewport({ width: 1440, height: 1000 })
+  assert.ok(await tabReaches(page, '.prevention-form input[name="title"]'), 'el título se alcanza con Tab')
+  assert.ok(await tabReaches(page, '.prevention-form textarea[name="body"]'), 'el cuerpo se alcanza con Tab')
+  checkpoint('Admin prevention editor: names, contrast and keyboard reachability')
   await fill('.prevention-form input[name="title"]', editedTitle)
   await page.$eval('.prevention-form textarea[name="body"]', textarea => textarea.focus())
   await page.$eval('.prevention-form textarea[name="body"]', textarea => textarea.setSelectionRange(textarea.value.length, textarea.value.length))

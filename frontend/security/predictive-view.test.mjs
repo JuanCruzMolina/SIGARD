@@ -1,10 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { finalFixtureResponse } from './predictive.fixture.mjs'
-import { validateBacktestCatalog, validateBacktestWeek } from '../src/services/backtestContract.mjs'
+import { validateBacktestCatalog, validateBacktestHistory, validateBacktestMetadata, validateBacktestWeek } from '../src/services/backtestContract.mjs'
 import {
-  cellCategory, featureGroups, formatPlain, globalVerdict, legendItems, methodSources, mostActiveWeek,
-  PROTECTED_EMPTY, PROTECTED_NOTE, readUrlState, summaryCards, writeUrlState,
+  candidatesFor, cellCategory, decisionText, featureGroups, formatPlain, GLOBAL_VERDICTS, globalVerdict, legendItems, METHOD_HELP, methodSources, mostActiveWeek,
+  PROTECTED_EMPTY, PROTECTED_NOTE, readUrlState, selectedCandidate, summaryCards, writeUrlState,
 } from '../src/services/predictiveView.mjs'
 
 // Generated fictional transport only; no project observations, cartography or predictions.
@@ -34,7 +34,7 @@ test('private mode shows plain-language performance terms from delivered confusi
   const summary = summaryCards({ result, view: 'presence', primary, other, mode: 'private' })
   const all = text(summary)
   assert.match(all, /falsas alarmas/); assert.match(all, /anticipó/); assert.match(all, /Radios priorizados que tuvieron registros/)
-  const c = result.ml_metrics.presence.confusion
+  const c = result.ml_metrics[primary.method].presence.confusion
   assert.equal(summary.cards.find(card => card.id === 'anticipated').value, `${c.TP} de ${c.TP + c.FN}`)
 })
 
@@ -76,22 +76,59 @@ test('default week is the one with most disclosable radios in the active mode', 
 })
 
 test('URL keeps week, question, method and radio, but never the disclosure mode', () => {
-  const state = readUrlState(new URLSearchParams('anio=2024&se=15&vista=cuantos&metodo=comparar&radio=999000001&disclosure=private&modo=privado'))
-  assert.deepEqual(state, { year: 2024, week: 15, view: 'quantity', method: 'compare', layer: 'expected', radio: '999000001' })
+  const state = readUrlState(new URLSearchParams('anio=2024&se=15&vista=cuantos&metodo=comparar&modelo=residual_h1&radio=999000001&disclosure=private&modo=privado'))
+  assert.deepEqual(state, { year: 2024, week: 15, view: 'quantity', method: 'compare', layer: 'expected', radio: '999000001', model: 'residual_h1' })
   const written = writeUrlState(state).toString()
-  assert.equal(written, 'anio=2024&se=15&vista=cuantos&metodo=comparar&radio=999000001')
+  assert.equal(written, 'anio=2024&se=15&vista=cuantos&metodo=comparar&modelo=residual_h1&radio=999000001')
+  assert.equal(readUrlState(new URLSearchParams('modelo=../x')).model, '')
   assert.doesNotMatch(written, /disclosure|private|privado/)
   assert.equal(readUrlState(new URLSearchParams('radio=../x&se=99')).radio, '')
   assert.equal(readUrlState(new URLSearchParams('se=99')).week, null)
 })
 
-test('method selector and verdict are driven by metadata, not component names', () => {
-  assert.deepEqual(methodSources(metadata, 'presence').map(s => [s.source, s.method]), [['ml', 'rf_A_epi_climate'], ['reference', 'presence_seasonal']])
-  const future = { ...metadata, experimental_methods: { presence: 'FICTIONAL_rf_next', quantity: 'FICTIONAL_residual_next' } }
-  assert.equal(methodSources(future, 'quantity')[0].method, 'FICTIONAL_residual_next')
-  assert.equal(globalVerdict(future), null)
-  assert.ok(globalVerdict(metadata).text.length > 0)
-  assert.deepEqual(methodSources({ ...metadata, experimental_methods: undefined }, 'presence').map(s => s.source), ['reference'])
+test('model selector is built from metadata: several candidates per question, v2 by default', () => {
+  assert.equal(validateBacktestMetadata(metadata, catalog), metadata)
+  assert.deepEqual(candidatesFor(metadata, 'presence').map(c => c.id), ['rf_A_epi_climate', 'rf_v2_city_propensity'])
+  assert.deepEqual(candidatesFor(metadata, 'quantity').map(c => c.id), ['residual_h1', 'residual_v2'])
+  assert.deepEqual(methodSources(metadata, 'presence').map(s => [s.source, s.method]), [['ml', 'rf_v2_city_propensity'], ['reference', 'presence_seasonal']])
+  assert.equal(methodSources(metadata, 'quantity')[0].method, 'residual_v2')
+  assert.equal(methodSources(metadata, 'presence', 'rf_A_epi_climate')[0].method, 'rf_A_epi_climate')
+  // A model of the other question (or an unknown id) falls back to the default of this question.
+  assert.equal(selectedCandidate(metadata, 'presence', 'residual_v2'), 'rf_v2_city_propensity')
+  assert.equal(selectedCandidate(metadata, 'quantity', 'FICTIONAL_unknown'), 'residual_v2')
+  const future = { ...metadata, experimental_candidates: [{ ...metadata.experimental_candidates[3], id: 'fictional_residual_next' }], default_candidates: { quantity: 'fictional_residual_next' } }
+  assert.equal(methodSources(future, 'quantity')[0].method, 'fictional_residual_next')
+  assert.equal(globalVerdict(future, 'fictional_residual_next'), null)
+  assert.deepEqual(methodSources({ ...metadata, experimental_candidates: undefined }, 'presence').map(s => s.source), ['reference'])
+  assert.throws(() => validateBacktestMetadata({ ...metadata, experimental_candidates: [{ ...metadata.experimental_candidates[2], promotion: { decision: 'promoted' } }] }, catalog))
+  assert.throws(() => validateBacktestMetadata({ ...metadata, default_candidates: { presence: 'residual_v2' } }, catalog))
+})
+
+test('fixed verdicts per candidate and plain-language decision rules', () => {
+  const rf = globalVerdict(metadata, 'rf_v2_city_propensity').text.join(' ')
+  assert.match(rf, /recall@10 0,160 frente a 0,156; diferencia no significativa\)\. Mejor que los modelos anteriores\./)
+  const residual = globalVerdict(metadata, 'residual_v2').text.join(' ')
+  assert.match(residual, /Error promedio 13,6 % menor que repetir la semana anterior en 2021–2023 \(diferencia con intervalo de confianza que excluye 0\)\. Subestima semanas de muchos casos\./)
+  for (const text of [rf, residual]) assert.match(text, /2024 es una comparación ya observada; ningún modelo está aprobado para uso operativo\./)
+  assert.ok(globalVerdict(metadata, 'rf_A_epi_climate').text.length > 0)
+  assert.ok(GLOBAL_VERDICTS.every(v => v.source.length > 0))
+  assert.equal(decisionText(metadata.experimental_candidates[2]), 'Marca los 10 radios con mayor prioridad cada semana.')
+  assert.match(METHOD_HELP.rf_v2_city_propensity, /Marca los 10 radios con mayor prioridad cada semana/)
+})
+
+test('top-k recall is delivered only in private mode; protected mode keeps the selection-bias rule', () => {
+  const exact = week(2024, 15, 'private'), safe = week(2024, 15, 'presentation')
+  const topk = exact.ml_metrics.rf_v2_city_propensity.topk
+  assert.equal(topk.status, 'all_comparable'); assert.equal(topk.flagged, 10); assert.ok(topk.recall !== null)
+  assert.equal(exact.rows.filter(r => r.ml.rf_v2_city_propensity.presence === 1).length, 10)
+  assert.equal(safe.ml_metrics.rf_v2_city_propensity.topk.status, 'private_only_selection_bias')
+  assert.equal(safe.ml_metrics.rf_v2_city_propensity.topk.recall, null)
+  const leaked = structuredClone(safe); leaked.ml_metrics.rf_v2_city_propensity.topk.recall = .5
+  assert.throws(() => validateBacktestWeek(leaked, catalog, find(2024, 15), 'presentation'))
+  const list = catalog.weeks.filter(w => w.target_year === 2024)
+  const history = validateBacktestHistory(api(`/history?start=${list[0].target_week}&end=${list.at(-1).target_week}&disclosure=presentation`), catalog, list[0].target_week, list.at(-1).target_week, '', 'presentation')
+  assert.equal(history.ml_by_year['2024'].rf_v2_city_propensity.topk.recall, null)
+  assert.ok(typeof history.series[0].ml_predicted === 'object')
 })
 
 test('model inputs are described as families without values', () => {

@@ -39,12 +39,12 @@ export default function RadioPanel({ radio, rows, sources, view, mode, result, c
   const base = rows.reference
   const category = cellCategory(base, view)
   const describe = (row, source) => {
-    if (source.source === 'ml' && result.ml?.[view]?.availability_status !== 'available') return 'Sin predicción guardada'
-    if (view === 'presence') return row.predicted.presence === null ? 'Sin dato' : row.predicted.presence ? 'Priorizado' : 'No priorizado'
+    if (source.source === 'ml' && result.ml?.[source.method]?.availability_status !== 'available') return 'Sin predicción guardada'
+    if (view === 'presence') return row.predicted.presence === null ? 'Sin dato' : row.predicted.presence ? (row.topk_rank ? `Priorizado (puesto ${row.topk_rank})` : 'Priorizado') : 'No priorizado'
     return row.predicted.quantity === null ? 'Sin dato' : `${formatPlain(row.predicted.quantity, 1)} registros`
   }
   const primary = sources[0]
-  const features = primary.source === 'ml' ? featureGroups(result.ml?.[view]?.features) : []
+  const features = primary.source === 'ml' ? featureGroups(result.ml?.[primary.method]?.features) : []
   return <aside className="pv-panel" aria-labelledby="pv-panel-title">
     <div className="pv-panel-head"><h2 id="pv-panel-title" tabIndex="-1" ref={heading}>Radio censal {radio}</h2>
       <button type="button" className="pv-close" onClick={onClose} aria-label="Cerrar detalle del radio">✕</button></div>
