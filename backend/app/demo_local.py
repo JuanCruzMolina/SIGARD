@@ -66,7 +66,8 @@ def create_demo_app(directory):
     password = secrets.token_urlsafe(24)
     settings = SessionSettings(
         secret_key=secrets.token_urlsafe(48), database_url=database_url,
-        auto_create_schema=True, cors_origins="http://127.0.0.1:5173",
+        # Both loopback spellings of the same local Vite server (no credentials/cookies).
+        auto_create_schema=True, cors_origins="http://127.0.0.1:5173,http://localhost:5173",
         admin_bootstrap_email=None, admin_bootstrap_password=None,
     )
     # Same process-local configuration seam used by browser_admin_fixture.py.

@@ -28,7 +28,7 @@ def main():
         from app.models import User
 
         settings = config.get_settings()
-        assert settings.allowed_origins == ["http://127.0.0.1:5173"]
+        assert settings.allowed_origins == ["http://127.0.0.1:5173", "http://localhost:5173"]
         assert settings.auto_create_schema is True and settings.report_rate_limit == 5
         assert settings.admin_bootstrap_email is None and settings.admin_bootstrap_password is None
         assert app.state.engine.url.get_backend_name() == "sqlite"
@@ -52,6 +52,12 @@ def main():
         geocoding.httpx.Client = forbidden_client
         with TestClient(app) as client:
             assert client.get("/health/ready").status_code == 200
+            for origin, allowed in (("http://127.0.0.1:5173", True), ("http://localhost:5173", True),
+                                    ("http://localhost:5174", False), ("https://forbidden.invalid", False)):
+                preflight = client.options("/api/v1/admin/session", headers={
+                    "Origin": origin, "Access-Control-Request-Method": "POST",
+                    "Access-Control-Request-Headers": "content-type"})
+                assert (preflight.headers.get("access-control-allow-origin") == origin) is allowed
             assert client.post("/api/v1/geocoding/address", json={"address_reference": "Fictitious place"}).status_code == 503
             assert client.get("/api/v1/admin/citizen-reports").status_code == 401
             assert client.post("/api/v1/admin/session", json={"email": credentials["email"], "password": "wrong-password"}).status_code == 401
