@@ -48,7 +48,8 @@ try {
       assert.ok(match && u.protocol === 'https:' && !u.search && !u.hash && !u.username, `tile request carries only tile coordinates: ${u.href}`)
       assert.ok(z >= 11 && z <= 17, 'tile zoom within the city range')
       assert.ok(tileLat(y + 1, z) <= CITY.north && tileLat(y, z) >= CITY.south && tileLng(x + 1, z) >= CITY.west && tileLng(x, z) <= CITY.east, `tile within the map area: ${z}/${x}/${y}`)
-      assert.ok(!r.headers().referer, 'no referrer (page URL, week or radio) sent to the tile server')
+      // OSM's tile policy requires a Referer; send only the origin, never page path, week or radio.
+      assert.equal(r.headers().referer, `${origin}/`, 'only the page origin is sent to the tile server')
       assert.equal(r.method(), 'GET'); assert.equal(r.postData(), undefined)
       tileRequests.push(`${z}/${x}/${y}`)
       return tilesOnline ? r.continue() : r.abort()

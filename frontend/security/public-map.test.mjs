@@ -91,3 +91,13 @@ test('loading hides stale details and disables selection; missing geometry repor
   assert.ok(error.includes('role="alert"') && error.includes('No fue posible cargar'))
   assert.ok(!error.includes('<select'))
 })
+
+test('OSM tile layers send only the page origin as Referer (tile usage policy)', async () => {
+  // Global Referrer-Policy is no-referrer; OSM answers "Access blocked" (403) without Referer.
+  for (const name of ['BacktestMaps', 'PublicActivity', 'CitizenReportForm', 'HealthFacilitiesMap']) {
+    const source = await readFile(new URL(`../src/components/${name}.jsx`, import.meta.url), 'utf8')
+    const layers = source.match(/<TileLayer\b[\s\S]*?\/>\s*\}/g) || []
+    assert.ok(layers.length > 0, `${name} declares a tile layer`)
+    for (const layer of layers) assert.match(layer, /referrerPolicy="strict-origin"/, `${name} tile Referer limited to origin`)
+  }
+})
