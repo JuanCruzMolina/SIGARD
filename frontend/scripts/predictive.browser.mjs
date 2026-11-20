@@ -78,9 +78,11 @@ try {
   const openRadioWithKeyboard = async () => {
     await page.waitForFunction(() => document.querySelector('[data-legend="TP"]') && document.querySelectorAll('.pv-map').length === 1 && document.querySelector('.pv-map path[tabindex="0"]'))
       .catch(async error => {
-        const state = await page.evaluate(() => ({ legend: !!document.querySelector('[data-legend="TP"]'), maps: document.querySelectorAll('.pv-map').length,
+        const state = await page.evaluate(() => ({
+          legend: !!document.querySelector('[data-legend="TP"]'), maps: document.querySelectorAll('.pv-map').length,
           paths: document.querySelectorAll('.pv-map path').length, focusable: document.querySelectorAll('.pv-map path[tabindex="0"]').length,
-          state: document.querySelector('.pv')?.dataset.state, url: location.search }))
+          state: document.querySelector('.pv')?.dataset.state, url: location.search
+        }))
         throw new Error(`${error.message} ${JSON.stringify(state)}`)
       })
     await new Promise(r => setTimeout(r, 300))
@@ -243,10 +245,12 @@ try {
     const count = requests.length; await page.goto('http://127.0.0.1:5174/mapa', { waitUntil: 'networkidle0' })
     assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
   }
-  const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
+  const receipt = {
+    status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
     requests: requests.length, archived_calls: 0,
     tiles: tilesOnline ? 'osm_city_tiles_only' : 'blocked_offline', tile_requests_checked: tileRequests.length, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
-    no_training: true, fixtures_in_project_metrics: false, origin, timings }
+    no_training: true, fixtures_in_project_metrics: false, origin, timings
+  }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))
 } finally { await browser.close(); if (production) await new Promise(resolve => production.httpServer.close(resolve)) }
