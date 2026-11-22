@@ -86,7 +86,7 @@ test('public activity: a transient failure still shows the data; 404 stays disab
 test('every initial read goes through fetchRead; citizen writes keep their own method', () => {
   const source = name => readFileSync(new URL(`../src/services/${name}`, import.meta.url), 'utf8')
   const backtest = source('backtestResults.js')
-  assert.match(backtest, /fetchRead\(`http:\/\/127\.0\.0\.1:8765/)
+  assert.match(backtest, /fetchRead\(`\$\{PREDICTIVE_API\}\$\{path\}`/)
   assert.doesNotMatch(backtest, /[^.\w]fetch\(/)
   assert.match(source('publicActivity.mjs'), /fetchRead\(`\$\{API_URL\}\/api\/v1\/public\/activity`/)
   assert.match(source('preventionData.js'), /await fetchRead\(path/)

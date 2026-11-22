@@ -12,7 +12,7 @@ from test_predictive_service import high_cells
 from app.predictive_service import PredictiveService
 from app.predictive_ml import V1_CANDIDATES
 from app.experimental_results import ArtifactBlocked
-from app.experimental_api import create_research_app
+from predictive_admin_support import admin_app, client as admin_client
 
 RF2, RES2 = 'rf_v2_city_propensity', 'residual_v2'
 RF1, RES1 = V1_CANDIDATES['presence'], V1_CANDIDATES['quantity']
@@ -220,11 +220,11 @@ def anyio_backend(): return 'asyncio'
 
 
 @pytest.mark.anyio
-async def test_ml_http_projection_missing_results_and_access_guards(bundle):
+async def test_ml_http_projection_missing_results_and_access_guards(bundle, tmp_path):
     s = install(bundle)
-    app = create_research_app(predictive=s, legacy=False)
+    app, TRUSTED, _ = admin_app(tmp_path, s)
     prefix = '/api/v1/research/predictive'
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app, client=('127.0.0.1', 1234)), base_url='http://127.0.0.1:8765') as client:
+    async with admin_client(app) as client:
         for endpoint in ('comparison', 'predicted', 'metrics'):
             response = await client.get(prefix + '/' + endpoint + '?year=2021&week=1', headers=TRUSTED)
             assert response.status_code == 200 and response.json()['ml'][RF2]['state'] == 'experimental_not_promoted'

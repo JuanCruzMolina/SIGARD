@@ -8,7 +8,7 @@ import {
 } from '../src/services/predictiveView.mjs'
 
 // Generated fictional transport only; no project observations, cartography or predictions.
-const api = path => finalFixtureResponse(`http://127.0.0.1:8765/api/v1/research/predictive${path}`)
+const api = path => finalFixtureResponse(`http://127.0.0.1:8767/api/v1/research/predictive${path}`)
 const catalog = validateBacktestCatalog(api('/calendar'))
 const metadata = api('/metadata')
 const find = (year, week) => catalog.weeks.find(w => w.target_year === year && w.target_epi_week === week)

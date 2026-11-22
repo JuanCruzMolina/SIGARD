@@ -1,5 +1,11 @@
 // Complete predictive-module walkthrough. Default is fictional; --real reads local aggregates only.
-// Requires the frontend on 127.0.0.1:5173 (npm run dev) and a previous `npm run build` for the production check.
+// F2: owns its environment, like test:alerts:browser: Vite (5173) + the local administrative API
+// (8767) in session mode (disposable SQLite, generated admin kept in memory); both ports must be
+// free. The viewer needs that admin's session: the walkthrough first checks /mapa without a
+// session, logs in with the generated admin (same endpoint as /admin/reportes) and finally checks an expired and a revoked session.
+// Fictional: predictive responses come from the generated fixture (intercepted; the API answers
+// 503 without a real module). --real: the real local predictive service behind the same login.
+// A previous `npm run build` is needed for the production check.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
@@ -7,6 +13,9 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
 import { finalFixtureResponse } from '../security/predictive.fixture.mjs'
+import { SESSION_EXPIRED, SESSION_REQUIRED } from '../src/services/adminSession.mjs'
+import { ALERTS_API, alertsRuntime } from './dev-alerts.mjs'
+import { portAvailable, startDevelopment } from './dev.mjs'
 
 const require = createRequire(import.meta.url), puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
@@ -25,11 +34,17 @@ const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-
 await mkdir(output, { recursive: true })
 const privateView = process.env.SIGARD_PRIVATE_VIEW === '1'
 let assertProtectedMode
+for (const port of [5173, 8767]) assert.ok(await portAvailable(port), `Port ${port} must be free; no existing service will be stopped`)
+const runtime = alertsRuntime({ mode: 'session', source: real ? 'local-research' : 'fictional' }); runtime.announce = () => {}
+let environment = await startDevelopment(runtime)
 const browser = await puppeteer.launch({ headless: true }); let production
 const errors = [], external = [], requests = [], timings = [], tileRequests = [], devFontSheets = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
+// Unsigned JWT-shaped values (never valid on the server): expired, and not expired but revoked.
+const fakeJwt = exp => `e30.${Buffer.from(JSON.stringify({ sub: '0', exp })).toString('base64url')}.FICTIONAL`
+let sessionToken = ''
 try {
-  const page = await browser.newPage(); page.setDefaultTimeout(30000)
+  const page = await browser.newPage(); page.setDefaultTimeout(real ? 120000 : 30000)
   assertProtectedMode = async () => {
     if (privateView) return assert.equal(await page.$eval('#bt-disclosure', e => e.value), 'presentation')
     assert.equal(await page.$('#bt-disclosure'), null, 'el selector de valores exactos no debe existir sin SIGARD_PRIVATE_VIEW=1')
@@ -55,11 +70,14 @@ try {
     }
     // The dev page itself must ask for the Google Fonts sheet (IBM Plex Sans), as before F1.
     if (!production && u.protocol === 'https:' && u.hostname === 'fonts.googleapis.com' && u.pathname === '/css2') devFontSheets.push(u.searchParams.get('family'))
-    if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8765'].includes(u.port)) { external.push(u.origin); return r.abort() }
+    if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (u.pathname.startsWith('/api/v1/research/')) {
-      assert.ok(u.pathname.startsWith('/api/v1/research/predictive/'), 'no archived A/B or unprotected backtest calls')
-      if (r.method() === 'OPTIONS') return r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
+      assert.ok(u.pathname.startsWith('/api/v1/research/predictive/') && u.port === '8767', 'only the authenticated predictive viewer API')
+      if (r.method() === 'OPTIONS') return real ? r.continue() : r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Authorization, X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
       assert.equal(r.method(), 'GET'); requests.push(`${u.pathname}${u.search}`)
+      assert.equal(r.headers()['x-sigard-research'], 'local-read')
+      // The fixture stands in for the data only: an unknown or revoked session gets the server's 401.
+      if (!real && r.headers().authorization !== `Bearer ${sessionToken}`) return r.respond({ status: 401, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Autenticación administrativa requerida"}' })
       if (fail && u.pathname.endsWith('/comparison')) return r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': origin }, body: '{}' })
       if (!real) return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify(finalFixtureResponse(u.href)) })
     }
@@ -90,6 +108,16 @@ try {
   const noHorizontalScroll = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
 
   await page.setViewport({ width: 1440, height: 1000 })
+  // Session (F2): without one, the viewer explains how to log in and sends no request.
+  const setupAlert = () => page.waitForSelector('.pv [role="alert"]').then(() => page.$eval('.pv [role="alert"] p', e => e.textContent))
+  await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' })
+  assert.equal(await setupAlert(), SESSION_REQUIRED); assert.equal(requests.length, 0)
+  await shot('desktop-sin-sesion')
+  // Same login endpoint as /admin/reportes (its UI is covered by test:accounts/alerts:browser),
+  // called from Node: intercepting the admin page's own preflights makes CORS flaky.
+  const login = await fetch(`${ALERTS_API}/api/v1/admin/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(runtime.service.credentials) })
+  assert.equal(login.status, 200); sessionToken = (await login.json()).access_token
+  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), sessionToken)
   await timed('cold_start_until_default_week_rendered', () => page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }), () => ready())
   const defaultWeek = await week()
   if (!real) assert.equal(defaultWeek, '2024-04-07', 'fictional default is the week with most disclosable radios')
@@ -229,15 +257,32 @@ try {
   } else {
     const measured = await page.evaluate(async () => {
       const operations = [['calendar', '/calendar'], ['geometry', '/geometry'], ['metadata', '/metadata'], ['week_protected', '/comparison?year=2024&week=12'], ['year_protected', '/history?start=2023-12-31&end=2024-12-22']]
-      const results = []
+      const results = [], token = sessionStorage.getItem('sigard_admin_token')
       for (const [operation, path] of operations) for (let sample = 0; sample < 3; sample++) {
-        const start = performance.now(); const response = await fetch(`http://127.0.0.1:8765/api/v1/research/predictive${path}`, { headers: { 'X-Sigard-Research': 'local-read' }, credentials: 'omit', cache: 'no-store' })
+        const start = performance.now(); const response = await fetch(`http://127.0.0.1:8767/api/v1/research/predictive${path}`, { headers: { 'X-Sigard-Research': 'local-read', Authorization: `Bearer ${token}` }, credentials: 'omit', cache: 'no-store' })
         if (!response.ok) throw new Error(`benchmark_status_${response.status}`)
         await response.json(); results.push({ operation, sample, seconds: (performance.now() - start) / 1000 })
       }
       return results
     }); timings.push(...measured)
   }
+  // Expired session while using the viewer: no request, how to log in again, no console errors.
+  await page.setViewport({ width: 1440, height: 1000 })
+  const alertShows = text => page.waitForFunction(t => [...document.querySelectorAll('.pv [role="alert"]')].some(e => e.textContent.includes(t)), {}, text)
+  const sent = requests.length
+  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), fakeJwt(Math.floor(Date.now() / 1000) - 60))
+  await page.select('#pv-year', '2024'); await alertShows(SESSION_EXPIRED)
+  assert.equal(requests.length, sent, 'an expired session sends no request')
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')), null, 'the expired session is cleared')
+  await shot('desktop-sesion-vencida')
+  // Revoked (or otherwise rejected) session: the server answers 401 and the viewer says the same.
+  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), fakeJwt(Math.floor(Date.now() / 1000) + 600))
+  await page.reload({ waitUntil: 'domcontentloaded' })
+  assert.equal(await setupAlert(), SESSION_EXPIRED); assert.ok(requests.length > sent, 'a not-yet-expired token is checked by the server')
+  assert.equal(await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')), null)
+  // Logging in again restores the viewer (Reintentar, without reloading).
+  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), sessionToken)
+  await page.evaluate(() => [...document.querySelectorAll('.pv button')].find(b => b.textContent === 'Reintentar').click()); await ready()
   assert.deepEqual(errors, [])
   if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
   if (!process.env.SIGARD_SKIP_PRODUCTION) {
@@ -251,4 +296,7 @@ try {
     no_training: true, fixtures_in_project_metrics: false, origin, dev_font_sheet_requested: devFontSheets.length > 0, timings }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))
-} finally { await browser.close(); if (production) await new Promise(resolve => production.httpServer.close(resolve)) }
+} finally {
+  await browser.close(); if (production) await new Promise(resolve => production.httpServer.close(resolve))
+  if (environment) { await environment.stop(); await environment.closed; environment = undefined }
+}

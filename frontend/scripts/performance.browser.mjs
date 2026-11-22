@@ -1,9 +1,10 @@
 // Reproducible performance measurement for the acceptance criterion (c): p95 < 5 s.
-// Owns its environments (ports 5173, 8765, 8767 and the fixture API must be free):
-//   phase 1: `dev` (Vite + local predictive API, protected mode) + fixture public API
-//            (fictional activity package, versioned prevention guidance);
-//   phase 2: `dev:alerts` in session mode (disposable SQLite, generated admin) over the
-//            local predictive API (protected values).
+// Owns its environments (ports 5173, 8767 and the fixture API must be free):
+//   phase 1: Vite + fixture public API (fictional activity package, versioned prevention guidance);
+//   phase 2: `dev` runtime in session mode (disposable SQLite, generated admin): the local
+//            administrative API (8767) with the predictive viewer routes (F2: administrator
+//            session required, protected values) and the alerts panel. One login through the
+//            API; every simulated user gets its own browser context with that session token.
 // Each operation: 30 repetitions with 1 simulated user, and 30 rounds with 5 concurrent users
 // (separate browser contexts, 150 samples). Nearest-rank p95. Only timings are recorded.
 // --target production measures the optimized bundle instead of the Vite dev server: `vite build`
@@ -11,7 +12,11 @@
 // the same APIs. The predictive viewer is excluded from public bundles by design (it requires
 // import.meta.env.DEV); its measurement build opens only that local research gate. These builds
 // are written below data/interim/official/performance-v1/production and are never deployed.
-// Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production]
+// --after-warm waits, before the phase-2 operations, until the in-process alerts preload of the
+// administrative API finished (/health/alerts "warm"); without it the viewer is measured while
+// that preload still competes for the same process (worst case right after starting `dev`).
+// --label NAME writes results-NAME.json (and keeps earlier results, e.g. the F0 baseline, intact).
+// Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production] [--label f2]
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -36,6 +41,9 @@ const reps = Number(process.argv[process.argv.indexOf('--reps') + 1]) || 30
 // --only a,b re-measures selected operations (results file per run label).
 const only = process.argv.includes('--only') ? new Set(process.argv[process.argv.indexOf('--only') + 1].split(',')) : null
 const selected = name => !only || only.has(name)
+const label = argument('--label')
+const afterWarm = process.argv.includes('--after-warm')
+assert.ok(!label || /^[a-z0-9-]{1,40}$/.test(label), '--label admite minúsculas, dígitos y guiones')
 const USERS = [1, 5]
 const THRESHOLD_MS = 5000
 const delay = ms => new Promise(r => setTimeout(r, ms))
@@ -50,7 +58,7 @@ function summarize(operation, users, samples, timeouts = 0) {
   const row = { operation, users, n: samples.length, timeouts, p50_ms: sorted[Math.floor(sorted.length / 2)], p95_ms: p95(samples), max_ms: sorted.at(-1) }
   row.pass = row.p95_ms < THRESHOLD_MS
   results.push(row)
-  void writeFile(resolve(output, 'results.partial.json'), JSON.stringify({ results, failures }, null, 2)).catch(() => {})
+  void writeFile(resolve(output, label ? `results-${label}.partial.json` : 'results.partial.json'), JSON.stringify({ results, failures }, null, 2)).catch(() => {})
   console.log(`${operation.padEnd(26)} usuarios=${users} n=${row.n} agotados=${timeouts} p50=${row.p50_ms} p95=${row.p95_ms} max=${row.max_ms} ${row.pass ? 'OK' : 'SUPERA 5 s'}`)
 }
 
@@ -138,7 +146,7 @@ async function timed(run, page, operation) {
 let browser, devSession, fixture, alertsSession
 const startedAt = new Date().toISOString()
 try {
-  for (const port of [5173, 8765, 8767]) assert.ok(await portAvailable(port), `El puerto ${port} debe estar libre`)
+  for (const port of [5173, 8767]) assert.ok(await portAvailable(port), `El puerto ${port} debe estar libre`)
   await mkdir(output, { recursive: true })
   // The fixture public API starts first: the frontend is pointed at it with VITE_API_URL.
   fixture = startFixture()
@@ -148,8 +156,10 @@ try {
   if (target === 'production') {
     const publicApi = { 'import.meta.env.VITE_API_URL': JSON.stringify(fixtureApi) }
     bundles.public = await buildBundle('public', { define: publicApi })
-    bundles.research = await buildBundle('research', { define: { ...publicApi, 'import.meta.env.DEV': 'true' } })
-    bundles.alerts = await buildBundle('alerts', { define: { 'import.meta.env.VITE_API_URL': JSON.stringify(ALERTS_API) }, plugins: [demoOfflineStyles()] })
+    // Phase 2 (viewer and alerts panel) uses one bundle against the administrative API, like
+    // `dev` (VITE_API_URL = 8767; a viewer bundle pointed at the stopped phase-1 fixture API
+    // would add failed calls to every load).
+    bundles.admin = await buildBundle('admin', { define: { 'import.meta.env.VITE_API_URL': JSON.stringify(ALERTS_API), 'import.meta.env.DEV': 'true' }, plugins: [demoOfflineStyles()] })
   }
   browser = await puppeteer.launch({ headless: true })
   const browserVersion = await browser.version()
@@ -183,23 +193,66 @@ try {
     await close(); return ms
   })
 
+  await fixture.stop(); fixture = undefined
+  await devSession.stop(); await devSession.closed; devSession = undefined
+
+  // Phase 2: `dev` runtime in session mode: administrative API with the predictive viewer
+  // (protected values, administrator session) and the alerts panel.
+  const alerts = alertsRuntime({ mode: 'session', source: 'local-research' })
+  const runtime = target === 'production' ? previewRuntime(alerts, bundles.admin) : alerts
+  runtime.announce = () => {}; runtime.log = () => {}
+  alertsSession = await startDevelopment(runtime)
+  let warmWaitMs = null
+  if (afterWarm) {
+    const start = performance.now()
+    while (!(await (await fetch(`${ALERTS_API}/health/alerts`)).json()).warm) {
+      assert.ok(performance.now() - start < 300000, 'la precarga de alertas no terminó en 5 minutos')
+      await delay(500)
+    }
+    warmWaitMs = Math.round(performance.now() - start)
+  }
+  const { email, password } = alerts.service.credentials
+  // The login limiter allows 5 attempts per 15 min and address: log in once and give every
+  // simulated user its own browser context with that session token.
+  let token
+  const loggedIn = async () => {
+    const session = await newPage(browser)
+    const { page } = session
+    if (token) {
+      await page.evaluateOnNewDocument(value => sessionStorage.setItem('sigard_admin_token', value), token)
+      return session
+    }
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded', timeout: 120000 })
+      await page.waitForSelector('.admin-login input[type="email"]', { timeout: 120000 })
+      await page.type('.admin-login input[type="email"]', email); await page.type('.admin-login input[type="password"]', password)
+      await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ingresar').click())
+      const ok = await page.waitForSelector('.admin-header', { timeout: 10000 }).then(() => true, () => false)
+      if (ok) { token = await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')); return session }
+      await delay(61000) // login rate limit window
+    }
+    throw new Error('No se pudo iniciar sesión en la API de alertas')
+  }
+  // One API login (same endpoint as /admin/reportes) for the viewer contexts.
+  const login = await fetch(`${ALERTS_API}/api/v1/admin/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) })
+  assert.equal(login.status, 200); token = (await login.json()).access_token
+  const newViewerPage = async () => { const session = await newPage(browser); await session.page.evaluateOnNewDocument(value => sessionStorage.setItem('sigard_admin_token', value), token); return session }
   if (target === 'production') {
-    await servePreview(bundles.research)
     // The measurement bundle must really contain the viewer (not the public map).
-    const { page, close } = await newPage(browser)
+    const { page, close } = await newViewerPage()
     await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.pv', { timeout: 120000 }); await close()
   }
   const visorReady = (page, timeout = SAMPLE_TIMEOUT_MS) => page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating')
     && document.querySelectorAll('.pv-map path.leaflet-interactive').length >= 263, { timeout })
   await measureOperation('visor_carga', fresh(), async () => {
-    const { page, close } = await newPage(browser)
+    const { page, close } = await newViewerPage()
     const ms = await timed(async () => { await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }); await visorReady(page) }, page, 'visor_carga')
     await close(); return ms
   })
 
   const loadedVisor = async () => {
-    const session = await newPage(browser)
+    const session = await newViewerPage()
     await session.page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }); await visorReady(session.page, 120000)
     // The viewer keeps loading yearly histories in the background; an "already loaded" viewer
     // is one whose background requests finished, so they do not queue behind the next setup.
@@ -223,36 +276,6 @@ try {
       await page.waitForFunction(id => document.querySelector('.pv-panel')?.textContent.includes(id) && !document.querySelector('.pv-updating'), {}, id)
     }, page, 'visor_consulta_radio')
   })
-  await fixture.stop(); fixture = undefined
-  await devSession.stop(); await devSession.closed; devSession = undefined
-
-  // Phase 2: dev:alerts (session mode, protected values from the local predictive API).
-  const alerts = alertsRuntime({ mode: 'session', source: 'local-research' })
-  const runtime = target === 'production' ? previewRuntime(alerts, bundles.alerts) : alerts
-  runtime.announce = () => {}; runtime.log = () => {}
-  alertsSession = await startDevelopment(runtime)
-  const { email, password } = alerts.service.credentials
-  // The login limiter allows 5 attempts per 15 min and address: log in once and give every
-  // simulated user its own browser context with that session token.
-  let token
-  const loggedIn = async () => {
-    const session = await newPage(browser)
-    const { page } = session
-    if (token) {
-      await page.evaluateOnNewDocument(value => sessionStorage.setItem('sigard_admin_token', value), token)
-      return session
-    }
-    for (let attempt = 0; attempt < 3; attempt++) {
-      await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded', timeout: 120000 })
-      await page.waitForSelector('.admin-login input[type="email"]', { timeout: 120000 })
-      await page.type('.admin-login input[type="email"]', email); await page.type('.admin-login input[type="password"]', password)
-      await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Ingresar').click())
-      const ok = await page.waitForSelector('.admin-header', { timeout: 10000 }).then(() => true, () => false)
-      if (ok) { token = await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')); return session }
-      await delay(61000) // login rate limit window
-    }
-    throw new Error('No se pudo iniciar sesión en la API de alertas')
-  }
   await measureOperation('panel_alertas', loggedIn, async ({ page }) => {
     await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded', timeout: 120000 })
     await page.waitForSelector('.admin-header', { timeout: 120000 })
@@ -269,9 +292,10 @@ try {
       ? 'Vite dev server (sin bundle de producción), APIs locales uvicorn, Chromium headless en el mismo equipo; teselas y fuentes externas excluidas'
       : 'vite build (React de producción, minificado) + vite preview en 127.0.0.1:5173; mismas APIs locales; el bundle del visor abre sólo la compuerta de investigación local (DEV) para medirlo; teselas y fuentes externas excluidas',
     volume: '263 radios oficiales; visor con 208 semanas evaluables 2021–2024; actividad con fixture de 24 celdas + 1 fuera del área, 45 bloques',
+    phase2_after_alerts_preload: afterWarm, alerts_preload_wait_ms: warmWaitMs,
     repetitions: reps, concurrency: USERS, percentile: 'p95 por rango más cercano', threshold_ms: THRESHOLD_MS,
   }
-  await writeFile(resolve(output, only ? `results-${[...only].join('+')}.json` : 'results.json'), JSON.stringify({ environment, results, failures }, null, 2))
+  await writeFile(resolve(output, label ? `results-${label}.json` : only ? `results-${[...only].join('+')}.json` : 'results.json'), JSON.stringify({ environment, results, failures }, null, 2))
   console.log(JSON.stringify({ environment, all_pass: results.every(r => r.pass) }))
 } finally {
   await browser?.close()

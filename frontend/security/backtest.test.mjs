@@ -1,6 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
+import { endSession, readSession, SESSION_EXPIRED, SESSION_KEY, SESSION_REQUIRED, sessionExpired } from '../src/services/adminSession.mjs'
 import { experimentalView, formatValue, lineSegments, validateBacktestCatalog, validateBacktestGeometry, validateBacktestHistory, validateBacktestMetadata, validateBacktestWeek } from '../src/services/backtestContract.mjs'
 
 // Generated contract-only fixture. No project observations or cartography.
@@ -50,11 +51,28 @@ test('unknown history creates genuine path breaks and no predictions for unsuppo
   assert.equal(validateBacktestHistory(value, catalog, value.start, value.end, ''), value)
   value.series[0].predicted = 0; assert.throws(() => validateBacktestHistory(value, catalog, value.start, value.end, ''))
 })
-test('service stays loopback/read-only; no clinical/public fixture or HTTP fitting paths', async () => {
+test('service stays loopback/read-only and sends the admin session; no clinical/public fixture or HTTP fitting paths', async () => {
   const service = await readFile(new URL('../src/services/backtestResults.js', import.meta.url), 'utf8')
   assert.match(service, /if \(!localResearchEnabled\(\)\)/)
-  for (const text of ['http://127.0.0.1:8765/api/v1/research/predictive', "method: 'GET'", "credentials: 'omit'", "cache: 'no-store'", "redirect: 'error'"]) assert.ok(service.includes(text))
-  assert.doesNotMatch(service, /\/train|\/fit|localStorage|sessionStorage/)
+  for (const text of ["'http://127.0.0.1:8767/api/v1/research/predictive'", "method: 'GET'", "credentials: 'omit'", "cache: 'no-store'", "redirect: 'error'",
+    'Authorization: `Bearer ${token}`', "'X-Sigard-Research': 'local-read'"]) assert.ok(service.includes(text), text)
+  assert.doesNotMatch(service, /8765|\/train|\/fit|localStorage|sessionStorage/)
+  // The session module only reads or removes the token kept by /admin/reportes.
+  const session = await readFile(new URL('../src/services/adminSession.mjs', import.meta.url), 'utf8')
+  assert.doesNotMatch(session, /setItem|localStorage|indexedDB|document\.cookie/)
+})
+
+test('admin session: missing, malformed and expired tokens are detected without a request', () => {
+  const jwt = payload => `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`
+  const now = Date.UTC(2026, 10, 22)
+  assert.equal(sessionExpired(jwt({ exp: now / 1000 + 60 }), now), false)
+  for (const token of [jwt({ exp: now / 1000 }), jwt({ exp: now / 1000 - 1 }), jwt({}), jwt({ exp: '9999999999' }), 'x', '', 'a.%%%.b'])
+    assert.equal(sessionExpired(token, now), true)
+  const values = new Map([[SESSION_KEY, 'token']]), storage = { getItem: k => values.get(k) ?? null, removeItem: k => values.delete(k) }
+  assert.equal(readSession(storage), 'token'); endSession(storage); assert.equal(readSession(storage), '')
+  const broken = { getItem() { throw new Error('blocked') }, removeItem() { throw new Error('blocked') } }
+  assert.equal(readSession(broken), ''); assert.doesNotThrow(() => endSession(broken))
+  for (const message of [SESSION_REQUIRED, SESSION_EXPIRED]) assert.match(message, /\/admin\/reportes/)
 })
 
 test('presentation rejects leaked small values; exact private response cannot masquerade as protected', () => {

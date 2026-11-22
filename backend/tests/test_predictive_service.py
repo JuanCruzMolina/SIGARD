@@ -7,7 +7,7 @@ import httpx
 import pytest
 from test_backtest_results import bundle, TRUSTED  # noqa: F401
 from app.predictive_service import PredictiveService, protect_week, MODULE
-from app.experimental_api import create_research_app
+from predictive_admin_support import admin_app, client as admin_client
 from app.experimental_results import ArtifactBlocked
 
 PREFIX='/api/v1/research/predictive'
@@ -83,10 +83,10 @@ def test_climate_context_rejects_future_period_and_never_pretends_predictor_use(
 
 
 @pytest.mark.anyio
-async def test_final_routes_exclude_archived_flows_guard_exact_and_safe_projections(bundle):
+async def test_final_routes_exclude_archived_flows_guard_exact_and_safe_projections(bundle,tmp_path):
     service=PredictiveService(high_cells(bundle))
-    app=create_research_app(predictive=service,legacy=False)
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app,client=('127.0.0.1',1234)),base_url='http://127.0.0.1:8765') as client:
+    app,TRUSTED,_=admin_app(tmp_path,service)
+    async with admin_client(app) as client:
         for old in ('spatial/models','spatial/query?date=2024-01-07&model=B','backtest/comparison?year=2021&week=1'):
             assert (await client.get('/api/v1/research/'+old,headers=TRUSTED)).status_code==404
         assert (await client.get(PREFIX+'/calendar')).status_code==403
