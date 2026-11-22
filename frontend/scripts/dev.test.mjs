@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { identifyApi, portAvailable, privateViewRequested, spawnOwned, startDevelopment } from './dev.mjs'
-import { ALERTS_API, alertsRuntime, developmentDefine } from './dev-alerts.mjs'
+import { ALERTS_API, alertsRuntime, developmentDefine, GOOGLE_FONTS } from './dev-alerts.mjs'
 import { catalog as generatedCatalog } from '../security/backtest.fixture.mjs'
 
 const origin = 'http://127.0.0.1:5173'
@@ -267,3 +267,14 @@ for (const admin of [false, true]) {
     assert.equal(await portAvailable(8767), true)
   })
 }
+
+test('dev serves the Google Fonts stylesheet (IBM Plex Sans) like before F1, and no other external origin', async t => {
+  // Regression: F1 inherited dev:demo's offline-styles plugin and dev lost IBM Plex Sans.
+  const vite = await alertsRuntime().createVite()
+  t.after(() => vite.close())
+  const css = (await vite.transformRequest('/src/index.css')).code
+  assert.match(css, /@import url\('https:\/\/fonts\.googleapis\.com\/css2\?family=IBM\+Plex\+Sans/)
+  assert.match(css, /:root \{ font-family: 'IBM Plex Sans', sans-serif;/)
+  const origins = new Set([...css.matchAll(/https:\/\/([a-z0-9.-]+)/g)].map(match => match[1]))
+  assert.deepEqual([...origins].filter(host => !GOOGLE_FONTS.includes(host)), [])
+})

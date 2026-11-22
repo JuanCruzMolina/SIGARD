@@ -9,12 +9,14 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
 import { developmentRuntime, portAvailable, privateViewRequested, spawnOwned } from './dev.mjs'
-import { demoEnvironment, demoOfflineStyles } from './dev-demo.mjs'
+import { demoEnvironment } from './dev-demo.mjs'
 
 const frontend = dirname(dirname(fileURLToPath(import.meta.url)))
 const backend = join(dirname(frontend), 'backend')
 const python = join(backend, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 export const ALERTS_API = 'http://127.0.0.1:8767'
+// The only external origins `dev` opens by itself (src/index.css → IBM Plex Sans).
+export const GOOGLE_FONTS = ['fonts.googleapis.com', 'fonts.gstatic.com']
 export const CREATE_ADMIN = '.\\backend\\.venv\\Scripts\\python.exe -B backend/app/alerts_local.py create-admin'
 export const ADMIN_MISSING = `No hay cuenta de administrador local: el login de Administración se rechazará hasta crearla. Creala una vez, en otra terminal (la contraseña no se muestra): ${CREATE_ADMIN}`
 
@@ -98,9 +100,10 @@ export function alertsRuntime(options = {}) {
     startCompanion() { service = createAlertsService(options); return service },
     async createVite() {
       const { createServer } = await import('vite')
-      // No external fonts: the administrative area works offline like the demo.
+      // Same styles as `dev` before F1: IBM Plex Sans from Google Fonts (fonts.googleapis.com
+      // and fonts.gstatic.com only). Only `dev:demo` strips them (demoOfflineStyles).
       // Exact values in the viewer only with an explicit local opt-in (SIGARD_PRIVATE_VIEW=1).
-      return createServer({ root: frontend, configFile: join(frontend, 'vite.config.js'), plugins: [demoOfflineStyles()], define: developmentDefine() })
+      return createServer({ root: frontend, configFile: join(frontend, 'vite.config.js'), define: developmentDefine() })
     },
     announce() {
       developmentRuntime.log('ADMINISTRACIÓN: /admin/reportes (reportes, contenido, cuentas y alertas internas). Avisos sólo en el panel; sin correo, SMS ni publicación ciudadana.')
