@@ -42,27 +42,28 @@ npm.cmd --prefix frontend run dev
 ```
 
 Desde `frontend/` también se puede ejecutar `npm.cmd run dev`.
-El coordinador `scripts/dev.mjs` reutiliza `app.research_local` para iniciar
-FastAPI en **127.0.0.1:8765** y la configuración existente de Vite para servir
-React en **127.0.0.1:5173**. Abrir **http://127.0.0.1:5173**: en desarrollo
-local autorizado, `/` redirige a `/mapa` con el **Módulo predictivo experimental**.
+El coordinador `scripts/dev.mjs` inicia la API administrativa local
+(`backend/app/alerts_local.py serve`) en **127.0.0.1:8767** y la configuración existente
+de Vite para servir React en **127.0.0.1:5173**. Desde F2 esa misma API sirve el
+**Módulo predictivo experimental** (`/api/v1/research/predictive/*`) sólo a un
+administrador autenticado: iniciar sesión en **http://127.0.0.1:5173/admin/reportes** y
+abrir **http://127.0.0.1:5173**; en desarrollo local autorizado, `/` redirige a `/mapa`.
+Sin sesión, o con la sesión vencida o revocada, el visor explica cómo volver a ingresar.
+Ya no existe una API predictiva separada en 8765.
 Presencia, cantidad y evaluación histórica reutilizan un solo panel, con
 presentación protegida predeterminada y consulta privada exacta explícita.
 **Situación actual** abre el dashboard de demostración en `/dashboard`.
 En producción, `/` conserva el dashboard y `/mapa` inicia en el MVP original.
 No requiere Docker ni PostgreSQL.
 
-Si ya existe una API en 8765, se verifica su catálogo, versión de contrato y
-restricción de acceso local antes de reutilizarla. Esa instancia permanece
-activa al salir. **Ctrl+C** cierra Vite y únicamente el árbol de procesos Python
-iniciado por el coordinador. Un servicio incompatible en 8765 o cualquier
-ocupación de 5173 bloquea el inicio con un mensaje; no se detienen procesos
-ajenos ni se cambia de puerto. No se admiten argumentos para cambiar host/puerto.
+**Ctrl+C** cierra Vite y únicamente el árbol de procesos Python iniciado por el
+coordinador. La ocupación de 5173 u 8767 bloquea el inicio con un mensaje; no se
+detienen procesos ajenos ni se cambia de puerto. No se admiten argumentos para cambiar host/puerto.
 
 El paquete histórico final y su registro privado deben existir y superar las
-validaciones del launcher; no se crean ni reparan automáticamente. Si falta el
-entorno o una dependencia, el inicio falla y muestra el motivo. La API de
-reportes ciudadanos y administración del puerto 8000 sigue siendo independiente.
+validaciones al iniciar; no se crean ni reparan automáticamente. Si no pueden
+verificarse, la API administrativa arranca igual, la terminal lo avisa y el visor
+responde 503. Si falta el entorno o una dependencia, el inicio falla y muestra el motivo.
 Este comando sólo coordina desarrollo: build, preview y producción conservan
 su comportamiento. Ver [arquitectura y cierre del módulo final](../docs/predictive-module-final.md).
 
@@ -72,8 +73,11 @@ documento), la API lo instala y sirve la serie anual sin recalcularla.
 
 Medición de rendimiento (criterio c, p95 < 5 s): `npm.cmd --prefix frontend run test:performance`
 mide sobre el servidor de desarrollo; `-- --target production` repite las mismas operaciones con
-`vite build` + `vite preview` (bundles de medición en la carpeta privada, nunca en `dist`). Resultados
-en [verificación final](../docs/verificacion-final.md) §3.
+`vite build` + `vite preview` (bundles de medición en la carpeta privada, nunca en `dist`). Desde F2
+el visor se mide en la fase de la API administrativa (sesión generada); `-- --label NOMBRE` escribe
+`results-NOMBRE.json` sin tocar resultados anteriores y `-- --after-warm` espera la precarga de
+alertas. Resultados en [verificación final](../docs/verificacion-final.md) §3 y, para F2, en
+[módulo predictivo](../docs/predictive-module-final.md) («Decisión F2»).
 
 ### Demostración integral descartable
 
@@ -88,7 +92,7 @@ dependencias del inicio habitual; no instala otras ni modifica producción.
 Coordina Vite **127.0.0.1:5173** y FastAPI ciudadana/administrativa en
 **127.0.0.1:8766**, con SQLite temporal propia. Comprueba requisitos y puertos;
 no reutiliza 8766 ni detiene servicios desconocidos. **No inicia ni consulta A/B**.
-`npm run dev` utiliza el módulo predictivo privado de lectura en 8765.
+`npm run dev` sirve el módulo predictivo privado de lectura en 8767, con sesión de administrador.
 
 Abrir **http://127.0.0.1:5173/**. La franja **Demo integral** enlaza al reporte y
 seguimiento en `/prevencion` y a `/admin/reportes`. El usuario y la contraseña

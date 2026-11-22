@@ -49,10 +49,11 @@ permitido en este panel interno autenticado.
   todas las rutas con `get_current_admin` (401 sin sesión, 403 sin rol). Tablas
   `internal_alert_rules`, `internal_alert_evaluations`, `internal_alert_candidates`,
   `internal_alert_audit` (migración `20261114_06_internal_alerts`).
-- **Fuente de predicciones** (`backend/app/alert_source.py`): cliente HTTP de sólo lectura
-  a la API predictiva local `127.0.0.1:8765` (modo privado, sin redirecciones ni proxies),
-  con caché compacto por proceso. La API administrativa nunca abre artefactos privados.
-  Sólo `alerts_local` adjunta la fuente; en un despliegue el módulo responde
+- **Fuente de predicciones** (`backend/app/alert_source.py`): desde F2 lee, dentro del mismo
+  proceso y sin HTTP ni token, el servicio predictivo que la API administrativa local
+  (`alerts_local`) abre y sirve al visor sólo con sesión de administrador (modo privado),
+  con caché compacto por proceso. `app.main` y los despliegues nunca abren artefactos
+  privados: sólo `alerts_local` adjunta la fuente; en un despliegue el módulo responde
   «fuente no disponible» y no evalúa.
 - **Lógica compartida** (`backend/app/alert_rules.py`): umbral, ventana de semanas
   consecutivas, protección y bloqueo de publicación. La demo ficticia
@@ -76,7 +77,7 @@ npm.cmd --prefix frontend run dev
 
 | Comando | Puertos |
 |---|---|
-| `dev` | 5173 (Vite) · 8765 (iniciada o reutilizada, sólo lectura) · 8767 (API administrativa con alertas) |
+| `dev` | 5173 (Vite) · 8767 (API administrativa con alertas y visor predictivo autenticado; desde F2 no hay 8765) |
 | `dev:demo` | 5173 · 8766 (API demo ficticia) |
 | `dev:alerts` | Obsoleto: alias de `dev` |
 

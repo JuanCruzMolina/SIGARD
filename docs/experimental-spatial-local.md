@@ -1,5 +1,9 @@
 ﻿# Mapa experimental A/B sin autenticación
 
+> **Histórico (F2, 22/11/2026).** `app.research_local` y la API sin autenticación de 8765 fueron
+> retirados. El módulo predictivo activo se sirve en la API administrativa local (8767) sólo con
+> sesión de administrador; ver `docs/predictive-module-final.md` («Decisión F2»).
+
 La rama `entrenamiento-ML` permite consultar directamente los resultados A/B
 congelados desde React/Vite y FastAPI. No hay diálogo de Windows, tokens,
 contraseñas, cookies, sesiones, caducidad ni confirmaciones para ver el mapa.

@@ -61,7 +61,7 @@ npm.cmd --prefix frontend run dev:demo      # demostraci贸n ficticia completa 鈫
 | Comando | Para qu茅 | Requiere datos privados |
 |---|---|---|
 | `npm.cmd --prefix frontend run dev:demo` | Sitio completo con API ficticia y SQLite temporal | No |
-| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: visor predictivo (8765) y Administraci贸n completa (8767: login, reportes, contenido, cuentas y alertas) con SQLite privado persistente | S铆 |
+| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: Administraci贸n completa (8767: login, reportes, contenido, cuentas, alertas y visor predictivo con sesi贸n de administrador) con SQLite privado persistente | S铆 |
 | `npm.cmd --prefix frontend run dev:alerts` | **Obsoleto**: alias de `dev` | S铆 |
 
 `dev` arranca aunque todav铆a no exista la cuenta de administrador local y muestra en la terminal el

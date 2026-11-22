@@ -9,7 +9,7 @@ Etiqueta de referencia: `pre-admin-v2`.
 | Modo | Comando | Frontend | API | Prefijos |
 |---|---|---|---|---|
 | Público / producción | `vite build` (Vercel) | estático | `VITE_API_URL` (por defecto `http://localhost:8000`) | `/api/v1/public/*`, `/api/v1/citizen-reports*`, `/api/v1/geocoding/address`, `/api/v1/admin/*` |
-| Desarrollo local (desde F1) | `npm.cmd --prefix frontend run dev` | 127.0.0.1:5173 | API experimental 127.0.0.1:8765 **y** API administrativa completa 127.0.0.1:8767 (`alerts_local.py serve`, SQLite privado persistente en `data/interim/official/internal-alerts-v1/`) | 8765: `/api/v1/research/predictive/*` (visor), `/api/v1/research/spatial/*` (A/B archivado). 8767 (`VITE_API_URL`): `/api/v1/admin/*` (sesión, reportes, contenido, cuentas, alertas), `/api/v1/public/*`, `/api/v1/citizen-reports*` |
+| Desarrollo local (desde F2) | `npm.cmd --prefix frontend run dev` | 127.0.0.1:5173 | Sólo la API administrativa completa 127.0.0.1:8767 (`alerts_local.py serve`, SQLite privado persistente en `data/interim/official/internal-alerts-v1/`); 8765 ya no existe | 8767 (`VITE_API_URL`): `/api/v1/admin/*` (sesión, reportes, contenido, cuentas, alertas), `/api/v1/public/*`, `/api/v1/citizen-reports*` y `/api/v1/research/predictive/*` (visor: guard local + JWT de administrador; consultas privadas auditadas) |
 | Demo integral | `run dev:demo` | 127.0.0.1:5173 | API demo 127.0.0.1:8766 (SQLite temporal) | `/api/v1/admin/*`, `/api/v1/admin/demo/*`, `/api/v1/citizen-reports*` |
 | Alias obsoleto | `run dev:alerts` | igual que `dev` | igual que `dev` | igual que `dev` |
 
@@ -35,7 +35,7 @@ contenido publicado en `/api/v1/public/prevention`.
 | `/` | `Dashboard` (`SigardComponents`: StatCard, TerritorialMap, TopRadios). En dev redirige a `/mapa` | `services/sigardData.js` → `/data/*.json` o `:8000/api/v1/public/{weeks,territorial-context,model-evaluation,metadata,predictions,experimental-spatial-history}` | `test:security`, `test:public-map`, `test:accounts:browser` (`/dashboard`) |
 | `/dashboard` (sólo dev) | `Dashboard` | igual que `/` | `test:accounts:browser`, `test:research` (`local-entry`) |
 | `/mapa` público | `Mapa` → `PublicMap` (`TemporalControls`, `TerritorialMap`) | `sigardData.js` (`:8000/api/v1/public/*`) | `test:public-map`, `test:demo:browser` |
-| `/mapa` en dev | `Mapa` → `HistoricalBacktest` (`WeekTimeline`, `SummaryCards`, `BacktestMaps`, `BacktestHistory`, `RadioPanel`, `ModelPerformance`, `MLComparison`, `DataTable`) | `services/backtestResults.js` → `127.0.0.1:8765/api/v1/research/predictive/*` | `test:backtest` (backtest, predictive-view, private-view), `test:predictive:browser` (ficticia y `--real`), `test:dev` |
+| `/mapa` en dev | `Mapa` → `HistoricalBacktest` (`WeekTimeline`, `SummaryCards`, `BacktestMaps`, `BacktestHistory`, `RadioPanel`, `ModelPerformance`, `MLComparison`, `DataTable`) | `services/backtestResults.js` + `adminSession.mjs` → `127.0.0.1:8767/api/v1/research/predictive/*` con el token de `/admin/reportes` (F2) | `test:backtest` (backtest, predictive-view, private-view), `test:predictive:browser` (ficticia y `--real`, entorno propio en modo sesión), `test:dev`; backend `test_predictive_access.py` |
 | `/validacion` | `Validacion` (`BacktestChart`) | `sigardData.js` | `test:research` (`local-entry`) |
 | `/metodologia` | `Metodologia` | `sigardData.js` | `test:research` (`local-entry`) |
 | `/prevencion` (y `*`) | `Prevencion` → `PreventionGuide`, `SymptomsAlert`, `HealthFacilitiesMap`, `RestrictedMarkdown`, `CitizenReportForm`, `ReportConfirmation`, `ReportStatusLookup` | `services/preventionData.js` (`/data/*`), `citizenReports.js` → `/api/v1/public/prevention`, `/api/v1/citizen-reports`, `/citizen-reports/status/{código}`, `/geocoding/address` (`:8000`, o `:8766` en demo) | `test:prevention`, `test:citizen`, `test:citizen:browser`, `test:prevention:browser`, `test:demo:browser` |
@@ -55,12 +55,14 @@ experimentales, entrada local).
 - Hoy los paneles de Administración son estados internos (`panel`) de una sola
   ruta, `/admin/reportes`; no hay subrutas. Las maquetas (`Main`, `Predictivo`,
   `Alertas`, `Reportes`, `Contenido`, `Cuentas`, `Ingreso`) suponen navegación propia.
-- El visor predictivo vive fuera de Administración (`/mapa` en dev) y consume
-  otra API (8765, cabecera `X-Sigard-Research`) que la administrativa (8000/8766/8767).
-- `test:predictive:browser`, `test:accounts:browser` y `test:public-activity:browser`
-  requieren `dev` en marcha; las dos últimas redirigen 8000 y 8767 a su propia API ficticia
-  (`ADMIN_API_PORTS` en `frontend/scripts/browser-proxy.mjs`). Las demás pruebas de navegador
-  exigen 5173/8765/8766/8767 libres y levantan sus propias fixtures; `test:alerts:browser` usa
-  el mismo runtime que `dev`, en modo sesión con SQLite y cuenta descartables.
+- El visor predictivo sigue en `/mapa` (dev) hasta F3, pero desde F2 consume la API
+  administrativa local (8767, cabecera `X-Sigard-Research` + `Authorization` con el token de
+  `/admin/reportes`). `app.main` (producción) y la demo (8766) no contienen sus rutas.
+- `test:accounts:browser` y `test:public-activity:browser` requieren `dev` en marcha y
+  redirigen 8000 y 8767 a su propia API ficticia (`ADMIN_API_PORTS` en
+  `frontend/scripts/browser-proxy.mjs`). Las demás pruebas de navegador exigen
+  5173/8766/8767 libres y levantan sus propias fixtures; `test:alerts:browser` y, desde F2,
+  `test:predictive:browser` usan el mismo runtime que `dev`, en modo sesión con SQLite y
+  cuenta descartables.
 - Las rutas en `:8000` de la tabla corresponden al `VITE_API_URL` por defecto (producción);
   con `dev` las mismas rutas van a `:8767`.

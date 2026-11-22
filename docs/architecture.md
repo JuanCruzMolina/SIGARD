@@ -10,7 +10,7 @@ con autorización del servidor y auditoría. La vista pública recibe únicament
 los recursos ya aprobados. No se incorporan originales, agregados privados ni
 modelos al bundle o a `frontend/public`.
 
-`dev` conserva el lector A/B privado en 8765; V1/V2/V3 y la consulta real por
+`dev` conservaba el lector A/B privado en 8765 (retirado en F2: el visor vive en 8767 con sesión de administrador); V1/V2/V3 y la consulta real por
 radio permanecen congeladas en su entorno local separado. La opción V3 del
 espacio ficticio sólo demuestra su contrato, sin ejecutar ML. Persistencia es
 la referencia predeterminada. La arquitectura conceptual histórica sigue abajo;

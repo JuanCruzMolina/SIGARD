@@ -14,9 +14,9 @@ Reglas generales:
 | Entorno | Tareas | Comando | Puertos |
 |---|---|---|---|
 | A | E1–E5 | `npm.cmd --prefix frontend run dev:demo` | 5173 · 8766 (API demo ficticia, SQLite temporal) |
-| B | E6–E7 | `npm.cmd --prefix frontend run dev` | 5173 · 8765 (API predictiva, sólo lectura) · 8767 (API administrativa) |
-| C | E8 | `dev` iniciado con `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` | 5173 · 8765 · 8767 |
-| D | E9–E10 | `npm.cmd --prefix frontend run dev` (la misma sesión que B) | 5173 · 8765 · 8767 |
+| B | E6–E7 | `npm.cmd --prefix frontend run dev` | 5173 · 8767 (API administrativa; incluye el visor predictivo con sesión de administrador) |
+| C | E8 | `dev` iniciado con `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` | 5173 · 8767 |
+| D | E9–E10 | `npm.cmd --prefix frontend run dev` (la misma sesión que B) | 5173 · 8767 |
 
 Abrir siempre `http://127.0.0.1:5173/`, en una ventana privada nueva por participante.
 

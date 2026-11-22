@@ -32,7 +32,7 @@ flowchart LR
         web[Sitio web React/Vite<br/>Leaflet]
         api[API pública FastAPI<br/>:8000]
         dbpub[(PostgreSQL/PostGIS<br/>API pública)]
-        local[Servicios locales de investigación<br/>API predictiva :8765 · alertas :8767]
+        local[Servicios locales de investigación<br/>API administrativa :8767<br/>alertas · visor predictivo con sesión]
         offline[Preparación y ML offline<br/>paquetes verificados por hash]
         dbinv[(PostgreSQL/PostGIS<br/>investigación :55439)]
     end
@@ -53,7 +53,7 @@ flowchart LR
 |---|---|---|
 | Sitio web | Vercel (sólo el frontend estático) | Local con Vite (`dev`, `dev:demo`; `dev:alerts` es alias de `dev`) y build de producción probado con `vite preview` |
 | API pública | Servidor institucional con PostgreSQL/PostGIS | Probada en SQLite y con la cadena de migraciones en PostGIS real (11/11) |
-| API predictiva de investigación | **Sólo loopback local** (127.0.0.1:8765) | No se despliega. El bundle público no la contiene |
+| API predictiva de investigación | **Sólo loopback local**, dentro de la API administrativa local (127.0.0.1:8767, sesión de administrador; F2) | No se despliega: `app.main` no contiene sus rutas. El bundle público no la contiene |
 | API de alertas internas | Local (127.0.0.1:8767) con SQLite privado | Prototipo. En un despliegue sería parte de la API administrativa |
 | Base de investigación | Clúster propio en WSL, puerto 55439 | Encendida sólo para importar o generar paquetes |
 
@@ -75,7 +75,7 @@ flowchart TB
         act[Paquete «Actividad registrada»<br/>supresión + informe de riesgo]
     end
     subgraph "Investigación local (backend/app)"
-        rapi[API predictiva :8765<br/>verifica hashes · modo protegido]
+        rapi[Visor predictivo en :8767<br/>JWT admin · verifica hashes · modo protegido]
         aapi[API de alertas :8767<br/>reglas · candidatas · auditoría]
     end
     subgraph "API pública (backend/app)"
@@ -136,14 +136,17 @@ flowchart TB
 
 ### 4.3 Servicios locales de investigación
 
-- `app.research_local` (127.0.0.1:8765, sin autenticación pero restringido a loopback y origen
-  local): `/api/v1/research/predictive/*`.
+- `app.predictive_admin`, montado sólo por `app.alerts_local` (127.0.0.1:8767; desde F2 reemplaza
+  a `app.research_local`, 8765, que no tenía autenticación): `/api/v1/research/predictive/*` detrás
+  del guard local (loopback, Host, Origin, sólo GET, sin cabeceras de proxy) y de un JWT de
+  administrador; las consultas en modo privado quedan en `predictive_view_audit`.
   - Lee el paquete de backtest, los candidatos ML v1/v2 y la historia anual precalculada.
   - Verifica cada archivo con SHA-256 y una caché por proceso.
   - Aplica la protección de celdas menores a 5.
 - `app.alerts_local` (127.0.0.1:8767, iniciada por `npm run dev`): API administrativa completa
-  (login, reportes, contenido, cuentas y alertas) con SQLite privado. Lee la
-  API predictiva en modo privado, sólo en memoria, y guarda únicamente valores ya protegidos.
+  (login, reportes, contenido, cuentas, alertas y visor predictivo) con SQLite privado. Las
+  alertas leen el servicio predictivo en el mismo proceso (modo privado, sólo en memoria) y
+  guardan únicamente valores ya protegidos.
 
 ### 4.4 Preparación y ML (`ml/src/sigard_ml/`)
 
