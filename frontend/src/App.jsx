@@ -9,6 +9,8 @@ import Validacion from './pages/Validacion'
 import Metodologia from './pages/Metodologia'
 import Prevencion from './pages/Prevencion'
 import AdminReports from './pages/AdminReports'
+import AdminPredictivo from './pages/AdminPredictivo'
+import { adminSessionActive, hasViewerParams, PREDICTIVE_ROUTE, readSession } from './services/adminSession.mjs'
 import Actividad from './pages/Actividad'
 import { loadActivity } from './services/publicActivity.mjs'
 import './App.css'
@@ -23,10 +25,13 @@ function AppContent() {
   const [data, setData] = useState(null)
   const [selectedCutoffDate, setSelectedCutoffDate] = useState('')
   const [error, setError] = useState(null)
-  const { pathname } = useLocation()
+  const { pathname, search } = useLocation()
   const localResearch = localResearchEnabled()
-  const predictiveRoute = localResearch && pathname === '/mapa'
-  const needsEpidemiologicalData = !predictiveRoute && !pathname.startsWith('/prevencion') && !pathname.startsWith('/admin/') && !pathname.startsWith('/actividad')
+  // F3: the predictive viewer lives in Administración; /mapa is always the public map. An old
+  // /mapa link with viewer state, opened with an administrator session, goes to the viewer.
+  const predictiveRoute = localResearch && pathname === PREDICTIVE_ROUTE
+  const legacyViewerRedirect = localResearch && pathname === '/mapa' && hasViewerParams(new URLSearchParams(search)) && adminSessionActive(readSession())
+  const needsEpidemiologicalData = !legacyViewerRedirect && !pathname.startsWith('/prevencion') && !pathname.startsWith('/admin/') && !pathname.startsWith('/actividad')
   // The activity link appears only when the API serves an authorized (or fictional fixture) package.
   const [activityEnabled, setActivityEnabled] = useState(false)
   useEffect(() => { if (!demoMode) loadActivity().then(result => setActivityEnabled(result.enabled)) }, [])
@@ -43,14 +48,15 @@ function AppContent() {
   return <div className="app-shell">
     <div className="privacy-bar"><span>{pathname.startsWith('/admin/') ? 'Área administrativa' : localResearch ? 'Demostración local' : 'Vista pública'}</span><p>Los datos epidemiológicos son agregados y las ubicaciones de reportes ciudadanos permanecen privadas.</p></div>
     {demoMode && <aside className="demo-notice" aria-label="Demostración ficticia y temporal"><strong>Demo integral · entorno ficticio y temporal</strong><p>Reportes, consulta por radio, ingestión y alertas usan ejemplos inventados. Se eliminan al cerrar. Los resultados privados A/B y V1/V2/V3 no se cargan aquí. Prevención y cartografía pública conservan su procedencia; mapas sin fondo externo.</p><Link to="/prevencion#reportar">Crear reporte ficticio</Link>{' · '}<Link to="/prevencion#seguimiento">Seguimiento</Link>{' · '}<Link to="/admin/reportes">Administración demo</Link></aside>}
-    <header className="site-header"><Link to="/" className="brand" aria-label="SIGARD, inicio"><span className="brand-mark" aria-hidden="true">S</span><span><strong>SIGARD</strong><small>Vigilancia territorial del dengue</small></span></Link><nav className="main-nav" aria-label="Navegación principal"><NavLink to={localResearch ? '/dashboard' : '/'} end>Situación actual</NavLink><NavLink to="/mapa">{localResearch ? 'Módulo predictivo' : 'Mapa público'}</NavLink>{activityEnabled && <NavLink to="/actividad">Actividad registrada</NavLink>}<NavLink to="/prevencion">Prevención y ayuda</NavLink><NavLink to="/validacion">Validación</NavLink><NavLink to="/metodologia">Cómo funciona</NavLink><NavLink to="/admin/reportes">Administración</NavLink></nav><span className="status-badge">Prototipo académico</span></header>
+    <header className="site-header"><Link to="/" className="brand" aria-label="SIGARD, inicio"><span className="brand-mark" aria-hidden="true">S</span><span><strong>SIGARD</strong><small>Vigilancia territorial del dengue</small></span></Link><nav className="main-nav" aria-label="Navegación principal"><NavLink to={localResearch ? '/dashboard' : '/'} end>Situación actual</NavLink><NavLink to="/mapa">Mapa público</NavLink>{activityEnabled && <NavLink to="/actividad">Actividad registrada</NavLink>}<NavLink to="/prevencion">Prevención y ayuda</NavLink><NavLink to="/validacion">Validación</NavLink><NavLink to="/metodologia">Cómo funciona</NavLink><NavLink to="/admin/reportes" className={() => pathname.startsWith('/admin/') ? 'active' : undefined}>Administración</NavLink></nav><span className="status-badge">Prototipo académico</span></header>
     <Routes>
       <Route path="/prevencion" element={<Prevencion />} />
       <Route path="/admin/reportes" element={<AdminReports />} />
+      <Route path={PREDICTIVE_ROUTE} element={<AdminPredictivo />} />
       <Route path="/actividad" element={<Actividad />} />
-      <Route path="/" element={localResearch ? <Navigate to="/mapa" replace /> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />
+      <Route path="/" element={localResearch ? <Navigate to={PREDICTIVE_ROUTE} replace /> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />
       {localResearch && <Route path="/dashboard" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />}
-      <Route path="/mapa" element={predictiveRoute ? <main><Mapa /></main> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Mapa {...shared} />}</EpidemiologicalRoute>} />
+      <Route path="/mapa" element={legacyViewerRedirect ? <Navigate to={`${PREDICTIVE_ROUTE}${search}`} replace /> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Mapa {...shared} predictiveLink={localResearch ? `${PREDICTIVE_ROUTE}${search}` : null} />}</EpidemiologicalRoute>} />
       <Route path="/validacion" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{data && <Validacion data={data} />}</EpidemiologicalRoute>} />
       <Route path="/metodologia" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{data && <Metodologia data={data} />}</EpidemiologicalRoute>} />
       <Route path="*" element={<Prevencion />} />

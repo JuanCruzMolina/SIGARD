@@ -47,7 +47,8 @@ function Skeleton() {
   return <div className="pv-loading" aria-hidden="true"><div className="pv-cards">{[0, 1, 2, 3].map(i => <div key={i} className="pv-card pv-skeleton" />)}</div><div className="pv-map pv-skeleton" /></div>
 }
 
-export default function HistoricalBacktest() {
+// onSessionError: the page in Administración takes over when the session is missing, expired or rejected.
+export default function HistoricalBacktest({ onSessionError }) {
   const [params, setParams] = useSearchParams()
   const url = useMemo(() => readUrlState(params), [params])
   const [initialUrl] = useState(url)
@@ -57,15 +58,17 @@ export default function HistoricalBacktest() {
   const [setupError, setSetupError] = useState('')
   const [histories, setHistories] = useState({})
   const [weekState, setWeekState] = useState(null)
+  // Session errors leave the viewer (back to the login); other errors stay here with a retry.
+  const failed = useCallback((error, show) => error.session && onSessionError ? onSessionError(error.message) : show(error.message), [onSessionError])
 
   // Calendar, geometry, metadata and (when the URL names it) the week start together.
   useEffect(() => {
     const controller = new AbortController()
     if (initialUrl.year && initialUrl.week) prefetchWeek(initialUrl.year, initialUrl.week, 'presentation')
     backtestSetup(controller.signal).then(value => { setSetup(value); setSetupError('') })
-      .catch(error => { if (!controller.signal.aborted) setSetupError(error.message) })
+      .catch(error => { if (!controller.signal.aborted) failed(error, setSetupError) })
     return () => controller.abort()
-  }, [attempt, initialUrl])
+  }, [attempt, initialUrl, failed])
 
   const weeks = setup?.catalog.weeks
   const selected = weeks && url.year && url.week ? weeks.find(w => w.target_year === url.year && w.target_epi_week === url.week) || null : null
@@ -89,8 +92,8 @@ export default function HistoricalBacktest() {
     const list = setup.catalog.weeks.filter(w => w.target_year === year); const key = `${disclosure}/${year}`
     return backtestHistory(setup.catalog, list[0].target_week, list.at(-1).target_week, '', signal, disclosure)
       .then(value => setHistories(h => ({ ...h, [key]: { value } })))
-      .catch(error => { if (!signal?.aborted) setHistories(h => ({ ...h, [key]: { error: error.message } })) })
-  }, [setup, disclosure])
+      .catch(error => { if (!signal?.aborted) failed(error, message => setHistories(h => ({ ...h, [key]: { error: message } }))) })
+  }, [setup, disclosure, failed])
 
   // Year history: immediately when it decides the default week; otherwise after the map is painted.
   const weekReady = Boolean(current?.value)
@@ -113,9 +116,9 @@ export default function HistoricalBacktest() {
     const controller = new AbortController()
     backtestWeek(setup.catalog, selected, controller.signal, disclosure)
       .then(value => setWeekState({ key: weekKey, value }))
-      .catch(error => { if (!controller.signal.aborted) setWeekState({ key: weekKey, error: error.message }) })
+      .catch(error => { if (!controller.signal.aborted) failed(error, message => setWeekState({ key: weekKey, error: message })) })
     return () => controller.abort()
-  }, [setup, selected, weekKey, disclosure])
+  }, [setup, selected, weekKey, disclosure, failed])
 
   // Other evaluable years load one at a time in the background, after the first paint.
   useEffect(() => {

@@ -152,7 +152,7 @@ export async function startDevelopment(runtime = developmentRuntime) {
     await vite.listen()
     checkStopped()
     vite.printUrls()
-    runtime.log(`Listo: ${origin}/mapa · Ctrl+C cierra únicamente lo iniciado por este comando.`)
+    runtime.log(`Listo: ${origin}${runtime.research === false ? '/' : '/admin/predictivo'} · Ctrl+C cierra únicamente lo iniciado por este comando.`)
     runtime.announce?.()
     finishStartup()
     return { stop, closed }

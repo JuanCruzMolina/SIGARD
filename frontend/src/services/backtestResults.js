@@ -1,10 +1,10 @@
 import { localResearchEnabled } from './experimentalResults'
 import { fetchRead } from './readRetry.mjs'
-import { endSession, readSession, ROLE_REQUIRED, SESSION_EXPIRED, SESSION_REQUIRED, sessionError, sessionExpired } from './adminSession.mjs'
+import { endSession, PREDICTIVE_ROUTE, readSession, ROLE_REQUIRED, SESSION_EXPIRED, SESSION_REQUIRED, sessionError, sessionExpired } from './adminSession.mjs'
 import { validateBacktestCatalog, validateBacktestGeometry, validateBacktestMetadata, validateBacktestWeek, validateBacktestHistory } from './backtestContract.mjs'
 
-// F2: the predictive viewer API lives on the local administrative API (127.0.0.1:8767) and
-// requires the administrator session of /admin/reportes (same JWT, read-only here: this
+// F2/F3: the predictive viewer API lives on the local administrative API (127.0.0.1:8767) and
+// requires the Administración session shown at /admin/predictivo (same JWT, read-only here: this
 // module never stores anything in the browser). No session or an expired one → no request.
 export const PREDICTIVE_API = 'http://127.0.0.1:8767/api/v1/research/predictive'
 
@@ -28,7 +28,7 @@ async function request(path, signal) {
   if (response.status === 401) { endSession(); throw sessionError(SESSION_EXPIRED) }
   if (!response.ok) {
     const detail = response.status === 403 ? await response.json().then(body => body?.detail, () => null) : null
-    throw new Error(response.status === 503 ? 'El paquete de backtesting falta o no pudo verificarse. Revisá la compilación offline y reintentá.' : detail === 'Rol administrador requerido' ? ROLE_REQUIRED : response.status === 403 ? 'Abrí SIGARD en http://127.0.0.1:5173/mapa para consultar los resultados locales.' : 'El período o territorio solicitado no está disponible.')
+    throw new Error(response.status === 503 ? 'El paquete de backtesting falta o no pudo verificarse. Revisá la compilación offline y reintentá.' : detail === 'Rol administrador requerido' ? ROLE_REQUIRED : response.status === 403 ? `Abrí SIGARD en http://127.0.0.1:5173${PREDICTIVE_ROUTE} para consultar los resultados locales.` : 'El período o territorio solicitado no está disponible.')
   }
   return response.json()
 }

@@ -110,7 +110,7 @@ export function alertsRuntime(options = {}) {
     },
     announce() {
       developmentRuntime.log('ADMINISTRACIÓN: /admin/reportes (reportes, contenido, cuentas y alertas internas). Avisos sólo en el panel; sin correo, SMS ni publicación ciudadana.')
-      developmentRuntime.log('VISOR PREDICTIVO: /mapa, con la sesión iniciada en /admin/reportes (sin sesión o vencida, el visor indica cómo ingresar).')
+      developmentRuntime.log('VISOR PREDICTIVO: /admin/predictivo, sólo con sesión de administrador (sin sesión o vencida muestra el ingreso de Administración). /mapa es siempre el mapa público.')
       developmentRuntime.log('Puertos: 5173 frontend · 8767 API administrativa (incluye el visor predictivo, sólo con sesión de administrador). No correr en paralelo con dev:demo.')
       if (service?.adminMissing) developmentRuntime.log(ADMIN_MISSING)
       if (service?.predictiveMissing) developmentRuntime.log(PREDICTIVE_MISSING)

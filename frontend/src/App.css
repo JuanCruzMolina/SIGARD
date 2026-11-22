@@ -446,3 +446,6 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
 .demo-notice { padding: 1rem max(1rem, calc((100% - 1440px) / 2)); background: #fff4d6; color: #493b16; border-bottom: 1px solid #cbbb8b; }
 .demo-notice p { margin: .4rem 0; max-width: 75ch; }
 .demo-notice a { color: #493b16; text-decoration: underline; text-underline-offset: .2em; }
+/* F3: on /mapa in local development, where to find the predictive viewer now. */
+.predictive-moved { margin: 18px 0 10px; font-size: .76rem; }
+.predictive-moved a { color: var(--teal-deep); font-weight: 700; text-underline-offset: 3px; }
