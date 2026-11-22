@@ -26,7 +26,7 @@
     "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
-    "dev:alerts": "node scripts/dev-alerts.mjs",
+    "dev:alerts": "node scripts/dev.mjs",
     "test:demo": "node --test scripts/dev-demo.test.mjs",
     "test:demo:browser": "node scripts/demo-flow.browser.mjs",
     "build": "vite build",

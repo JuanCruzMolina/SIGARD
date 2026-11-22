@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { test } from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
+import { readFile } from 'node:fs/promises'
+import { fileURLToPath } from 'node:url'
 import { identifyApi, portAvailable, privateViewRequested, spawnOwned, startDevelopment } from './dev.mjs'
+import { ALERTS_API, alertsRuntime, developmentDefine } from './dev-alerts.mjs'
 import { catalog as generatedCatalog } from '../security/backtest.fixture.mjs'
 
 const origin = 'http://127.0.0.1:5173'
@@ -201,3 +204,66 @@ test('private exact-values view requires the explicit SIGARD_PRIVATE_VIEW=1 opt-
   for (const value of ['0', 'true', 'yes', 'on', ' 1', '']) assert.equal(privateViewRequested({ SIGARD_PRIVATE_VIEW: value }), false)
   assert.equal(privateViewRequested({ SIGARD_PRIVATE_VIEW: '1' }), true)
 })
+
+test('dev is the single entry point; dev:alerts is an alias and dev:demo is unchanged', async () => {
+  const { scripts } = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(scripts.dev, 'node scripts/dev.mjs')
+  assert.equal(scripts['dev:alerts'], 'node scripts/dev.mjs')
+  assert.equal(scripts['dev:demo'], 'node scripts/dev-demo.mjs')
+  const entry = await readFile(new URL('./dev.mjs', import.meta.url), 'utf8')
+  assert.match(entry, /startDevelopment\(alertsRuntime\(\)\)/)
+})
+
+test('the dev entry point loads its runtime without deadlocking the module cycle', async t => {
+  // With 5173 taken, dev.mjs must load dev-alerts.mjs and fail fast on the port check,
+  // before starting any API (a top-level await on that import hangs instead).
+  const server = createServer((_, res) => res.end())
+  const listening = await new Promise(resolve => { server.once('error', () => resolve(false)); server.listen(5173, '127.0.0.1', () => resolve(true)) })
+  if (!listening) return t.skip('5173 ocupado; no se detiene ningún servicio existente')
+  t.after(() => new Promise(resolve => server.close(resolve)))
+  const child = spawnOwned(process.execPath, [fileURLToPath(new URL('./dev.mjs', import.meta.url))], { silent: true })
+  let stderr = ''
+  child.stdout.resume(); child.stderr.on('data', data => { stderr += data })
+  const result = await Promise.race([child.exited, delay(20000, null)])
+  if (!result) await child.stop()
+  assert.ok(result, 'dev.mjs did not finish: module cycle deadlock')
+  assert.equal(result.code, 1)
+  assert.match(stderr, /5173 está ocupado/)
+  assert.doesNotMatch(stderr, /unsettled top-level await/)
+})
+
+test('dev keeps SIGARD_PRIVATE_VIEW opt-in and points the admin area to 8767', () => {
+  assert.deepEqual(developmentDefine({}), { 'import.meta.env.SIGARD_PRIVATE_VIEW': 'false', 'import.meta.env.VITE_API_URL': JSON.stringify(ALERTS_API) })
+  assert.equal(developmentDefine({ SIGARD_PRIVATE_VIEW: '1' })['import.meta.env.SIGARD_PRIVATE_VIEW'], 'true')
+  assert.equal(developmentDefine({ SIGARD_PRIVATE_VIEW: 'true' })['import.meta.env.SIGARD_PRIVATE_VIEW'], 'false')
+})
+
+// Fake administrative API (Node, not Python) that answers the coordinator handshake on 8767.
+const fakeAdminApi = admin => `
+const http = require('node:http')
+const server = http.createServer((req, res) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify({ alerts: true, session: 'fake-session' })) })
+server.listen(8767, '127.0.0.1', () => console.log(JSON.stringify({ session: 'fake-session', storage: 'persistent-private-sqlite', admin: ${admin} })))
+process.stdin.on('data', () => server.close(() => process.exit(0)))`
+
+for (const admin of [false, true]) {
+  test(`dev starts the administrative API ${admin ? 'with' : 'without'} a local account and never creates one`, async t => {
+    if (!await portAvailable(8767)) return t.skip('8767 ocupado; no se detiene ningún servicio existente')
+    const launched = []
+    const runtime = alertsRuntime({ launch: (args, options) => { launched.push(args); return spawnOwned(process.execPath, ['-e', fakeAdminApi(admin)], options) } })
+    const service = runtime.startCompanion()
+    t.after(() => service.stop())
+    await service.ready
+    assert.deepEqual(launched.map(args => args.slice(3)), [['serve']])
+    assert.equal(service.adminMissing, !admin)
+    assert.equal(service.credentials, undefined)
+    const logs = []
+    const original = console.log
+    console.log = message => logs.push(String(message))
+    try { runtime.announce() } finally { console.log = original }
+    const hint = logs.filter(line => line.includes('alerts_local.py create-admin'))
+    assert.equal(hint.length, admin ? 0 : 1)
+    assert.ok(logs.every(line => !/contraseña:|password/i.test(line)), 'never prints a password')
+    await service.stop()
+    assert.equal(await portAvailable(8767), true)
+  })
+}
