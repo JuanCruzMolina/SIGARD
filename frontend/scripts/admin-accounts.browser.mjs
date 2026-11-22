@@ -155,29 +155,22 @@ try {
     assert.equal(geometry.body.features[0].geometry.type,'Polygon')
   })
   if(integral) {
-    // Since 8e3c545/409ee85, /mapa in local development is the redesigned predictive module;
-    // the temporary public API is exercised through the dashboard, which reads it first.
-    await check('API pública temporal en el tablero y módulo predictivo rediseñado accesible',async()=>{
+    // F3: /mapa is always the public map (it reads the temporary public API too); the
+    // predictive viewer is in Administración and is covered by test:predictive:browser.
+    await check('API pública temporal en el tablero y mapa público también en desarrollo',async()=>{
       await page.goto(frontendOrigin+'/dashboard',{waitUntil:'networkidle0'})
       await page.waitForSelector('.page-intro h1')
       assert.match(await page.$eval('.site-footer',e=>e.textContent),/API stage15-test-publication/)
       await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
-      await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
-      assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
-      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
-      // Keyboard: the year control is reachable and changes the selected week.
-      const before=await page.evaluate(()=>location.search)
-      const index=await page.$eval('#pv-year',e=>e.selectedIndex)
-      await page.focus('#pv-year')
-      await page.keyboard.press(index>0?'ArrowUp':'ArrowDown')
-      await page.waitForFunction(previous=>location.search!==previous,{},before)
-      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
-      await accessibility('predictive-module-keyboard')
+      await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Mapa público agregado')
+      assert.equal(await page.$('.pv'),null)
+      assert.equal(await page.$eval('.predictive-moved a',e=>e.getAttribute('href')),'/admin/predictivo')
+      await accessibility('public-map-dev')
       await mkdir(output,{recursive:true})
       for(const width of [1440,390]) {
         await page.setViewport({width,height:1000})
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-        await page.screenshot({path:resolve(output,`stage15-predictive-${width}.png`),fullPage:false})
+        await page.screenshot({path:resolve(output,`stage15-public-map-${width}.png`),fullPage:false})
       }
       await page.setViewport({width:1440,height:1000})
       for(const route of ['/dashboard','/validacion','/metodologia','/mapa']) {
@@ -233,13 +226,18 @@ try {
       await page.setViewport({width:1440,height:1000})
     })
   }
-  // Desde 8e3c545/409ee85, /mapa en desarrollo local muestra el módulo predictivo
-  // rediseñado; el panel A/B se prueba aislado en research-panel.browser.mjs.
-  if(!postgis) await check('módulo predictivo local sin tokens administrativos',async()=>{
-    await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
-    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
-    assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
+  // F3: el visor predictivo está en /admin/predictivo y exige sesión de administrador;
+  // /mapa vuelve a ser el mapa público y el menú público ya no ofrece el módulo.
+  if(!postgis) await check('módulo predictivo sólo en Administración y sin sesión muestra el ingreso',async()=>{
+    await page.goto(frontendOrigin+'/admin/predictivo',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.admin-login h1')?.textContent==='Módulo predictivo')
+    assert.equal(await page.$('.pv'),null)
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('sigard_admin_token')),null)
+    assert.doesNotMatch(await page.$eval('.main-nav',e=>e.textContent),/Módulo predictivo/)
+    await page.goto(frontendOrigin+'/mapa?anio=2024&se=12',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Mapa público agregado')
+    assert.equal(await page.$eval('.predictive-moved a',e=>e.getAttribute('href')),'/admin/predictivo?anio=2024&se=12')
+    assert.equal(await page.$('.pv'),null)
   })
   await check('login protegido, estado inicial y último administrador',async()=>{
     await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})
@@ -248,6 +246,19 @@ try {
     await click('Gestionar cuentas');await accountLoaded()
     assert.equal(await page.$$eval('.account-list tbody tr',n=>n.length),1)
     assert.equal(await page.$eval('button[aria-label="Desactivar stage14-admin@example.test"]',e=>e.disabled),true)
+  })
+  // F3: acceso al visor desde Administración con la misma sesión (los datos del visor los cubre
+  // test:predictive:browser; la API ficticia usa app.main, sin rutas predictivas).
+  if(!postgis) await check('acceso al módulo predictivo desde Administración con la sesión activa',async()=>{
+    await click('Volver a reportes')
+    await page.waitForSelector('.admin-header a[href="/admin/predictivo"]')
+    await page.click('.admin-header a[href="/admin/predictivo"]')
+    await page.waitForFunction(()=>location.pathname==='/admin/predictivo' && document.querySelector('.pv'))
+    assert.equal(await page.$('.admin-login'),null)
+    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
+    await page.click('.admin-predictive-bar a[href="/admin/reportes"]')
+    await page.waitForFunction(()=>location.pathname==='/admin/reportes' && document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
+    await click('Gestionar cuentas');await accountLoaded()
   })
   if(integral || postgis) await check('revisión administrativa del reporte, privacidad y sesión revocada',async()=>{
     await click('Volver a reportes')

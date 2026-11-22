@@ -240,20 +240,20 @@ try {
   if (target === 'production') {
     // The measurement bundle must really contain the viewer (not the public map).
     const { page, close } = await newViewerPage()
-    await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' })
+    await page.goto(`${origin}/admin/predictivo`, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('.pv', { timeout: 120000 }); await close()
   }
   const visorReady = (page, timeout = SAMPLE_TIMEOUT_MS) => page.waitForFunction(() => document.querySelector('.pv')?.dataset.state === 'ready' && !document.querySelector('.pv-updating')
     && document.querySelectorAll('.pv-map path.leaflet-interactive').length >= 263, { timeout })
   await measureOperation('visor_carga', fresh(), async () => {
     const { page, close } = await newViewerPage()
-    const ms = await timed(async () => { await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }); await visorReady(page) }, page, 'visor_carga')
+    const ms = await timed(async () => { await page.goto(`${origin}/admin/predictivo`, { waitUntil: 'domcontentloaded' }); await visorReady(page) }, page, 'visor_carga')
     await close(); return ms
   })
 
   const loadedVisor = async () => {
     const session = await newViewerPage()
-    await session.page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }); await visorReady(session.page, 120000)
+    await session.page.goto(`${origin}/admin/predictivo`, { waitUntil: 'domcontentloaded' }); await visorReady(session.page, 120000)
     // The viewer keeps loading yearly histories in the background; an "already loaded" viewer
     // is one whose background requests finished, so they do not queue behind the next setup.
     await session.page.waitForNetworkIdle({ idleTime: 1500, timeout: 300000 })

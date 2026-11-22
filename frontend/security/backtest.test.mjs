@@ -1,7 +1,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
-import { endSession, readSession, SESSION_EXPIRED, SESSION_KEY, SESSION_REQUIRED, sessionExpired } from '../src/services/adminSession.mjs'
+import { adminSessionActive, endSession, hasViewerParams, PREDICTIVE_ROUTE, readSession, SESSION_EXPIRED, SESSION_KEY, SESSION_REQUIRED, sessionExpired, sessionRemaining } from '../src/services/adminSession.mjs'
 import { experimentalView, formatValue, lineSegments, validateBacktestCatalog, validateBacktestGeometry, validateBacktestHistory, validateBacktestMetadata, validateBacktestWeek } from '../src/services/backtestContract.mjs'
 
 // Generated contract-only fixture. No project observations or cartography.
@@ -72,7 +72,21 @@ test('admin session: missing, malformed and expired tokens are detected without 
   assert.equal(readSession(storage), 'token'); endSession(storage); assert.equal(readSession(storage), '')
   const broken = { getItem() { throw new Error('blocked') }, removeItem() { throw new Error('blocked') } }
   assert.equal(readSession(broken), ''); assert.doesNotThrow(() => endSession(broken))
-  for (const message of [SESSION_REQUIRED, SESSION_EXPIRED]) assert.match(message, /\/admin\/reportes/)
+  // F3: the login is shown on the viewer route itself, so the messages no longer send elsewhere.
+  for (const message of [SESSION_REQUIRED, SESSION_EXPIRED]) { assert.match(message, /visor predictivo/); assert.doesNotMatch(message, /http|\/admin\/reportes|\/mapa/) }
+  assert.equal(PREDICTIVE_ROUTE, '/admin/predictivo')
+})
+
+test('admin session gate (F3): unexpired admin role only; remaining time; viewer parameters of old links', () => {
+  const jwt = payload => `h.${Buffer.from(JSON.stringify(payload)).toString('base64url')}.s`
+  const now = Date.UTC(2026, 10, 22)
+  assert.equal(adminSessionActive(jwt({ role: 'admin', exp: now / 1000 + 60 }), now), true)
+  for (const token of [jwt({ role: 'admin', exp: now / 1000 }), jwt({ role: 'operador', exp: now / 1000 + 60 }), jwt({ exp: now / 1000 + 60 }), '', 'x'])
+    assert.equal(adminSessionActive(token, now), false)
+  assert.equal(sessionRemaining(jwt({ role: 'admin', exp: now / 1000 + 60 }), now), 60000)
+  for (const token of [jwt({ exp: now / 1000 - 5 }), jwt({}), 'x']) assert.equal(sessionRemaining(token, now), 0)
+  for (const name of ['anio', 'se', 'vista', 'metodo', 'capa', 'radio', 'modelo']) assert.equal(hasViewerParams(new URLSearchParams(`${name}=1`)), true, name)
+  assert.equal(hasViewerParams(new URLSearchParams('')), false); assert.equal(hasViewerParams(new URLSearchParams('otro=1')), false)
 })
 
 test('presentation rejects leaked small values; exact private response cannot masquerade as protected', () => {

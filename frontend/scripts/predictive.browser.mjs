@@ -1,8 +1,10 @@
 // Complete predictive-module walkthrough. Default is fictional; --real reads local aggregates only.
 // F2: owns its environment, like test:alerts:browser: Vite (5173) + the local administrative API
 // (8767) in session mode (disposable SQLite, generated admin kept in memory); both ports must be
-// free. The viewer needs that admin's session: the walkthrough first checks /mapa without a
-// session, logs in with the generated admin (same endpoint as /admin/reportes) and finally checks an expired and a revoked session.
+// free. F3: the viewer lives at /admin/predictivo and needs that admin's session: the walkthrough
+// first checks the route without a session (login form, no viewer, no request), logs in through
+// that form and finally checks expiry (on use and by timer), a revoked session, a shared link with
+// viewer state and an old /mapa link (redirect with a session; public map + link without one).
 // Fictional: predictive responses come from the generated fixture (intercepted; the API answers
 // 503 without a real module). --real: the real local predictive service behind the same login.
 // A previous `npm run build` is needed for the production check.
@@ -13,8 +15,8 @@ import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
 import { finalFixtureResponse } from '../security/predictive.fixture.mjs'
-import { SESSION_EXPIRED, SESSION_REQUIRED } from '../src/services/adminSession.mjs'
-import { ALERTS_API, alertsRuntime } from './dev-alerts.mjs'
+import { PREDICTIVE_ROUTE, SESSION_EXPIRED, SESSION_REQUIRED } from '../src/services/adminSession.mjs'
+import { alertsRuntime } from './dev-alerts.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
 
 const require = createRequire(import.meta.url), puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -40,9 +42,10 @@ let environment = await startDevelopment(runtime)
 const browser = await puppeteer.launch({ headless: true }); let production
 const errors = [], external = [], requests = [], timings = [], tileRequests = [], devFontSheets = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
-// Unsigned JWT-shaped values (never valid on the server): expired, and not expired but revoked.
-const fakeJwt = exp => `e30.${Buffer.from(JSON.stringify({ sub: '0', exp })).toString('base64url')}.FICTIONAL`
-let sessionToken = ''
+// Unsigned JWT-shaped administrator values made here (never valid on the server): expired, about
+// to expire, and not expired but revoked. The fictional transport rejects them like the server does.
+const fakeJwt = (exp, signature = 'FICTIONAL') => `e30.${Buffer.from(JSON.stringify({ sub: '0', role: 'admin', exp })).toString('base64url')}.${signature}`
+const viewerUrl = (search = '') => `${origin}${PREDICTIVE_ROUTE}${search}`
 try {
   const page = await browser.newPage(); page.setDefaultTimeout(real ? 120000 : 30000)
   assertProtectedMode = async () => {
@@ -76,8 +79,10 @@ try {
       if (r.method() === 'OPTIONS') return real ? r.continue() : r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Authorization, X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
       assert.equal(r.method(), 'GET'); requests.push(`${u.pathname}${u.search}`)
       assert.equal(r.headers()['x-sigard-research'], 'local-read')
-      // The fixture stands in for the data only: an unknown or revoked session gets the server's 401.
-      if (!real && r.headers().authorization !== `Bearer ${sessionToken}`) return r.respond({ status: 401, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Autenticación administrativa requerida"}' })
+      // The fixture stands in for the data only: a missing or script-made (revoked) session gets the
+      // server's 401; tokens issued by the real login of the session API are accepted.
+      const authorization = r.headers().authorization || ''
+      if (!real && (!authorization.startsWith('Bearer ') || authorization.endsWith('.FICTIONAL'))) return r.respond({ status: 401, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Autenticación administrativa requerida"}' })
       if (fail && u.pathname.endsWith('/comparison')) return r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': origin }, body: '{}' })
       if (!real) return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify(finalFixtureResponse(u.href)) })
     }
@@ -108,20 +113,31 @@ try {
   const noHorizontalScroll = async () => assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > innerWidth + 1), false)
 
   await page.setViewport({ width: 1440, height: 1000 })
-  // Session (F2): without one, the viewer explains how to log in and sends no request.
-  const setupAlert = () => page.waitForSelector('.pv [role="alert"]').then(() => page.$eval('.pv [role="alert"] p', e => e.textContent))
-  await page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' })
-  assert.equal(await setupAlert(), SESSION_REQUIRED); assert.equal(requests.length, 0)
+  // Session (F2/F3): without one, /admin/predictivo shows the Administración login, no viewer and no request.
+  const loginNotice = async text => {
+    await page.waitForFunction(t => document.querySelector('.admin-login [role="status"]')?.textContent === t, {}, text)
+    assert.equal(await page.$('.pv'), null, 'no viewer without an administrator session')
+  }
+  const loginForm = async () => {
+    await page.type('.admin-login input[type="email"]', runtime.service.credentials.email)
+    await page.type('.admin-login input[type="password"]', runtime.service.credentials.password)
+    await page.click('.admin-login .primary-button')
+  }
+  const clearSession = () => page.evaluate(() => sessionStorage.removeItem('sigard_admin_token'))
+  await page.goto(viewerUrl(), { waitUntil: 'domcontentloaded' })
+  await loginNotice(SESSION_REQUIRED); assert.equal(requests.length, 0)
+  assert.equal(await page.$('.main-nav a[href="/admin/predictivo"]'), null)
+  assert.doesNotMatch(await page.$eval('.main-nav', e => e.textContent), /Módulo predictivo/)
   await shot('desktop-sin-sesion')
-  // Same login endpoint as /admin/reportes (its UI is covered by test:accounts/alerts:browser),
-  // called from Node: intercepting the admin page's own preflights makes CORS flaky.
-  const login = await fetch(`${ALERTS_API}/api/v1/admin/session`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(runtime.service.credentials) })
-  assert.equal(login.status, 200); sessionToken = (await login.json()).access_token
-  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), sessionToken)
-  await timed('cold_start_until_default_week_rendered', () => page.goto(`${origin}/mapa`, { waitUntil: 'domcontentloaded' }), () => ready())
+  // Logging in through the form stays on /admin/predictivo and opens the viewer.
+  await loginForm(); await ready()
+  assert.equal(new URL(page.url()).pathname, PREDICTIVE_ROUTE)
+  // Cold start with the session already open (as before F3).
+  await timed('cold_start_until_default_week_rendered', () => page.goto(viewerUrl(), { waitUntil: 'domcontentloaded' }), () => ready())
   const defaultWeek = await week()
   if (!real) assert.equal(defaultWeek, '2024-04-07', 'fictional default is the week with most disclosable radios')
   assert.ok(timings[0].seconds < 5, `cold start under 5 s (${timings[0].seconds.toFixed(2)} s)`)
+  assert.equal(new URL(page.url()).pathname, PREDICTIVE_ROUTE)
   // Model selector built from metadata: corrective v2 by default, v1 candidates still available.
   assert.equal(await page.$eval('[data-control="model"] select', e => e.value), 'rf_v2_city_propensity')
   assert.deepEqual(await page.$$eval('[data-control="model"] option', o => o.map(e => e.value)), ['rf_A_epi_climate', 'rf_v2_city_propensity'])
@@ -266,29 +282,82 @@ try {
       return results
     }); timings.push(...measured)
   }
-  // Expired session while using the viewer: no request, how to log in again, no console errors.
+  // Expired session while using the viewer: no request, back to the login with a clear message, no console errors.
   await page.setViewport({ width: 1440, height: 1000 })
-  const alertShows = text => page.waitForFunction(t => [...document.querySelectorAll('.pv [role="alert"]')].some(e => e.textContent.includes(t)), {}, text)
   const sent = requests.length
   await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), fakeJwt(Math.floor(Date.now() / 1000) - 60))
-  await page.select('#pv-year', '2024'); await alertShows(SESSION_EXPIRED)
+  await page.select('#pv-year', '2024'); await loginNotice(SESSION_EXPIRED)
   assert.equal(requests.length, sent, 'an expired session sends no request')
   assert.equal(await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')), null, 'the expired session is cleared')
+  assert.equal(new URL(page.url()).pathname, PREDICTIVE_ROUTE)
   await shot('desktop-sesion-vencida')
-  // Revoked (or otherwise rejected) session: the server answers 401 and the viewer says the same.
+  // The 60-minute expiry reached with the viewer open (no interaction): the timer returns to the login.
+  if (!real) {
+    await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), fakeJwt(Math.floor(Date.now() / 1000) + 5, 'FIXTURE-EXPIRING'))
+    await page.reload({ waitUntil: 'domcontentloaded' }); await ready()
+    await loginNotice(SESSION_EXPIRED)
+    const before = requests.length; await new Promise(r => setTimeout(r, 1500))
+    assert.equal(requests.length, before, 'after the expiry by time nothing else is sent')
+    assert.equal(await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')), null)
+  }
+  // Revoked (or otherwise rejected) session: the server answers 401 and the page returns to the login.
+  const revokedFrom = requests.length
   await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), fakeJwt(Math.floor(Date.now() / 1000) + 600))
+  const kept = new URL(page.url()).search
   await page.reload({ waitUntil: 'domcontentloaded' })
-  assert.equal(await setupAlert(), SESSION_EXPIRED); assert.ok(requests.length > sent, 'a not-yet-expired token is checked by the server')
+  await loginNotice(SESSION_EXPIRED); assert.ok(requests.length > revokedFrom, 'a not-yet-expired token is checked by the server')
   assert.equal(await page.evaluate(() => sessionStorage.getItem('sigard_admin_token')), null)
-  // Logging in again restores the viewer (Reintentar, without reloading).
-  await page.evaluate(token => sessionStorage.setItem('sigard_admin_token', token), sessionToken)
-  await page.evaluate(() => [...document.querySelectorAll('.pv button')].find(b => b.textContent === 'Reintentar').click()); await ready()
+  // Logging in again restores the viewer on the same URL (state kept).
+  await loginForm(); await ready()
+  assert.equal(new URL(page.url()).search, kept)
+  // Shared link with viewer state, opened without a session: login first, then exactly that state.
+  const shared = '?anio=2024&se=12&vista=cuantos&metodo=comparar&modelo=residual_v2'
+  await clearSession(); await page.goto(viewerUrl(shared), { waitUntil: 'domcontentloaded' })
+  await loginNotice(SESSION_REQUIRED); assert.equal(new URL(page.url()).search, shared)
+  await loginForm(); await ready()
+  assert.equal(new URL(page.url()).pathname, PREDICTIVE_ROUTE)
+  const sharedState = new URLSearchParams(new URL(page.url()).search)
+  for (const [name, value] of new URLSearchParams(shared)) assert.equal(sharedState.get(name), value, `shared ${name}`)
+  assert.equal(await page.$eval('[data-control="view"] [aria-pressed="true"]', e => e.dataset.value), 'quantity')
+  assert.equal(await page.$eval('[data-control="method"] [aria-pressed="true"]', e => e.dataset.value), 'compare')
+  await page.waitForFunction(() => document.querySelectorAll('.pv-map').length === 2)
+  await shot('desktop-enlace-compartido')
+  // Old /mapa viewer link with an administrator session: redirected to the viewer, state kept.
+  const legacy = '?anio=2024&se=12&vista=cuantos&metodo=ml&capa=observados'
+  await page.goto(`${origin}/mapa${legacy}`, { waitUntil: 'domcontentloaded' }); await ready()
+  assert.equal(new URL(page.url()).pathname, PREDICTIVE_ROUTE)
+  const legacyState = new URLSearchParams(new URL(page.url()).search)
+  for (const [name, value] of new URLSearchParams(legacy)) assert.equal(legacyState.get(name), value, `legacy ${name}`)
+  assert.equal(await page.$eval('[data-control="layer"] [aria-pressed="true"]', e => e.dataset.value), 'observed')
+  // Without a session: /mapa is the public map, with a link to Administración that keeps the state.
+  await clearSession(); const beforePublic = requests.length
+  await page.goto(`${origin}/mapa${legacy}`, { waitUntil: 'domcontentloaded' })
+  await page.waitForFunction(() => document.querySelector('.page-intro h1')?.textContent === 'Mapa público agregado')
+  assert.equal(new URL(page.url()).pathname, '/mapa'); assert.equal(await page.$('.pv'), null); assert.equal(requests.length, beforePublic)
+  assert.equal(await page.$eval('.predictive-moved a', e => e.textContent), 'El módulo predictivo está en Administración')
+  await shot('desktop-mapa-publico-enlace')
+  await page.click('.predictive-moved a'); await loginNotice(SESSION_REQUIRED)
+  assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, PREDICTIVE_ROUTE + legacy)
+  // The menu link to the public map stays the public map in dev, also with a session.
+  await loginForm(); await ready()
+  await page.click('.main-nav a[href="/mapa"]')
+  await page.waitForFunction(() => document.querySelector('.page-intro h1')?.textContent === 'Mapa público agregado')
+  assert.equal(await page.$('.pv'), null)
+  // Access from Administración (same session).
+  await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded' })
+  await page.waitForSelector('.admin-header a[href="/admin/predictivo"]')
+  await page.click('.admin-header a[href="/admin/predictivo"]'); await ready()
+  await shot('desktop-desde-administracion')
   assert.deepEqual(errors, [])
   if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
   if (!process.env.SIGARD_SKIP_PRODUCTION) {
     production = await preview({ root: frontendRoot, preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
-    const count = requests.length; await page.goto('http://127.0.0.1:5174/mapa', { waitUntil: 'networkidle0' })
-    assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
+    const count = requests.length
+    for (const path of ['/mapa?anio=2024&se=12', PREDICTIVE_ROUTE]) {
+      await page.goto(`http://127.0.0.1:5174${path}`, { waitUntil: 'networkidle0' })
+      assert.equal(await page.$('.historical-backtest'), null); assert.equal(requests.length, count)
+    }
+    assert.equal(await page.$('.admin-login'), null, 'production shows no viewer login')
   }
   const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
     requests: requests.length, archived_calls: 0,
