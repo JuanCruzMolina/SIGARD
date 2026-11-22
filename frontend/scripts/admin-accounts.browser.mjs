@@ -6,7 +6,7 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { proxyRequest } from './browser-proxy.mjs'
+import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -58,7 +58,7 @@ try {
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url=new URL(request.url())
-    if (url.pathname.startsWith('/api/v1/') && url.port==='8000') {
+    if (url.pathname.startsWith('/api/v1/') && ADMIN_API_PORTS.includes(url.port)) {
       if(rejectReportOperation && (rejectReportOperation==='export' ? url.pathname.endsWith('/citizen-reports/export.csv') && request.method()==='GET' : /^\/api\/v1\/admin\/citizen-reports\/[^/]+$/.test(url.pathname) && request.method()===(rejectReportOperation==='save'?'PATCH':'GET'))) {
         return request.respond({status:rejectReportOperation==='export'?403:401,contentType:'application/json',headers:{'access-control-allow-origin':'http://127.0.0.1:5173'},body:JSON.stringify({detail:'Sesión ficticia revocada.'})})
       }
