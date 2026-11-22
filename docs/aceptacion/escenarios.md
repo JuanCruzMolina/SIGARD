@@ -82,7 +82,11 @@ Distingue entre borrador y publicado.
 **Pista estándar:** «En administración, busque “Contenido preventivo”.»
 
 ### E6 — Consultar qué radios estaban priorizados en una semana y compararlo con lo ocurrido
-**Consigna:** «En el módulo predictivo, elija la semana epidemiológica que le indicamos
+**Punto de partida:** el participante está en la bandeja de Administración, con sesión de
+administrador iniciada (E3). El visor no está en el menú público: se abre con **Módulo
+predictivo** dentro de Administración (`/admin/predictivo`).
+
+**Consigna:** «Abra el módulo predictivo desde Administración y elija la semana epidemiológica que le indicamos
 (tarjeta: una semana de 2024 con actividad). Indique cuántos radios estaban priorizados, cuántos
 de ellos tuvieron registros (“Acierto”) y cuántos radios con registros no estaban priorizados
 (“No anticipado”).»
@@ -98,9 +102,10 @@ lo que **no** se hace en la sesión. El observador comprueba que «Opciones avan
 «Modo de divulgación: protegido».
 
 **Error crítico:** que el sistema presente los resultados como casos confirmados o como
-situación actual sin aclararlo.
+situación actual sin aclararlo, o que el visor se muestre sin sesión de administrador.
 
-**Pista estándar:** «El selector de semana está arriba del mapa; la leyenda, debajo.»
+**Pista estándar:** «El módulo predictivo está en Administración, junto a los reportes. El
+selector de semana está arriba del mapa; la leyenda, debajo.»
 
 ### E7 — Interpretar un radio en el visor
 **Consigna:** «Elija un radio marcado como “Falsa alarma” y explique con sus palabras qué

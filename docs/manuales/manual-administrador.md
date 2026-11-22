@@ -105,8 +105,24 @@ archivos públicos revisados del sitio.
 
 ## 5. Visor predictivo
 
-El visor se abre en **Módulo predictivo** (`/mapa`) sólo en el entorno local de investigación
-(`npm run dev`). Es una **reconstrucción histórica 2021–2024**: muestra qué hubiera estimado cada
+El visor está dentro de **Administración**, en `/admin/predictivo`, y sólo funciona en el entorno
+local de investigación (`npm run dev`). Para abrirlo:
+
+1. Entrá a **Administración** e iniciá sesión con una cuenta de administrador.
+2. En la barra superior de la bandeja, elegí **Módulo predictivo**.
+3. Si abrís `/admin/predictivo` (o un enlace compartido) sin sesión, primero aparece el formulario
+   de ingreso; al ingresar, el visor se abre en la misma dirección, con la semana y las opciones
+   del enlace.
+4. **Volver a Administración** regresa a la bandeja; **Cerrar sesión** sale de Administración.
+
+La sesión dura 60 minutos. Al vencer, el visor se cierra y vuelve el formulario de ingreso con el
+aviso «La sesión de Administración venció o fue cerrada…»; ingresá de nuevo para continuar.
+El menú público ya no tiene «Módulo predictivo»: **Mapa público** (`/mapa`) es siempre el mapa
+público. Los enlaces viejos a `/mapa` con semana u opciones del visor llevan al visor si hay
+sesión de administrador; sin sesión muestran el mapa público con el enlace «El módulo predictivo
+está en Administración».
+
+Es una **reconstrucción histórica 2021–2024**: muestra qué hubiera estimado cada
 método para la semana siguiente y lo compara con lo que ocurrió. **No es un pronóstico actual ni
 un sistema operativo.**
 

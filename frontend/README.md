@@ -46,14 +46,20 @@ El coordinador `scripts/dev.mjs` inicia la API administrativa local
 (`backend/app/alerts_local.py serve`) en **127.0.0.1:8767** y la configuración existente
 de Vite para servir React en **127.0.0.1:5173**. Desde F2 esa misma API sirve el
 **Módulo predictivo experimental** (`/api/v1/research/predictive/*`) sólo a un
-administrador autenticado: iniciar sesión en **http://127.0.0.1:5173/admin/reportes** y
-abrir **http://127.0.0.1:5173**; en desarrollo local autorizado, `/` redirige a `/mapa`.
-Sin sesión, o con la sesión vencida o revocada, el visor explica cómo volver a ingresar.
+administrador autenticado. Desde F3 el visor está en Administración:
+**http://127.0.0.1:5173/admin/predictivo** (en desarrollo local autorizado `/` redirige ahí;
+también se llega con **Módulo predictivo** en la bandeja de `/admin/reportes`). Sin sesión,
+o con la sesión vencida (60 min) o revocada, la ruta muestra el ingreso de Administración y,
+al ingresar, abre el visor en la misma URL (`anio`, `se`, `vista`, `metodo`, `capa`, `radio`,
+`modelo`). `/mapa` es siempre el mapa público; un enlace viejo `/mapa?…` con estado del visor
+redirige a `/admin/predictivo?…` si hay sesión de administrador y, si no, muestra el mapa
+público con el enlace «El módulo predictivo está en Administración».
 Ya no existe una API predictiva separada en 8765.
 Presencia, cantidad y evaluación histórica reutilizan un solo panel, con
 presentación protegida predeterminada y consulta privada exacta explícita.
 **Situación actual** abre el dashboard de demostración en `/dashboard`.
-En producción, `/` conserva el dashboard y `/mapa` inicia en el MVP original.
+En producción, `/` conserva el dashboard, `/mapa` es el mapa público y `/admin/predictivo`
+sólo indica que el visor existe únicamente en el entorno local.
 No requiere Docker ni PostgreSQL.
 
 **Ctrl+C** cierra Vite y únicamente el árbol de procesos Python iniciado por el

@@ -75,7 +75,9 @@ Esperar a la línea de «listo» y a las credenciales. Base SQLite temporal; Ctr
 ```powershell
 npm.cmd --prefix frontend run dev
 ```
-Abrir `/mapa`. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
+Abrir `/admin/predictivo` (o **Administración → Módulo predictivo**) e ingresar con la cuenta
+de administrador de la sesión; `/mapa` es el mapa público y ya no muestra el visor. Comprobar
+que sin sesión la ruta muestra el formulario de ingreso y no el visor. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
 existir selector de valores exactos. Ese control sólo aparece si `dev` se inicia con
 `SIGARD_PRIVATE_VIEW=1`, y **nunca se usa en la sesión**: verificar que la variable no está
 definida (`$env:SIGARD_PRIVATE_VIEW` vacío). Tener lista la semana asignada para E6.
