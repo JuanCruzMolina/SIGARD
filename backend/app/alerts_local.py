@@ -1,8 +1,10 @@
-"""Local administrative API for internal alerts on 127.0.0.1:8767. Never deployment.
+"""Local administrative API (login, reports, content, accounts, alerts) on 127.0.0.1:8767.
+Never deployment.
 
   serve         persistent private SQLite (data/interim/official/internal-alerts-v1/,
                 ignored by Git) + predictions read from the local predictive API
-                (127.0.0.1:8765). Started by `npm run dev:alerts`.
+                (127.0.0.1:8765). Started by `npm run dev` (`dev:alerts` is an alias).
+                Starts even without an account; readiness reports "admin": false.
   create-admin  interactive, one-time account creation; the password is never printed.
   session       disposable SQLite in backend/.tmp/sigard-alerts-*; a generated
                 session-only admin is written to the coordinator pipe. For browser
@@ -70,9 +72,12 @@ def build_app(database_path):
         def settings_customise_sources(cls, settings_cls, init_settings, env_settings, dotenv_settings, file_secret_settings):
             return (init_settings,)  # no inherited DATABASE_URL, .env, bootstrap or secrets
 
-    # A new secret per process: sessions end when the local API stops.
+    # A new secret per process: sessions end when the local API stops. The only inherited
+    # option is the explicit opt-in to the generated fictional "Actividad registrada" package.
+    activity = "fixture" if os.environ.get("SIGARD_PUBLIC_ACTIVITY") == "fixture" else None
     settings = LocalSettings(secret_key=secrets.token_urlsafe(48), database_url=database_url, auto_create_schema=True,
-                             cors_origins=ORIGIN, admin_bootstrap_email=None, admin_bootstrap_password=None)
+                             cors_origins=ORIGIN, admin_bootstrap_email=None, admin_bootstrap_password=None,
+                             sigard_public_activity=activity)
     config.get_settings = lambda: settings
     from app.main import app  # built with the settings above
 
@@ -173,12 +178,12 @@ def main():
         app = build_app(persistent_path())
         from app.models import User
         from sqlalchemy import select
+        # Without an account the API still serves (login is simply refused) so `npm run dev`
+        # starts; the coordinator prints the create-admin command. Never creates one.
         with app.state.SessionLocal() as db:
-            if db.scalar(select(User.id).where(User.rol == "admin", User.active.is_(True)).limit(1)) is None:
-                print(json.dumps({"error": "no_admin"}), flush=True)
-                raise SystemExit(2)
+            admin = db.scalar(select(User.id).where(User.rol == "admin", User.active.is_(True)).limit(1)) is not None
         nonce = attach(app, LocalResearchSource(), "persistent-private-sqlite")
-        return serve(app, {"session": nonce, "storage": "persistent-private-sqlite"})
+        return serve(app, {"session": nonce, "storage": "persistent-private-sqlite", "admin": admin})
     app = build_app(session_path(args.directory))
     from app.models import User
     from app.security import hash_password
