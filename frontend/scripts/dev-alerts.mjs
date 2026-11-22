@@ -1,8 +1,9 @@
 // Runtime of `npm run dev` (and of the deprecated alias `dev:alerts`): frontend plus the
 // complete local administrative API (login, reports, content, accounts, alerts).
-// Ports: 5173 (Vite), 8765 (local predictive API, started or reused, read-only) and
-// 8767 (administrative API with a private persistent SQLite in
-// data/interim/official/internal-alerts-v1/, ignored by Git). It shares 5173 with
+// Ports: 5173 (Vite) and 8767 (administrative API with a private persistent SQLite in
+// data/interim/official/internal-alerts-v1/, ignored by Git). Since F2 the same API serves
+// the predictive viewer routes (/api/v1/research/predictive, administrator login required)
+// and the alerts read them in process; there is no separate predictive API on 8765. It shares 5173 with
 // `dev:demo`, so they never run in parallel. The entry point is dev.mjs.
 import { mkdir, mkdtemp, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
@@ -18,12 +19,13 @@ export const ALERTS_API = 'http://127.0.0.1:8767'
 // The only external origins `dev` opens by itself (src/index.css → IBM Plex Sans).
 export const GOOGLE_FONTS = ['fonts.googleapis.com', 'fonts.gstatic.com']
 export const CREATE_ADMIN = '.\\backend\\.venv\\Scripts\\python.exe -B backend/app/alerts_local.py create-admin'
+export const PREDICTIVE_MISSING = 'El módulo predictivo local no pudo verificarse: el visor responderá 503 hasta revisar los artefactos privados (no se regeneran automáticamente).'
 export const ADMIN_MISSING = `No hay cuenta de administrador local: el login de Administración se rechazará hasta crearla. Creala una vez, en otra terminal (la contraseña no se muestra): ${CREATE_ADMIN}`
 
 // mode 'serve': persistent private store; mode 'session': disposable SQLite + generated admin (checks only).
 // `launch` exists only so tests can replace the Python process.
 export function createAlertsService({ mode = 'serve', source = 'local-research', launch = (args, options) => spawnOwned(python, args, options) } = {}) {
-  let child, directory, credentials, stopping, adminMissing = false, childExited = false
+  let child, directory, credentials, stopping, adminMissing = false, predictiveMissing = false, childExited = false
   const ready = (async () => {
     const args = ['-I', '-B', join(backend, 'app/alerts_local.py')]
     if (mode === 'session') {
@@ -58,12 +60,14 @@ export function createAlertsService({ mode = 'serve', source = 'local-research',
       await delay(100)
     }
     adminMissing = mode === 'serve' && first.admin === false
+    predictiveMissing = source !== 'fictional' && first.predictive !== true
     if (mode === 'session') credentials = { email: first.email, password: first.password }
   })()
   const exited = ready.then(() => child.exited, () => ({ error: true }))
   return {
     ready, exited,
     get adminMissing() { return adminMissing },
+    get predictiveMissing() { return predictiveMissing },
     get credentials() { return credentials },
     get directory() { return directory },
     stop() {
@@ -91,7 +95,6 @@ export function alertsRuntime(options = {}) {
   let service
   return {
     ...developmentRuntime,
-    research: options.source !== 'fictional',
     companionStopped: 'La API administrativa (8767) terminó; se cierra la sesión local.',
     async checkRequirements() {
       if (!await portAvailable(8767)) throw new Error('El puerto 127.0.0.1:8767 está ocupado. SIGARD no reutiliza ni detiene ese servicio.')
@@ -107,8 +110,10 @@ export function alertsRuntime(options = {}) {
     },
     announce() {
       developmentRuntime.log('ADMINISTRACIÓN: /admin/reportes (reportes, contenido, cuentas y alertas internas). Avisos sólo en el panel; sin correo, SMS ni publicación ciudadana.')
-      developmentRuntime.log('Puertos: 5173 frontend · 8765 API predictiva (sólo lectura) · 8767 API administrativa. No correr en paralelo con dev:demo.')
+      developmentRuntime.log('VISOR PREDICTIVO: /mapa, con la sesión iniciada en /admin/reportes (sin sesión o vencida, el visor indica cómo ingresar).')
+      developmentRuntime.log('Puertos: 5173 frontend · 8767 API administrativa (incluye el visor predictivo, sólo con sesión de administrador). No correr en paralelo con dev:demo.')
       if (service?.adminMissing) developmentRuntime.log(ADMIN_MISSING)
+      if (service?.predictiveMissing) developmentRuntime.log(PREDICTIVE_MISSING)
     },
     get service() { return service },
   }

@@ -1,15 +1,13 @@
 import { spawn } from 'node:child_process'
 import { access } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { dirname, join, delimiter } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { setTimeout as delay } from 'node:timers/promises'
-import { MODULE_VERSION, validateBacktestCatalog } from '../src/services/backtestContract.mjs'
 
 const frontend = dirname(dirname(fileURLToPath(import.meta.url)))
 const repository = dirname(frontend)
 const origin = 'http://127.0.0.1:5173'
-const api = 'http://127.0.0.1:8765'
 const python = join(repository, 'backend', '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 
 export async function portAvailable(port) {
@@ -18,32 +16,6 @@ export async function portAvailable(port) {
     server.once('error', error => error.code === 'EADDRINUSE' ? resolve(false) : reject(error))
     server.listen({ host: '127.0.0.1', port, exclusive: true }, () => server.close(() => resolve(true)))
   })
-}
-
-// A generic /health is insufficient: check the existing contract and local guard.
-// Never print response bodies, follow redirects, or send credentials.
-export async function identifyApi(base = api) {
-  const request = (path, headers = {}) => fetch(`${base}${path}`, {
-    headers, redirect: 'error', credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(3000),
-  })
-  try {
-    const health = await request('/health')
-    if (!health.ok || (await health.json()).status !== 'ok') return false
-    const catalog = await request('/api/v1/research/predictive/calendar', {
-      Origin: origin, 'X-Sigard-Research': 'local-read',
-    })
-    if (!catalog.ok || catalog.headers.get('access-control-allow-origin') !== origin
-      || catalog.headers.get('cache-control') !== 'no-store, private') return false
-    const value = validateBacktestCatalog(await catalog.json())
-    if (value.module_version !== MODULE_VERSION || value.training_enabled !== false
-      || value.operational_enabled !== false || value.active_methods?.presence !== 'presence_seasonal'
-      || value.active_methods?.quantity !== 'count_latest') return false
-    const denied = await request('/api/v1/research/predictive/calendar')
-    await denied.body?.cancel()
-    return denied.status === 403
-  } catch {
-    return false
-  }
 }
 
 export function spawnOwned(command, args, options = {}) {
@@ -103,16 +75,11 @@ export function privateViewRequested(env = process.env) {
 
 export const developmentRuntime = {
   portAvailable,
-  identifyApi,
   async ensurePython() {
     try { await access(python) } catch {
       throw new Error('Falta el entorno backend/.venv. Crealo e instalá backend/requirements.research.txt; consultá frontend/README.md.')
     }
   },
-  startApi: () => spawnOwned(python, ['-B', '-m', 'app.research_local'], {
-    cwd: repository,
-    env: { ...process.env, PYTHONPATH: [join(repository, 'backend'), process.env.PYTHONPATH].filter(Boolean).join(delimiter) },
-  }),
   async createVite() {
     const { createServer: createViteServer } = await import('vite')
     // Exact values in the viewer only with an explicit local opt-in (SIGARD_PRIVATE_VIEW=1).
@@ -123,7 +90,7 @@ export const developmentRuntime = {
 }
 
 export async function startDevelopment(runtime = developmentRuntime) {
-  let ownedApi, companion, vite, stopping, stopped = false
+  let companion, vite, stopping, stopped = false
   const wasRaw = process.stdin.isRaw
   let finish, finishStartup
   const closed = new Promise(resolve => { finish = resolve })
@@ -133,7 +100,7 @@ export async function startDevelopment(runtime = developmentRuntime) {
     stopping ??= (async () => {
       // Finish any in-flight creation/listen before closing its resources.
       await startupFinished
-      const results = await Promise.allSettled([vite?.close(), companion?.stop(), ownedApi?.stop()])
+      const results = await Promise.allSettled([vite?.close(), companion?.stop()])
       process.off('SIGINT', interrupt)
       process.off('SIGTERM', interrupt)
       if (process.stdin.isTTY) {
@@ -166,34 +133,9 @@ export async function startDevelopment(runtime = developmentRuntime) {
     }
     await runtime.checkRequirements?.()
     checkStopped()
-    if (runtime.research === false) {
-      runtime.log('Demo ficticia: no se inicia ni consulta el módulo predictivo privado.')
-    } else if (!await runtime.portAvailable(8765)) {
-      if (!await runtime.identifyApi()) {
-        throw new Error('El puerto 127.0.0.1:8765 está ocupado y no responde como la API experimental válida. Revisá ese proceso; SIGARD no lo detendrá.')
-      }
-      runtime.log('API experimental existente verificada; se reutiliza y seguirá activa al salir.')
-    } else {
-      await runtime.ensurePython()
-      checkStopped()
-      runtime.log('Iniciando API experimental en 127.0.0.1:8765…')
-      ownedApi = runtime.startApi()
-      let apiExit
-      ownedApi.exited.then(result => {
-        apiExit = result
-        if (!stopped) {
-          runtime.log('La API experimental terminó. Revisá las dependencias y los artefactos locales; no se regeneran automáticamente.')
-          void stop(1)
-        }
-      })
-      const deadline = Date.now() + 30000
-      while (!await runtime.identifyApi()) {
-        if (apiExit || stopped) throw new Error('La API experimental no pudo iniciarse.')
-        if (Date.now() >= deadline) throw new Error('La API experimental no estuvo lista en 30 segundos. Revisá su salida y el puerto 8765.')
-        await delay(200)
-      }
-    }
-    checkStopped()
+    // F2: there is no separate predictive API (8765) any more. The viewer routes live on the
+    // local administrative API started below as companion (8767), behind administrator login.
+    if (runtime.research === false) runtime.log('Demo ficticia: no se inicia ni consulta el módulo predictivo privado.')
     if (runtime.startCompanion) {
       companion = runtime.startCompanion()
       companion.exited.then(() => {
@@ -223,8 +165,8 @@ export async function startDevelopment(runtime = developmentRuntime) {
   }
 }
 
-// Entry point of `npm run dev` and of the deprecated alias `dev:alerts`: frontend,
-// predictive API (8765) and the complete administrative API (8767). dev-alerts.mjs
+// Entry point of `npm run dev` and of the deprecated alias `dev:alerts`: frontend and the
+// complete administrative API (8767), which also serves the authenticated predictive viewer. dev-alerts.mjs
 // builds on this module, so it is imported only after this module finished evaluating
 // (no top-level await here: that would deadlock the import cycle).
 async function main() {
