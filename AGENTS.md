@@ -27,6 +27,10 @@ Estas reglas se aplican a todo el repositorio.
   Seleccionar pruebas revisadas sin entrenamiento ni lectura de fuentes privadas.
 - Seguridad: `.\backend\.venv\Scripts\python.exe -B tools/check_repository_security.py`
   (auditoría estática, no inicia Docker) y `git diff --check`.
+- Nunca enlazar (junction, symlink, hardlink) carpetas reales del repositorio —data/, .venv,
+  node_modules— dentro de worktrees o directorios temporales. Nunca usar git worktree remove
+  --force ni borrados recursivos sobre rutas que puedan contener enlaces. Para comparar
+  versiones, usar un clon separado con sus propias dependencias.
 
 ## Alcance conceptual
 
