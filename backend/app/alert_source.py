@@ -1,8 +1,9 @@
 """Prediction sources for internal alerts. Read-only; no training, inference or files.
 
-`LocalResearchSource` reads the already integrated predictions from the local
-predictive API (127.0.0.1:8765) over HTTP, so the administrative API never opens
-private artifacts. It is attached only by `alerts_local` (never in deployments).
+`LocalResearchSource` reads the already integrated predictions from the predictive
+service attached to the same local administrative process (F2: `alerts_local` opens the
+predictive artifacts; `app.main` and deployments never do). It calls the service in
+process, exactly like the viewer routes but without HTTP, tokens or browser exposure.
 `FictionalSource` is a generated, clearly fictitious grid for tests and browser
 checks: unrelated to real cartography, predictions or sources.
 
@@ -58,25 +59,27 @@ class _Store:
 
 
 class LocalResearchSource(_Store):
-    kind = 'local_research_api'
-    BASE = 'http://127.0.0.1:8765/api/v1/research/predictive'
-    # The research API admits only its loopback frontend origin plus the read header.
-    HEADERS = {'Origin': 'http://127.0.0.1:5173', 'X-Sigard-Research': 'local-read'}
+    kind = 'local_predictive_service'
 
-    def __init__(self, client=None):
+    def __init__(self, service):
         super().__init__()
-        import httpx
-        self._client = client or httpx.Client(base_url=self.BASE, headers=self.HEADERS, follow_redirects=False,
-                                              timeout=20, trust_env=False)
+        self._service = service
 
     def _get(self, path, **params):
+        from fastapi.encoders import jsonable_encoder
         try:
-            response = self._client.get(path, params=params or None)
+            if self._service is None:
+                raise LookupError('predictive service not attached')
+            if path == '/calendar':
+                value = self._service.catalog()
+            elif path == '/comparison':
+                value = self._service.week(str(params['year']), str(params['week']), None, mode=params['disclosure'])
+            else:
+                raise LookupError(path)
+            # Same JSON values the viewer routes return (and a private copy of the result).
+            return jsonable_encoder(value)
         except Exception:
             raise SourceUnavailable('API predictiva local no disponible') from None
-        if response.status_code != 200:
-            raise SourceUnavailable('API predictiva local no disponible')
-        return response.json()
 
     def _load_status(self):
         calendar = self._get('/calendar')

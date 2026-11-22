@@ -1,12 +1,14 @@
-"""Installed only on the existing guarded loopback research listener."""
+"""Read-only result routes. The final predictive module is installed only by
+`predictive_admin.mount` (guarded local administrative API); never by `app.main`."""
 from fastapi import APIRouter, HTTPException, Request
 from .experimental_results import ArtifactBlocked, InvalidDate, NotAvailable
 
 PREFIX = '/api/v1/research/backtest'
 
 
-def router_for(adapter, *, prefix=PREFIX, unified=False):
-    router = APIRouter(prefix=prefix, include_in_schema=False)
+def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
+    # `dependencies` run before every route (the administrative mount passes the admin check).
+    router = APIRouter(prefix=prefix, include_in_schema=False, dependencies=list(dependencies))
     allowed_mode = {'disclosure'} if unified else set()
 
     def week_result(year, week, radio, disclosure):

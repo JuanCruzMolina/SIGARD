@@ -1,14 +1,20 @@
-"""Local administrative API (login, reports, content, accounts, alerts) on 127.0.0.1:8767.
-Never deployment.
+"""Local administrative API (login, reports, content, accounts, alerts and the predictive
+viewer routes) on 127.0.0.1:8767. Never deployment.
+
+F2: this process opens the frozen predictive artifacts (`predictive_admin.build_service`)
+and serves `/api/v1/research/predictive/*` only to authenticated administrators, behind the
+local guard; internal alerts read the same service in process. `app.main` and any
+deployment never mount those routes or open the artifacts. There is no other launcher.
 
   serve         persistent private SQLite (data/interim/official/internal-alerts-v1/,
-                ignored by Git) + predictions read from the local predictive API
-                (127.0.0.1:8765). Started by `npm run dev` (`dev:alerts` is an alias).
+                ignored by Git) + the local predictive service. Started by `npm run dev`
+                (`dev:alerts` is an alias).
                 Starts even without an account; readiness reports "admin": false.
   create-admin  interactive, one-time account creation; the password is never printed.
   session       disposable SQLite in backend/.tmp/sigard-alerts-*; a generated
                 session-only admin is written to the coordinator pipe. For browser
-                checks only (`--source fictional` or `--source local-research`).
+                checks only: `--source local-research` (real predictive service) or
+                `--source fictional` (generated alerts grid; viewer routes answer 503).
 
 Schema: the ORM metadata (same as the demo); the Alembic chain needs PostGIS and
 remains the path for managed installations (migration 20261114_06).
@@ -149,16 +155,39 @@ def attach(app, source, storage):
 
     @app.get("/health/alerts", include_in_schema=False)
     def health():
-        return {"alerts": True, "session": nonce, "storage": storage}
+        # "warm": the in-process alerts preload finished (it shares the CPU with the viewer).
+        return {"alerts": True, "session": nonce, "storage": storage, "warm": warmed.is_set()}
 
     # Warm the compact prediction cache so the first retrospective preview is fast.
+    warmed = threading.Event()
+
     def warm():
         try:
             source.preload()
         except Exception:
             pass  # unavailable source is reported by the API itself
+        finally:
+            warmed.set()
     threading.Thread(target=warm, daemon=True).start()
     return nonce
+
+
+def predictive_service():
+    """The frozen predictive service, or None if it cannot be built (viewer answers 503)."""
+    from app.predictive_admin import build_service
+    try:
+        service = build_service()
+    except Exception:
+        print("El módulo predictivo local no pudo verificarse; el visor responderá 503.", file=sys.stderr)
+        return None
+    return service if service.reader is not None else None
+
+
+def mount_viewer(app, service):
+    # Imported only after build_app: predictive_admin imports app.security, which must bind
+    # the local settings installed by build_app (never the inherited environment).
+    from app.predictive_admin import mount
+    mount(app, service)
 
 
 def main():
@@ -182,8 +211,11 @@ def main():
         # starts; the coordinator prints the create-admin command. Never creates one.
         with app.state.SessionLocal() as db:
             admin = db.scalar(select(User.id).where(User.rol == "admin", User.active.is_(True)).limit(1)) is not None
-        nonce = attach(app, LocalResearchSource(), "persistent-private-sqlite")
-        return serve(app, {"session": nonce, "storage": "persistent-private-sqlite", "admin": admin})
+        service = predictive_service()
+        nonce = attach(app, LocalResearchSource(service), "persistent-private-sqlite")
+        mount_viewer(app, service)
+        return serve(app, {"session": nonce, "storage": "persistent-private-sqlite", "admin": admin,
+                           "predictive": service is not None})
     app = build_app(session_path(args.directory))
     from app.models import User
     from app.security import hash_password
@@ -191,9 +223,12 @@ def main():
     with app.state.SessionLocal() as db:
         db.add(User(email=email, password_hash=hash_password(password), rol="admin"))
         db.commit()
-    source = FictionalSource() if args.source == "fictional" else LocalResearchSource()
+    service = None if args.source == "fictional" else predictive_service()
+    source = FictionalSource() if args.source == "fictional" else LocalResearchSource(service)
     nonce = attach(app, source, "disposable-sqlite")
-    serve(app, {"session": nonce, "storage": "disposable-sqlite", "email": email, "password": password})
+    mount_viewer(app, service)
+    serve(app, {"session": nonce, "storage": "disposable-sqlite", "email": email, "password": password,
+                "predictive": service is not None})
 
 
 if __name__ == "__main__":
