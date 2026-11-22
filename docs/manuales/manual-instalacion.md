@@ -10,7 +10,8 @@ Sistema operativo de referencia: **Windows 11** con PowerShell. Todos los comand
 >   corre en un clúster propio en `127.0.0.1:55439`.
 > - Ningún secreto, contraseña, `.env`, dato, modelo ni archivo `*.private.*` se versiona ni se
 >   escribe en documentación.
-> - `dev`, `dev:demo` y `dev:alerts` comparten el puerto 5173: **nunca se ejecutan en paralelo**.
+> - `dev` y `dev:demo` comparten el puerto 5173: **nunca se ejecutan en paralelo**. `dev:alerts` es un
+>   alias obsoleto de `dev`.
 
 ## 1. Requisitos
 
@@ -111,8 +112,8 @@ wsl.exe -d Ubuntu -u root -- bash /mnt/c/RUTA/AL/REPO/backend/database/epidemiol
 | Comando | Qué levanta | Puertos | Requisitos |
 |---|---|---|---|
 | `npm.cmd --prefix frontend run dev:demo` | Sitio completo con API **ficticia**, SQLite temporal y cuenta generada | 5173 · 8766 | Ninguno privado |
-| `npm.cmd --prefix frontend run dev` | Sitio con el **visor predictivo** y la API de investigación de sólo lectura | 5173 · 8765 | Paquetes privados instalados (§8) |
-| `npm.cmd --prefix frontend run dev:alerts` | `dev` + **alertas internas** con SQLite privado persistente | 5173 · 8765 · 8767 | Paquetes privados y una cuenta (§6) |
+| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: sitio con el **visor predictivo** (API de investigación de sólo lectura) y la **Administración completa** (login, reportes, contenido preventivo, cuentas y alertas internas) con SQLite privado persistente | 5173 · 8765 · 8767 | Paquetes privados instalados (§8); para ingresar a Administración, una cuenta local (§6) |
+| `npm.cmd --prefix frontend run dev:alerts` | **Obsoleto**: alias de `dev` (avisa al iniciar) | Igual que `dev` | Igual que `dev` |
 
 - Abrir siempre `http://127.0.0.1:5173/`.
 - **Ctrl+C** cierra sólo lo que inició el comando. En `dev:demo` también elimina la base temporal
@@ -125,33 +126,32 @@ wsl.exe -d Ubuntu -u root -- bash /mnt/c/RUTA/AL/REPO/backend/database/epidemiol
 
 - El visor arranca siempre en **modo protegido**. El selector de valores exactos sólo existe si
   `dev` se inicia con `SIGARD_PRIVATE_VIEW=1` y nunca se usa en demostraciones.
-- `dev:alerts` precarga las predicciones durante unos 25 s antes de responder.
+- `dev` arranca aunque no exista la cuenta de administrador local: el login se rechaza hasta
+  crearla y la terminal muestra el comando de §6. No crea cuentas ni muestra contraseñas.
+- El SQLite privado de la Administración local está en `data/interim/official/internal-alerts-v1/`
+  (ignorado por Git) y conserva reportes, contenido, cuentas y alertas entre sesiones.
+- La API administrativa precarga las predicciones para las alertas durante unos 25 s.
 
-### 5.1 API pública con la vista «Actividad registrada» ficticia (opcional)
+### 5.1 Vista «Actividad registrada» ficticia (opcional)
 
-Con `dev` en marcha, en **otra** terminal y desde una carpeta temporal (para no leer ningún `.env`):
+La API administrativa de `dev` (8767) también atiende las rutas públicas. Para ver la vista con el
+paquete **ficticio** generado, iniciar `dev` con la opción explícita:
 
 ```powershell
-$root = (Get-Location).Path
-New-Item -ItemType Directory -Force backend\.tmp\actividad-local | Out-Null
-Set-Location backend\.tmp\actividad-local
-$env:SECRET_KEY = -join ((48..57)+(97..122) | Get-Random -Count 40 | ForEach-Object {[char]$_})
-$env:DATABASE_URL = 'sqlite:///./actividad.sqlite3'
-$env:AUTO_CREATE_SCHEMA = 'true'
 $env:SIGARD_PUBLIC_ACTIVITY = 'fixture'
-$env:CORS_ORIGINS = 'http://127.0.0.1:5173'
-& "$root\backend\.venv\Scripts\python.exe" -B -m uvicorn app.main:app --app-dir "$root\backend" --host 127.0.0.1 --port 8000
+npm.cmd --prefix frontend run dev
+Remove-Item Env:SIGARD_PUBLIC_ACTIVITY   # al terminar
 ```
 
-Al terminar, ejecutar Ctrl+C, `Set-Location $root`, borrar la carpeta temporal y cerrar la
-terminal.
+Sin esa variable la vista queda oculta. Es la única opción que `dev` toma del entorno para la API
+administrativa: no lee `.env`, `DATABASE_URL` ni secretos.
 
 ## 6. Cuenta de administrador
 
 | Entorno | Cómo se obtiene |
 |---|---|
 | `dev:demo` | Se genera en cada arranque y se muestra **una sola vez** en la terminal. No se guarda |
-| `dev:alerts` | Se crea una vez, en forma interactiva (la contraseña no se muestra): `.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin` |
+| `dev` | Se crea una vez, en otra terminal y en forma interactiva (la contraseña no se muestra): `.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin`. Puede crearse con `dev` en marcha, sin reiniciarlo |
 | API desplegada | `ADMIN_BOOTSTRAP_EMAIL` y `ADMIN_BOOTSTRAP_PASSWORD` crean la primera cuenta sólo con la tabla vacía. Después se retiran del entorno, y las demás cuentas se crean desde **Gestionar cuentas** |
 
 Usar correos de función (por ejemplo `aceptacion@example.test` en pruebas) y entregar las
@@ -295,7 +295,7 @@ git diff --check
 
 | Prueba | Requisito previo |
 |---|---|
-| `test:predictive:browser`, `test:public-activity:browser`, `test:accounts:browser` | `dev` en marcha |
+| `test:predictive:browser`, `test:public-activity:browser`, `test:accounts:browser` | `dev` en marcha (las dos últimas redirigen 8000 y 8767 a su propia API ficticia) |
 | `test:citizen:browser`, `test:prevention:browser`, `test:alerts:browser`, `test:demo:browser` | Levantan su propio entorno; los puertos deben estar libres |
 | `test:performance` (`-- --target production` para el bundle de producción) | Levanta sus entornos. Tarda unos 20 minutos por modo |
 
@@ -311,4 +311,5 @@ pruebas PostGIS del runner con Docker quedan omitidas por la regla de no iniciar
 | El visor dice que el paquete no pudo verificarse | Un archivo privado cambió o falta, o la historia quedó desactualizada | Verificar hashes (§8.1) y reconstruir la historia |
 | «Actividad registrada» no aparece | Sin autorización o sin la API pública | Es el comportamiento esperado |
 | Error de `SECRET_KEY` al iniciar la API | Clave ausente o menor a 32 caracteres | Definirla en el entorno (§3) |
-| `dev:alerts` tarda en responder | Precarga de predicciones | Esperar unos 25 s |
+| Las alertas internas tardan en responder al iniciar `dev` | Precarga de predicciones | Esperar unos 25 s |
+| «Credenciales inválidas» en Administración con `dev` | Todavía no hay cuenta local | Crearla con el comando de §6 (la terminal de `dev` lo muestra) |

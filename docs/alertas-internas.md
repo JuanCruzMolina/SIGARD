@@ -57,7 +57,7 @@ permitido en este panel interno autenticado.
 - **Lógica compartida** (`backend/app/alert_rules.py`): umbral, ventana de semanas
   consecutivas, protección y bloqueo de publicación. La demo ficticia
   (`demo_workspace.py`) la reutiliza con su contrato sin cambios (ventana de 1 semana).
-- **Almacenamiento local**: `npm run dev:alerts` usa un SQLite privado persistente en
+- **Almacenamiento local**: `npm run dev` usa un SQLite privado persistente en
   `data/interim/official/internal-alerts-v1/alerts.private.sqlite3` (ignorado por Git y
   verificado por `tools/check_repository_security.py`). Usa el esquema ORM, como la demo,
   porque la cadena Alembic completa requiere PostGIS; la migración 06 es el camino para
@@ -65,20 +65,22 @@ permitido en este panel interno autenticado.
 
 ## Ejecución local
 
-Crear la cuenta una vez (interactivo; la contraseña no se muestra ni se guarda en texto):
+`npm run dev` levanta las alertas junto con el resto de la Administración. Arranca aunque no
+exista la cuenta y muestra en la terminal el comando para crearla una vez (interactivo; la
+contraseña no se muestra ni se guarda en texto), sin reiniciar `dev`:
 
 ```powershell
-.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin
-npm.cmd --prefix frontend run dev:alerts
+npm.cmd --prefix frontend run dev
+.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin   # otra terminal
 ```
 
 | Comando | Puertos |
 |---|---|
-| `dev` | 5173 (Vite) · 8765 (API predictiva) |
+| `dev` | 5173 (Vite) · 8765 (iniciada o reutilizada, sólo lectura) · 8767 (API administrativa con alertas) |
 | `dev:demo` | 5173 · 8766 (API demo ficticia) |
-| `dev:alerts` | 5173 · 8765 (iniciada o reutilizada, sólo lectura) · 8767 (API de alertas) |
+| `dev:alerts` | Obsoleto: alias de `dev` |
 
-`dev:alerts` comparte 5173 con `dev` y `dev:demo`: **no se ejecutan en paralelo**. Los tokens
+`dev` comparte 5173 con `dev:demo`: **no se ejecutan en paralelo**. Los tokens
 caducan al detener la API (secreto nuevo por proceso). Al iniciar se precarga el caché de
 predicciones (~25 s para 2021–2024).
 
