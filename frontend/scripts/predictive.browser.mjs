@@ -26,7 +26,7 @@ await mkdir(output, { recursive: true })
 const privateView = process.env.SIGARD_PRIVATE_VIEW === '1'
 let assertProtectedMode
 const browser = await puppeteer.launch({ headless: true }); let production
-const errors = [], external = [], requests = [], timings = [], tileRequests = []
+const errors = [], external = [], requests = [], timings = [], tileRequests = [], devFontSheets = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 try {
   const page = await browser.newPage(); page.setDefaultTimeout(30000)
@@ -53,6 +53,8 @@ try {
       tileRequests.push(`${z}/${x}/${y}`)
       return tilesOnline ? r.continue() : r.abort()
     }
+    // The dev page itself must ask for the Google Fonts sheet (IBM Plex Sans), as before F1.
+    if (!production && u.protocol === 'https:' && u.hostname === 'fonts.googleapis.com' && u.pathname === '/css2') devFontSheets.push(u.searchParams.get('family'))
     if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8765'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (u.pathname.startsWith('/api/v1/research/')) {
       assert.ok(u.pathname.startsWith('/api/v1/research/predictive/'), 'no archived A/B or unprotected backtest calls')
@@ -237,6 +239,7 @@ try {
     }); timings.push(...measured)
   }
   assert.deepEqual(errors, [])
+  if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
   if (!process.env.SIGARD_SKIP_PRODUCTION) {
     production = await preview({ root: frontendRoot, preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
     const count = requests.length; await page.goto('http://127.0.0.1:5174/mapa', { waitUntil: 'networkidle0' })
@@ -245,7 +248,7 @@ try {
   const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
     requests: requests.length, archived_calls: 0,
     tiles: tilesOnline ? 'osm_city_tiles_only' : 'blocked_offline', tile_requests_checked: tileRequests.length, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
-    no_training: true, fixtures_in_project_metrics: false, origin, timings }
+    no_training: true, fixtures_in_project_metrics: false, origin, dev_font_sheet_requested: devFontSheets.length > 0, timings }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))
 } finally { await browser.close(); if (production) await new Promise(resolve => production.httpServer.close(resolve)) }

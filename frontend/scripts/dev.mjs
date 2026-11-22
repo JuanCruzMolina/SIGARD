@@ -198,7 +198,7 @@ export async function startDevelopment(runtime = developmentRuntime) {
       companion = runtime.startCompanion()
       companion.exited.then(() => {
         if (!stopped) {
-          runtime.log('La API de demostración terminó; se cierra la sesión local.')
+          runtime.log(runtime.companionStopped ?? 'La API de demostración terminó; se cierra la sesión local.')
           void stop(1)
         }
       })
@@ -223,13 +223,21 @@ export async function startDevelopment(runtime = developmentRuntime) {
   }
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+// Entry point of `npm run dev` and of the deprecated alias `dev:alerts`: frontend,
+// predictive API (8765) and the complete administrative API (8767). dev-alerts.mjs
+// builds on this module, so it is imported only after this module finished evaluating
+// (no top-level await here: that would deadlock the import cycle).
+async function main() {
   try {
     if (process.argv.length > 2) throw new Error('El inicio local usa los hosts y puertos fijos de SIGARD; ejecutá npm.cmd --prefix frontend run dev sin argumentos adicionales.')
-    const session = await startDevelopment()
+    if (process.env.npm_lifecycle_event === 'dev:alerts') developmentRuntime.log('dev:alerts está obsoleto y es un alias de dev; usá npm.cmd --prefix frontend run dev.')
+    const { alertsRuntime } = await import('./dev-alerts.mjs')
+    const session = await startDevelopment(alertsRuntime())
     process.exitCode = await session.closed
   } catch (error) {
     console.error(`[SIGARD] ${error.message}`)
     process.exitCode = 1
   }
 }
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) void main()

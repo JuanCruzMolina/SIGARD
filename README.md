@@ -61,10 +61,11 @@ npm.cmd --prefix frontend run dev:demo      # demostración ficticia completa �
 | Comando | Para qué | Requiere datos privados |
 |---|---|---|
 | `npm.cmd --prefix frontend run dev:demo` | Sitio completo con API ficticia y SQLite temporal | No |
-| `npm.cmd --prefix frontend run dev` | Visor predictivo con la API local de investigación | Sí |
-| `npm.cmd --prefix frontend run dev:alerts` | Alertas internas sobre el visor | Sí |
+| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: visor predictivo (8765) y Administración completa (8767: login, reportes, contenido, cuentas y alertas) con SQLite privado persistente | Sí |
+| `npm.cmd --prefix frontend run dev:alerts` | **Obsoleto**: alias de `dev` | Sí |
 
-Los tres usan el puerto 5173: **no se ejecutan en paralelo**. La instalación completa, la
+`dev` arranca aunque todavía no exista la cuenta de administrador local y muestra en la terminal el
+comando para crearla. `dev` y `dev:demo` usan el puerto 5173: **no se ejecutan en paralelo**. La instalación completa, la
 configuración, la base de investigación, la carga de datos, los paquetes y las pruebas están en
 el [manual de instalación](docs/manuales/manual-instalacion.md).
 

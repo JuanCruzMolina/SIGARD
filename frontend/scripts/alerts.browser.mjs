@@ -10,7 +10,7 @@ import { access, mkdir } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
-import { alertsRuntime, ALERTS_API } from './dev-alerts.mjs'
+import { alertsRuntime, ALERTS_API, GOOGLE_FONTS } from './dev-alerts.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
 
 const require = createRequire(import.meta.url)
@@ -43,10 +43,11 @@ try {
   page.on('pageerror', error => errors.push(error.message))
   page.on('console', message => { if (message.type() === 'error' && !/Failed to load resource|net::ERR_FAILED/.test(message.text())) errors.push(message.text()) })
   page.on('requestfailed', request => failed.push(`${request.method()} ${request.url()} ${request.failure()?.errorText}`))
-  // Observed, not intercepted (interception makes CORS preflights flaky); fonts are
-  // stripped from the dev bundle, so any other origin is a failure.
+  // Observed, not intercepted (interception makes CORS preflights flaky). Like `dev`, the
+  // page may load IBM Plex Sans from Google Fonts; any other origin is a failure.
   page.on('request', request => {
     const url = new URL(request.url())
+    if (url.protocol === 'https:' && GOOGLE_FONTS.includes(url.hostname)) return
     if (!(['data:', 'blob:'].includes(url.protocol) || url.hostname === '127.0.0.1' && ['5173', '8767'].includes(url.port))) unexpected.push(`${url.protocol}//${url.hostname}:${url.port}`)
   })
   const fill = async (selector, value) => {

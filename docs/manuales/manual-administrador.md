@@ -182,7 +182,7 @@ divulgación: protegido».
 
 ## 6. Alertas internas
 
-Se abren en **Reportes ciudadanos → Alertas internas**, en el entorno `npm run dev:alerts`. Son
+Se abren en **Reportes ciudadanos → Alertas internas**, en el entorno `npm run dev`. Son
 **avisos internos para el equipo, con aprobación humana**. Ningún algoritmo publica alertas y no
 se envían correos, SMS ni avisos a la ciudadanía.
 

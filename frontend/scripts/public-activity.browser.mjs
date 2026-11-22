@@ -7,7 +7,7 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { proxyRequest } from './browser-proxy.mjs'
+import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { blockLabel, blockRange, periodBanner, periodText } from '../src/services/publicActivity.mjs'
 
@@ -42,11 +42,11 @@ async function openPage(browser, port, { failActivity = 0 } = {}) {
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url = new URL(request.url())
-    if (url.port === '8000' && url.pathname === '/api/v1/public/activity' && failActivity > 0 && request.method() === 'GET') {
+    if (ADMIN_API_PORTS.includes(url.port) && url.pathname === '/api/v1/public/activity' && failActivity > 0 && request.method() === 'GET') {
       failActivity -= 1; report.injected503 = (report.injected503 || 0) + 1
       return request.respond({ status: 503, headers: { 'access-control-allow-origin': origin }, body: '' })
     }
-    if (url.port === '8000' && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
+    if (ADMIN_API_PORTS.includes(url.port) && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
     if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http')) { report.external.push(url.origin); return request.abort() }
     return request.continue()
   })

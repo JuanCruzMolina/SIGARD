@@ -51,7 +51,7 @@ flowchart LR
 
 | Elemento | Despliegue previsto | Estado en el prototipo |
 |---|---|---|
-| Sitio web | Vercel (sólo el frontend estático) | Local con Vite (`dev`, `dev:demo`, `dev:alerts`) y build de producción probado con `vite preview` |
+| Sitio web | Vercel (sólo el frontend estático) | Local con Vite (`dev`, `dev:demo`; `dev:alerts` es alias de `dev`) y build de producción probado con `vite preview` |
 | API pública | Servidor institucional con PostgreSQL/PostGIS | Probada en SQLite y con la cadena de migraciones en PostGIS real (11/11) |
 | API predictiva de investigación | **Sólo loopback local** (127.0.0.1:8765) | No se despliega. El bundle público no la contiene |
 | API de alertas internas | Local (127.0.0.1:8767) con SQLite privado | Prototipo. En un despliegue sería parte de la API administrativa |
@@ -141,7 +141,8 @@ flowchart TB
   - Lee el paquete de backtest, los candidatos ML v1/v2 y la historia anual precalculada.
   - Verifica cada archivo con SHA-256 y una caché por proceso.
   - Aplica la protección de celdas menores a 5.
-- `app.alerts_local` (127.0.0.1:8767): API administrativa de alertas con SQLite privado. Lee la
+- `app.alerts_local` (127.0.0.1:8767, iniciada por `npm run dev`): API administrativa completa
+  (login, reportes, contenido, cuentas y alertas) con SQLite privado. Lee la
   API predictiva en modo privado, sólo en memoria, y guarda únicamente valores ya protegidos.
 
 ### 4.4 Preparación y ML (`ml/src/sigard_ml/`)
