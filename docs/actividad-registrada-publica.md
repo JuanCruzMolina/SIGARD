@@ -126,7 +126,7 @@ ni en `dist`. Con la API en Vercel o sin ella, la vista queda desactivada y el s
 | `ml/tests/test_public_activity_package.py` (15) | Fixtures de ataque: radio protegido único frente al total exacto, cota de «Medio», registros externos conocidos, radio protegido por población, umbral de población, ciudad <5, sólo niveles, SE 53, exclusión de 2022 y de la SE >24/2024, radio enmascarado, bloque incompleto, auditoría ante manipulación, guardas de escritura y manifiesto, determinismo |
 | `backend/tests/test_public_activity.py` (22) | Desactivado por defecto; variables de entorno que no habilitan; fixture ficticia; autorización ligada al hash; manipulación; informe; alcance y contrato; fixture no autorizable; autorización incompleta |
 | `npm run test:public-activity` (5) | Contrato, banner y período, bandera desactivada, ausencia del paquete en `public`/`dist` y lectura sólo por API |
-| `npm run test:public-activity:browser` | Con Vite activo y fixture: carga < 5 s, banner y período en todos los bloques, trama, leyenda, teclado, tablas, móvil y escritorio, contraste, vista desactivada y `/mapa` intacto. Capturas en `data/interim/official/public-activity-review-v1/` (privado) |
+| `npm run test:public-activity:browser` | Con Vite activo y fixture: carga < 5 s, banner y período en todos los bloques, trama, leyenda, teclado, tablas, móvil y escritorio, contraste, vista desactivada y `/mapa` intacto. Capturas en `data/interim/official/public-activity-review-v1/<etiqueta>/` (privado; carpeta nueva por corrida, `SIGARD_SHOTS_LABEL` o fecha y hora) |
 
 ## Pendiente
 

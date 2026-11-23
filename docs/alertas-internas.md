@@ -9,7 +9,7 @@ sistema operativo ni de vigilancia, y **ningún algoritmo publica alertas**.
 
 | Punto | Definición |
 |---|---|
-| **Canal** | Notificaciones **internas** en el panel del administrador (`/admin/reportes` → «Alertas internas»). Sin correo, SMS, webhooks ni publicación ciudadana automática. |
+| **Canal** | Notificaciones **internas** en el panel del administrador (`/admin/alertas`, ítem «Alertas internas» del menú lateral). Sin correo, SMS, webhooks ni publicación ciudadana automática. |
 | **Periodicidad** | Semanal y manual: **el administrador ejecuta la evaluación al recibir la entrega semanal de datos; la automatización queda fuera del alcance del prototipo.** («Evaluar semana X».) |
 | **Origen del umbral** | Lo elige el administrador al crear la regla. En ¿Cuántos? el mínimo es **5 registros esperados** (protección de celdas pequeñas). Antes de guardar, la pantalla muestra la «Frecuencia de activación en 2021–2024 (reconstrucción retrospectiva; 2024 ya observado)»; sin ese cálculo para la regla actual no se puede guardar. En ¿Dónde? la condición es fija: el radio queda dentro del top-k del modelo (k=10). |
 | **Responsable de aprobación** | Un administrador autenticado (rol `admin`, sesión verificada en base). Aprueba con comentario obligatorio o descarta con motivo (`false_alarm`, `insufficient_context`, `duplicate`, `other`) y detalle. Queda registrado quién y cuándo. |
@@ -95,7 +95,8 @@ predicciones (~25 s para 2021–2024).
 - `frontend/security/internal-alerts.test.mjs` (`npm run test:alerts`).
 - `npm run test:alerts:browser`: flujo completo con fuente ficticia y SQLite desechable;
   `--real` repite el flujo con la API predictiva local (valores protegidos) sólo para
-  capturas privadas en `data/interim/official/ux-internal-alerts-20261114/`.
+  capturas privadas en `data/interim/official/ux-internal-alerts-20261114/<etiqueta>/` (carpeta nueva
+  por corrida: `SIGARD_SHOTS_LABEL` o fecha y hora; nunca sobrescribe corridas anteriores).
 
 ## Límites
 

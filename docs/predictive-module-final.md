@@ -223,7 +223,7 @@ Con los paquetes privados previamente autorizados y las dependencias existentes:
 npm.cmd --prefix frontend run dev
 ```
 
-Abrir `http://127.0.0.1:5173/admin/predictivo` (F3; `/` redirige ahí en desarrollo local) e
+Abrir `http://127.0.0.1:5173/admin/predictivo` (F3; desde F4 `/` es la portada pública también en desarrollo y el visor se abre desde el menú lateral de Administración) e
 iniciar sesión con una cuenta de administrador en ese mismo formulario. El módulo es la entrada
 local por defecto, sin cargar primero el dataset de demostración ni estimadores A/B. PostgreSQL
 puede permanecer apagado. Sin sesión (o con la sesión vencida o revocada) no se muestra el visor
@@ -234,12 +234,12 @@ la misma URL. El coordinador sólo cierra los procesos propios.
 
 - **Ruta.** `/admin/predictivo` (`pages/AdminPredictivo.jsx`) muestra el mismo
   `HistoricalBacktest`, sin cambios de aspecto (capturas antes/después idénticas salvo las
-  pantallas de sesión). El menú público ya no ofrece «Módulo predictivo»; el acceso está en la
-  bandeja de Administración. `/mapa` es siempre el mapa público, también en `dev`.
+  pantallas de sesión). El menú público ya no ofrece «Módulo predictivo»; el acceso está en el
+  menú lateral de Administración (F4; antes, un botón de la bandeja). `/mapa` es siempre el mapa público, también en `dev`.
 - **Sesión.** Sólo un token vigente con rol `admin` muestra el visor (compuerta de interfaz; la
   API sigue validando cada consulta). Al vencer (60 min) un temporizador vuelve al ingreso sin
   enviar consultas; un 401 del servidor hace lo mismo. El ingreso es el mismo formulario de
-  `/admin/reportes` (`components/AdminLoginForm.jsx`), con la misma clave de `sessionStorage`.
+  `/admin/*` (`components/AdminLoginForm.jsx`), con la misma clave de `sessionStorage`.
 - **Estado en la URL.** `anio`, `se`, `vista`, `metodo`, `capa`, `radio` y `modelo` se conservan
   bajo la nueva ruta; el modo de divulgación nunca va en la URL. `/mapa?…` con alguno de esos
   parámetros redirige (replace) a `/admin/predictivo?…` sólo con sesión de administrador; si no,

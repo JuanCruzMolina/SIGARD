@@ -11,9 +11,9 @@ levantar el sistema, ver el [manual de instalación](manual-instalacion.md).
 
 ## 1. Acceso
 
-1. En el menú superior, elegí **Administración** (`/admin/reportes`).
+1. En el menú superior, elegí **Administración** (`/admin`, que abre `/admin/inicio`).
 2. Ingresá tu correo y tu contraseña, y tocá **Ingresar**.
-3. Al terminar, usá **Cerrar sesión**.
+3. Al terminar, usá **Cerrar sesión** en la barra superior.
 
 | Regla | Detalle |
 |---|---|
@@ -22,14 +22,27 @@ levantar el sistema, ver el [manual de instalación](manual-instalacion.md).
 | Recuperar la contraseña | **No hay recuperación por correo.** Otro administrador activo puede establecerte una nueva (§2) |
 | Rol | Todos los administradores tienen los mismos permisos. No existe registro público de cuentas |
 
-La franja superior oscura con el texto «Área administrativa» indica que estás en la zona
-protegida.
+Dentro de Administración (diseño v2, F4) la pantalla tiene dos partes fijas:
+
+- **Menú lateral** (verde oscuro): grupos **Operación** (Inicio, Módulo predictivo, Alertas
+  internas, Reportes ciudadanos) y **Gestión** (Contenido preventivo, Cuentas, Auditoría). La
+  sección abierta se marca en verde claro. Los números naranjas salen de la API: alertas
+  candidatas pendientes y reportes en estado «Recibido»; si la API no da un número, no se muestra.
+  Al pie, la caja de contexto indica el entorno, la divulgación y **Datos hasta**: con el visor
+  predictivo disponible (`npm run dev`), la última semana con datos del visor; sin visor, la semana
+  del manifiesto de datos publicados. En el celular el menú se abre con **Menú**.
+- **Barra superior**: «Área con acceso restringido», minutos que le quedan a la sesión, el correo
+  con el que ingresaste y **Cerrar sesión**. Al cerrar o al vencer la sesión, el navegador borra la
+  sesión y ese correo.
+
+**Inicio** y **Auditoría** todavía no tienen pantalla propia y muestran «Próximamente». Las
+direcciones directas siguen funcionando (por ejemplo `/admin/reportes` o un enlace del visor).
 
 ## 2. Cuentas administrativas
 
 ![Listado de cuentas administrativas (ficticias)](img/admin-cuentas.png)
 
-En **Reportes ciudadanos → Gestionar cuentas** podés:
+En **Cuentas** (`/admin/cuentas`) podés:
 
 - **Crear cuenta**: correo y contraseña inicial (8 a 200 caracteres). Entregá la contraseña por un
   medio seguro, nunca por chat ni correo.
@@ -76,7 +89,7 @@ usuario y la fecha.
 
 ![Editor de una sección preventiva](img/admin-prevencion-editor.png)
 
-En **Reportes ciudadanos → Contenido preventivo** se editan las secciones de la página pública
+En **Contenido preventivo** (`/admin/contenido`) se editan las secciones de la página pública
 **Prevención y ayuda**: prevención, control vectorial, síntomas, consejos médicos y signos de
 alarma.
 
@@ -109,11 +122,11 @@ El visor está dentro de **Administración**, en `/admin/predictivo`, y sólo fu
 local de investigación (`npm run dev`). Para abrirlo:
 
 1. Entrá a **Administración** e iniciá sesión con una cuenta de administrador.
-2. En la barra superior de la bandeja, elegí **Módulo predictivo**.
+2. En el menú lateral, elegí **Módulo predictivo**.
 3. Si abrís `/admin/predictivo` (o un enlace compartido) sin sesión, primero aparece el formulario
    de ingreso; al ingresar, el visor se abre en la misma dirección, con la semana y las opciones
    del enlace.
-4. **Volver a Administración** regresa a la bandeja; **Cerrar sesión** sale de Administración.
+4. El menú lateral lleva a las demás secciones; **Cerrar sesión** (barra superior) sale de Administración.
 
 La sesión dura 60 minutos. Al vencer, el visor se cierra y vuelve el formulario de ingreso con el
 aviso «La sesión de Administración venció o fue cerrada…»; ingresá de nuevo para continuar.
@@ -198,7 +211,7 @@ divulgación: protegido».
 
 ## 6. Alertas internas
 
-Se abren en **Reportes ciudadanos → Alertas internas**, en el entorno `npm run dev`. Son
+Se abren en **Alertas internas** (`/admin/alertas`), en el entorno `npm run dev`. Son
 **avisos internos para el equipo, con aprobación humana**. Ningún algoritmo publica alertas y no
 se envían correos, SMS ni avisos a la ciudadanía.
 

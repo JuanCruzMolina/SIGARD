@@ -49,7 +49,10 @@ Texto literal:
 - Producción: `npm.cmd --prefix frontend run test:performance -- --target production`.
 - `--only a,b` repite operaciones y `--reps N` cambia la cantidad de repeticiones.
 - Levanta sus propios entornos y registra sólo tiempos en `data/interim/official/performance-v1/`
-  (privado; producción en `production/`).
+  (privado; producción en `production/`). Desde F4 cada corrida escribe sólo en una carpeta nueva
+  `<etiqueta>/` (`--label`, o fecha y hora) con `results.json` y sus bundles `build-*`; si la
+  carpeta existe, no corre. Nunca vacía ni sobrescribe mediciones anteriores (F0, F2).
+- `--users 1` mide sólo el nivel de un usuario (verificación del arnés).
 
 **Entorno:**
 - AMD Ryzen 5 5500 (12 hilos), 16 GB de RAM, Windows 11 (10.0.26300), Node 24.15.0, Chromium 152 headless.

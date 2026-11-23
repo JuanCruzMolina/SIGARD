@@ -32,7 +32,7 @@ contenido publicado en `/api/v1/public/prevention`.
 
 | Ruta | Página → componentes principales | Datos / API | Pruebas que la cubren |
 |---|---|---|---|
-| `/` | `Dashboard` (`SigardComponents`: StatCard, TerritorialMap, TopRadios). En dev redirige a `/admin/predictivo` (F3) | `services/sigardData.js` → `/data/*.json` o `:8000/api/v1/public/{weeks,territorial-context,model-evaluation,metadata,predictions,experimental-spatial-history}` | `test:security`, `test:public-map`, `test:accounts:browser` (`/dashboard`) |
+| `/` | `Dashboard` (`SigardComponents`: StatCard, TerritorialMap, TopRadios). Desde F3 (pendiente) también en dev es la portada pública, sin redirección | `services/sigardData.js` → `/data/*.json` o `:8000/api/v1/public/{weeks,territorial-context,model-evaluation,metadata,predictions,experimental-spatial-history}` | `test:security`, `test:public-map`, `test:accounts:browser` (`/dashboard`) |
 | `/dashboard` (sólo dev) | `Dashboard` | igual que `/` | `test:accounts:browser`, `test:research` (`local-entry`) |
 | `/mapa` (siempre público, F3) | `Mapa` (`TemporalControls`, `TerritorialMap`); en dev, enlace «El módulo predictivo está en Administración» y, con sesión de administrador, `/mapa?<estado del visor>` redirige a `/admin/predictivo?…` | `sigardData.js` (`:8000/api/v1/public/*`) | `test:public-map`, `test:research` (`local-entry`), `test:demo:browser`, `test:predictive:browser` |
 | `/admin/predictivo` (F3) | `AdminPredictivo` (`AdminLoginForm` sin sesión) → `HistoricalBacktest` (`WeekTimeline`, `SummaryCards`, `BacktestMaps`, `BacktestHistory`, `RadioPanel`, `ModelPerformance`, `MLComparison`, `DataTable`) | `services/backtestResults.js` + `adminSession.mjs` → `127.0.0.1:8767/api/v1/research/predictive/*` con el token de la sesión de Administración (F2/F3) | `test:backtest` (backtest, predictive-view, private-view), `test:predictive:browser` (ficticia y `--real`, entorno propio en modo sesión), `test:dev`; backend `test_predictive_access.py` |
@@ -40,10 +40,10 @@ contenido publicado en `/api/v1/public/prevention`.
 | `/metodologia` | `Metodologia` | `sigardData.js` | `test:research` (`local-entry`) |
 | `/prevencion` (y `*`) | `Prevencion` → `PreventionGuide`, `SymptomsAlert`, `HealthFacilitiesMap`, `RestrictedMarkdown`, `CitizenReportForm`, `ReportConfirmation`, `ReportStatusLookup` | `services/preventionData.js` (`/data/*`), `citizenReports.js` → `/api/v1/public/prevention`, `/api/v1/citizen-reports`, `/citizen-reports/status/{código}`, `/geocoding/address` (`:8000`, o `:8766` en demo) | `test:prevention`, `test:citizen`, `test:citizen:browser`, `test:prevention:browser`, `test:demo:browser` |
 | `/actividad` | `Actividad` → `PublicActivity` (el enlace aparece sólo si la API sirve un paquete habilitado) | `services/publicActivity.mjs` → `:8000/api/v1/public/activity` | `test:public-activity`, `test:public-activity:browser` |
-| `/admin/reportes` | `AdminReports` (`AdminLoginForm`, bandeja, detalle, exportar CSV, acceso «Módulo predictivo» en dev) | `citizenReports.js` → `/api/v1/admin/session`, `/admin/citizen-reports*`, `/admin/citizen-reports/export.csv` | `test:citizen`, `test:citizen:browser`, `test:accounts:browser`; backend `test_citizen_reports.py`, `test_route_authorization.py` |
-| ↳ panel `accounts` | `AdminAccounts` | `/api/v1/admin/users*` (alta, desactivar, contraseña) | `test:accounts:browser`; backend `test_admin_accounts.py` |
-| ↳ panel `prevention` | `AdminPrevention` | `/api/v1/admin/prevention*` (borrador, publicar, historial) | `test:prevention`, `test:prevention:browser`; backend `test_prevention_content.py` |
-| ↳ panel `alerts` (no demo) | `AdminAlerts` | `/api/v1/admin/alerts*`, `/admin/alerts/candidates/export.csv` (`VITE_API_URL`: `:8000` en producción, `:8767` con `dev`) | `test:alerts`, `test:alerts:browser`; backend `test_internal_alerts.py` |
+| `/admin/reportes` | `AdminReports` (`AdminLoginForm`, bandeja, detalle, exportar CSV, desde F4 dentro de `AdminLayout`) | `citizenReports.js` → `/api/v1/admin/session`, `/admin/citizen-reports*`, `/admin/citizen-reports/export.csv` | `test:citizen`, `test:citizen:browser`, `test:accounts:browser`; backend `test_citizen_reports.py`, `test_route_authorization.py` |
+| `/admin/cuentas` (F4; antes panel `accounts`) | `AdminAccounts` | `/api/v1/admin/users*` (alta, desactivar, contraseña) | `test:accounts:browser`; backend `test_admin_accounts.py` |
+| `/admin/contenido` (F4; antes panel `prevention`) | `AdminPrevention` | `/api/v1/admin/prevention*` (borrador, publicar, historial) | `test:prevention`, `test:prevention:browser`; backend `test_prevention_content.py` |
+| `/admin/alertas` (F4; antes panel `alerts`, no demo) | `AdminAlerts` | `/api/v1/admin/alerts*`, `/admin/alerts/candidates/export.csv` (`VITE_API_URL`: `:8000` en producción, `:8767` con `dev`) | `test:alerts`, `test:alerts:browser`; backend `test_internal_alerts.py` |
 | ↳ panel `demo` (sólo demo) | `DemoWorkspace` | `:8766/api/v1/admin/demo/*` | `test:demo`, `test:demo:browser` |
 
 Las suites transversales son `test:dev` (orquestación de `dev` y proxy de navegador),
@@ -52,8 +52,9 @@ experimentales, entrada local).
 
 ## Notas para Administración v2
 
-- Los paneles de Administración son estados internos (`panel`) de `/admin/reportes`; la
-  única subruta propia es `/admin/predictivo` (F3). Las maquetas (`Main`, `Predictivo`,
+- Hasta F3 los paneles de Administración eran estados internos (`panel`) de `/admin/reportes`
+  y la única subruta propia era `/admin/predictivo`. Desde F4 cada sección tiene ruta propia (ver
+  abajo); sólo el espacio de la demo sigue como panel interno de `/admin/reportes`. Las maquetas (`Main`, `Predictivo`,
   `Alertas`, `Reportes`, `Contenido`, `Cuentas`, `Ingreso`) suponen navegación propia.
 - Desde F3 el visor predictivo está en `/admin/predictivo` y desde F2 consume la API
   administrativa local (8767, cabecera `X-Sigard-Research` + `Authorization` con el token de
@@ -66,3 +67,45 @@ experimentales, entrada local).
   cuenta descartables.
 - Las rutas en `:8000` de la tabla corresponden al `VITE_API_URL` por defecto (producción);
   con `dev` las mismas rutas van a `:8767`.
+
+## F4 · Marco de Administración v2
+
+Implementado en `entrenamiento-ML` (23/11/2026), sin rediseñar el contenido de las pantallas.
+
+- **Rutas** (`pages/AdminArea.jsx`, montado en `/admin/*`): `/admin` → `/admin/inicio`;
+  `inicio` y `auditoria` muestran «Próximamente»; `predictivo` (`AdminPredictivo`), `alertas`,
+  `reportes`, `contenido` y `cuentas` (`AdminReports` con `section`). Las rutas desconocidas bajo
+  `/admin/` van a Inicio. El enlace público «Administración» apunta a `/admin`.
+- **Marco** (`components/AdminLayout.jsx` + `.css`, `services/adminShell.mjs`): menú lateral
+  `#123a3d` con grupos Operación/Gestión, ítem activo `#dceee7` con `aria-current`, contadores
+  `#a64a12`; caja de contexto (entorno, divulgación «Protegida» y «Datos hasta»); barra superior
+  con acceso restringido, minutos de sesión (claim `exp`), correo usado al ingresar y «Cerrar sesión». Bajo 900 px el menú
+  se apila arriba y se despliega con «Menú». Dentro del marco se ocultan la franja, el encabezado y
+  el pie públicos; el formulario de ingreso sigue fuera del marco.
+- **Contadores**: alertas = `pending` de `GET /api/v1/admin/alerts/status`; reportes = `total` de
+  `GET /api/v1/admin/citizen-reports?status=recibido&page_size=1`. Sin número si la API falla o
+  devuelve 0. En la demo no hay ítem de alertas internas; el visor sólo aparece con
+  `localResearchEnabled()`.
+- **«Datos hasta»**: en investigación local con sesión de administrador es la última semana
+  evaluable del visor (`availability_status = available`), leída del mismo `/calendar` y la misma
+  caché que el visor, con la SE y el año de la API (SE 52/2024 con la fixture y con `--real`). Sin
+  visor (producción, demo) se muestra la semana del manifiesto público `/data/available_weeks.json`
+  y el texto emergente indica la fuente.
+- **Sesión**: la API administrativa no tiene un endpoint que devuelva el usuario de la sesión (sólo
+  el listado paginado de cuentas con `current_user_id`), así que la barra muestra el correo escrito
+  al ingresar: el formulario guarda `sigard_admin_email` en `sessionStorage` y `adminSession.mjs`
+  sigue sin escribir. Al cerrar sesión, al vencer (temporizador del marco en `exp`), ante un 401 o
+  con un token vencido al llegar se borran token y correo.
+- **Encabezados**: se quitaron los botones de navegación («Módulo predictivo», «Alertas internas»,
+  «Contenido preventivo», «Gestionar cuentas», «Volver a reportes») y el «Cerrar sesión» duplicado;
+  se conservan «Exportar CSV» y «Análisis y alertas demo» (con su «Volver a reportes»).
+- **Tipografía**: IBM Plex Mono (500/600) por la misma hoja de Google Fonts que IBM Plex Sans;
+  token `--font-mono` en `App.css` para semanas, códigos y cifras del marco.
+- **Pruebas**: `test:admin` (unitarias y contratos) y `test:admin:browser` (navegación, ítem
+  activo, teclado, 390 px, barra, contexto, contadores; capturas privadas en
+  `data/interim/official/ux-admin-v2-f4/<etiqueta>/`; `--real` sólo compara «Datos hasta» con el
+  servicio real). Las pruebas de navegador previas abren las secciones desde el menú lateral.
+- **Salidas privadas de los arneses** (`scripts/private-output.mjs`): performance, predictive,
+  alerts, public-activity, backtest y admin-shell escriben sólo en una carpeta nueva por etiqueta
+  (`--label`/`SIGARD_SHOTS_LABEL`, o fecha y hora) y no corren si existe; ninguno vacía, borra ni
+  sobrescribe nada en `data/`. Contrato en `scripts/private-output.test.mjs` (`test:dev`).
