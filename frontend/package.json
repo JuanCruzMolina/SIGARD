@@ -32,7 +32,8 @@
     "build": "vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "test:read-retry": "node --test security/read-retry.test.mjs"
+    "test:read-retry": "node --test security/read-retry.test.mjs",
+    "test:guard": "node ../tools/test_guard_destructive.mjs"
   },
   "dependencies": {
     "axios": "^1.16.1",
