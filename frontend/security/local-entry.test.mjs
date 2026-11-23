@@ -75,20 +75,18 @@ function withSession(token, run) {
   try { return run() } finally { delete globalThis.sessionStorage }
 }
 
-test('root redirects with replace to the viewer in Administración only in authorized local development; dashboard remains reachable', () => {
+test('root is the public home in every context (no redirect in dev); /dashboard stays reachable locally', () => {
   for (const [dev, origin] of [[true, 'http://127.0.0.1:5173'], [false, 'http://127.0.0.1:5173'], [true, 'http://localhost:5173'], [true, 'https://public.example']]) {
     state.enabled = isLocalResearchContext({ DEV: dev }, origin)
     state.path = '/'
     const slots = [{ availableWeeks: {} }, '2030-01-06', null]
     const html = render(App, slots)
+    assert.doesNotMatch(html, /data-redirect|href="\/dashboard"/)
+    assert.match(html, /<main>Dashboard<\/main>/)
+    assert.match(html, /<a[^>]*href="\/"[^>]*>Situación actual<\/a>/)
     if (state.enabled) {
-      assert.match(html, /data-redirect="\/admin\/predictivo" data-replace="true"/)
-      assert.match(html, /href="\/dashboard"/)
       state.path = '/dashboard'
       assert.match(render(App, slots), /<main>Dashboard<\/main>/)
-    } else {
-      assert.doesNotMatch(html, /data-redirect|href="\/dashboard"/)
-      assert.match(html, /<main>Dashboard<\/main>/)
     }
   }
 })

@@ -16,7 +16,8 @@
 // administrative API finished (/health/alerts "warm"); without it the viewer is measured while
 // that preload still competes for the same process (worst case right after starting `dev`).
 // --label NAME writes results-NAME.json (and keeps earlier results, e.g. the F0 baseline, intact).
-// Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production] [--label f2]
+// --users 1 measures only the one-user level (harness check); the formal measurement keeps 1,5.
+// Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production] [--label f2] [--users 1]
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -44,7 +45,9 @@ const selected = name => !only || only.has(name)
 const label = argument('--label')
 const afterWarm = process.argv.includes('--after-warm')
 assert.ok(!label || /^[a-z0-9-]{1,40}$/.test(label), '--label admite minúsculas, dígitos y guiones')
-const USERS = [1, 5]
+// --users 1 (or 1,5) limits the concurrency levels, e.g. a one-user harness check.
+const USERS = argument('--users') ? argument('--users').split(',').map(Number) : [1, 5]
+assert.ok(USERS.length && USERS.every(n => Number.isInteger(n) && n >= 1 && n <= 5), '--users admite 1 a 5 (p. ej. 1 o 1,5)')
 const THRESHOLD_MS = 5000
 const delay = ms => new Promise(r => setTimeout(r, ms))
 const results = []
@@ -65,7 +68,8 @@ function summarize(operation, users, samples, timeouts = 0) {
 // Production: optimized bundles built before the environments start (build time is not measured).
 async function buildBundle(name, { define, plugins = [] }) {
   const { build } = await import('vite')
-  const outDir = resolve(output, `build-${name}`)
+  // With --label the bundles go to their own folders: an earlier build (e.g. F2) is never emptied.
+  const outDir = resolve(output, label ? `build-${label}-${name}` : `build-${name}`)
   await build({ root: frontend, configFile: join(frontend, 'vite.config.js'), plugins, define, logLevel: 'warn',
     build: { outDir, emptyOutDir: true } })
   return outDir
