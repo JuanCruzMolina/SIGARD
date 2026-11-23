@@ -11,23 +11,26 @@
 // (React production, minified) into a private folder and `vite preview` on the same origin, with
 // the same APIs. The predictive viewer is excluded from public bundles by design (it requires
 // import.meta.env.DEV); its measurement build opens only that local research gate. These builds
-// are written below data/interim/official/performance-v1/production and are never deployed.
+// are written below data/interim/official/performance-v1/production/<label>/ and are never deployed.
 // --after-warm waits, before the phase-2 operations, until the in-process alerts preload of the
 // administrative API finished (/health/alerts "warm"); without it the viewer is measured while
 // that preload still competes for the same process (worst case right after starting `dev`).
-// --label NAME writes results-NAME.json (and keeps earlier results, e.g. the F0 baseline, intact).
+// --label NAME: every run writes ONLY into a new folder performance-v1/[production/]<NAME>/ (results.json,
+// results.partial.json, build-*/); an existing folder stops the run before anything is written, so earlier
+// results (F0 baseline, F2) are never emptied or overwritten. Without --label a timestamped name is used.
 // --users 1 measures only the one-user level (harness check); the formal measurement keeps 1,5.
 // Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production] [--label f2] [--users 1]
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { cpus, totalmem, release, platform } from 'node:os'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { developmentRuntime, portAvailable, startDevelopment } from './dev.mjs'
 import { ALERTS_API, alertsRuntime } from './dev-alerts.mjs'
 import { demoOfflineStyles } from './dev-demo.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -36,15 +39,15 @@ const frontend = resolve(root, 'frontend')
 const argument = name => process.argv.includes(name) ? process.argv[process.argv.indexOf(name) + 1] : undefined
 const target = argument('--target') || 'dev'
 assert.ok(['dev', 'production'].includes(target), '--target admite dev o production')
-const output = resolve(root, 'data/interim/official/performance-v1', target === 'dev' ? '.' : 'production')
+const outputBase = resolve(root, 'data/interim/official/performance-v1', target === 'dev' ? '.' : 'production')
 const origin = 'http://127.0.0.1:5173'
 const reps = Number(process.argv[process.argv.indexOf('--reps') + 1]) || 30
 // --only a,b re-measures selected operations (results file per run label).
 const only = process.argv.includes('--only') ? new Set(process.argv[process.argv.indexOf('--only') + 1].split(',')) : null
 const selected = name => !only || only.has(name)
-const label = argument('--label')
+const label = runLabel(argument('--label') || '')
 const afterWarm = process.argv.includes('--after-warm')
-assert.ok(!label || /^[a-z0-9-]{1,40}$/.test(label), '--label admite minúsculas, dígitos y guiones')
+const output = await newRunDirectory(outputBase, label)
 // --users 1 (or 1,5) limits the concurrency levels, e.g. a one-user harness check.
 const USERS = argument('--users') ? argument('--users').split(',').map(Number) : [1, 5]
 assert.ok(USERS.length && USERS.every(n => Number.isInteger(n) && n >= 1 && n <= 5), '--users admite 1 a 5 (p. ej. 1 o 1,5)')
@@ -61,17 +64,17 @@ function summarize(operation, users, samples, timeouts = 0) {
   const row = { operation, users, n: samples.length, timeouts, p50_ms: sorted[Math.floor(sorted.length / 2)], p95_ms: p95(samples), max_ms: sorted.at(-1) }
   row.pass = row.p95_ms < THRESHOLD_MS
   results.push(row)
-  void writeFile(resolve(output, label ? `results-${label}.partial.json` : 'results.partial.json'), JSON.stringify({ results, failures }, null, 2)).catch(() => {})
+  void writeFile(resolve(output, 'results.partial.json'), JSON.stringify({ results, failures }, null, 2)).catch(() => {})
   console.log(`${operation.padEnd(26)} usuarios=${users} n=${row.n} agotados=${timeouts} p50=${row.p50_ms} p95=${row.p95_ms} max=${row.max_ms} ${row.pass ? 'OK' : 'SUPERA 5 s'}`)
 }
 
 // Production: optimized bundles built before the environments start (build time is not measured).
 async function buildBundle(name, { define, plugins = [] }) {
   const { build } = await import('vite')
-  // With --label the bundles go to their own folders: an earlier build (e.g. F2) is never emptied.
-  const outDir = resolve(output, label ? `build-${label}-${name}` : `build-${name}`)
+  // Inside this run's new folder: no earlier build is ever emptied (emptyOutDir off).
+  const outDir = resolve(output, `build-${name}`)
   await build({ root: frontend, configFile: join(frontend, 'vite.config.js'), plugins, define, logLevel: 'warn',
-    build: { outDir, emptyOutDir: true } })
+    build: { outDir, emptyOutDir: false } })
   return outDir
 }
 // One preview server on 5173 at a time, swapped between bundles while the APIs keep running.
@@ -151,7 +154,6 @@ let browser, devSession, fixture, alertsSession
 const startedAt = new Date().toISOString()
 try {
   for (const port of [5173, 8767]) assert.ok(await portAvailable(port), `El puerto ${port} debe estar libre`)
-  await mkdir(output, { recursive: true })
   // The fixture public API starts first: the frontend is pointed at it with VITE_API_URL.
   fixture = startFixture()
   const { port: fixturePort } = await fixture.ready
@@ -284,7 +286,7 @@ try {
     await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded', timeout: 120000 })
     await page.waitForSelector('.admin-header', { timeout: 120000 })
     return timed(async () => {
-      await page.evaluate(() => [...document.querySelectorAll('button')].find(b => b.textContent.trim() === 'Alertas internas').click())
+      await (await page.waitForSelector('.admin-nav a[href="/admin/alertas"]')).click()
       await page.waitForFunction(() => document.querySelector('.alerts-banner') && document.querySelectorAll('.alerts-evaluate option').length > 0)
     }, page, 'panel_alertas')
   })
@@ -299,7 +301,7 @@ try {
     phase2_after_alerts_preload: afterWarm, alerts_preload_wait_ms: warmWaitMs,
     repetitions: reps, concurrency: USERS, percentile: 'p95 por rango más cercano', threshold_ms: THRESHOLD_MS,
   }
-  await writeFile(resolve(output, label ? `results-${label}.json` : only ? `results-${[...only].join('+')}.json` : 'results.json'), JSON.stringify({ environment, results, failures }, null, 2))
+  await writeFile(resolve(output, only ? `results-${[...only].join('+')}.json` : 'results.json'), JSON.stringify({ environment, results, failures }, null, 2))
   console.log(JSON.stringify({ environment, all_pass: results.every(r => r.pass) }))
 } finally {
   await browser?.close()

@@ -6,18 +6,22 @@
 // Screenshots: data/interim/official/ux-internal-alerts-20261114/<fictional|real>/ (private).
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { access, mkdir } from 'node:fs/promises'
+import { access } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { alertsRuntime, ALERTS_API, GOOGLE_FONTS } from './dev-alerts.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const output = resolve(root, 'data/interim/official/ux-internal-alerts-20261114', real ? 'real' : 'fictional')
+// Private screenshots: a new folder per run label (SIGARD_SHOTS_LABEL, timestamp by default); never overwritten.
+const outputBase = resolve(root, 'data/interim/official/ux-internal-alerts-20261114')
+const label = runLabel()
+let output
 const origin = 'http://127.0.0.1:5173'
 const ports = [5173, 8767]
 for (const port of ports) assert.ok(await portAvailable(port), `Port ${port} must be free; no existing service will be stopped`)
@@ -26,7 +30,7 @@ let session, runtime, browser, page
 const errors = [], unexpected = [], failed = []
 const checkpoint = name => console.log(`✔ ${name}`)
 try {
-  await mkdir(output, { recursive: true })
+  output = await newRunDirectory(outputBase, label, real ? 'real' : 'fictional')
   runtime = alertsRuntime({ mode: 'session', source: real ? 'local-research' : 'fictional' })
   runtime.announce = () => {}
   session = await startDevelopment(runtime)
@@ -102,7 +106,8 @@ try {
   await fill('.admin-login input[type="email"]', service.credentials.email)
   await fill('.admin-login input[type="password"]', service.credentials.password)
   await clickText('Ingresar')
-  await clickText('Alertas internas')
+  // F4: sections open from the Administración side menu.
+  await (await page.waitForSelector('.admin-nav a[href="/admin/alertas"]')).click()
   await page.waitForFunction(() => document.querySelector('.alerts-banner')?.textContent.includes('Ningún algoritmo publica alertas'))
   await page.waitForFunction(() => document.querySelectorAll('.alerts-evaluate option').length > 0)
   for (const width of [1440, 390]) {

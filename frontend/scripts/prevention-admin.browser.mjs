@@ -88,7 +88,7 @@ try {
   await fill('.admin-login input[type="email"]', service.credentials.email)
   await fill('.admin-login input[type="password"]', service.credentials.password)
   await clickText('Ingresar')
-  await clickText('Contenido preventivo')
+  await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()
   await page.waitForSelector('.prevention-section-list li button')
   assert.equal(await page.$$eval('.prevention-section-list li button', nodes => nodes.length), 5)
   await page.click('.prevention-section-list li button')
@@ -149,7 +149,7 @@ try {
   checkpoint('Public page shows the newly published version')
 
   await page.goto(origin + '/admin/reportes', { waitUntil: 'networkidle0' })
-  await clickText('Contenido preventivo')
+  await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()
   await page.waitForSelector('.prevention-section-list li button')
   await page.click('.prevention-section-list li button')
   await clickText('Despublicar')

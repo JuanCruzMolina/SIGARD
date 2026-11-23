@@ -23,7 +23,7 @@
     "test:alerts": "node --test security/internal-alerts.test.mjs",
     "test:alerts:browser": "node scripts/alerts.browser.mjs",
     "test:performance": "node scripts/performance.browser.mjs",
-    "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs",
+    "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs scripts/private-output.test.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
     "dev:alerts": "node scripts/dev.mjs",
@@ -33,6 +33,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:read-retry": "node --test security/read-retry.test.mjs",
+    "test:admin": "node --test security/admin-shell.test.mjs",
+    "test:admin:browser": "node scripts/admin-shell.browser.mjs",
     "test:guard": "node ../tools/test_guard_destructive.mjs"
   },
   "dependencies": {

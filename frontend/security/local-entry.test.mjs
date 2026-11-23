@@ -51,7 +51,7 @@ const replacements = {
 replacements['../services/experimentalResults'] = replacements['./services/experimentalResults']
 // The activity probe is disabled here (404 contract): the link must not appear.
 replacements['./services/publicActivity.mjs'] = url('export const loadActivity=()=>Promise.resolve({enabled:false});')
-for (const page of ['Dashboard', 'Mapa', 'Validacion', 'Metodologia', 'Prevencion', 'AdminReports', 'AdminPredictivo', 'Actividad']) {
+for (const page of ['Dashboard', 'Mapa', 'Validacion', 'Metodologia', 'Prevencion', 'AdminArea', 'Actividad']) {
   replacements[`./pages/${page}`] = url(`export default function Page(){return ${JSON.stringify(page)}}`)
 }
 async function component(path) {

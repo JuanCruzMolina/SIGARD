@@ -4,17 +4,21 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { blockLabel, blockRange, periodBanner, periodText } from '../src/services/publicActivity.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const output = resolve(root, 'data/interim/official/public-activity-review-v1')
+// Private screenshots: a new folder per run label (SIGARD_SHOTS_LABEL, timestamp by default); never overwritten.
+const outputBase = resolve(root, 'data/interim/official/public-activity-review-v1')
+const label = runLabel()
+let output
 const origin = 'http://127.0.0.1:5173'
 const delay = ms => new Promise(r => setTimeout(r, ms))
 const report = { checks: [], timings: {}, pageErrors: [], external: [], accessibility: [], fixture: 'generated fictional package' }
@@ -177,7 +181,7 @@ try {
     assert.ok(report.external.every(o => /tile.openstreetmap.org|fonts.(googleapis|gstatic).com/.test(o)), [...new Set(report.external)].join(', '))
   })
 
-  await mkdir(output, { recursive: true })
+  output = await newRunDirectory(outputBase, label)
   await check('escritorio y móvil sin desborde, banner fijo al desplazarse, accesibilidad', async () => {
     for (const width of [1440, 390]) {
       await page.setViewport({ width, height: 1000 })

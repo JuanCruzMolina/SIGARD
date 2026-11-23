@@ -86,6 +86,8 @@ try {
   }
   const click = text => page.evaluate(text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text).click(),text)
   const fill = async (selector,value) => {await page.click(selector);await page.keyboard.down('Control');await page.keyboard.press('KeyA');await page.keyboard.up('Control');await page.keyboard.press('Backspace');if(value) await page.type(selector,value)}
+  // F4: Administración sections are opened from the side menu (AdminLayout).
+  const menu = async section => (await page.waitForSelector(`.admin-nav a[href="/admin/${section}"]`)).click()
   const accountLoaded = () => page.waitForFunction(()=>document.querySelector('.account-list')?.getAttribute('aria-busy')==='false')
   const login = async (email,password,success=true) => {
     await page.waitForSelector('.admin-login')
@@ -243,25 +245,26 @@ try {
     await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})
     assert.equal(await page.$('.admin-accounts'),null)
     await login('stage14-admin@example.test','fictitious-initial-password')
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     assert.equal(await page.$$eval('.account-list tbody tr',n=>n.length),1)
     assert.equal(await page.$eval('button[aria-label="Desactivar stage14-admin@example.test"]',e=>e.disabled),true)
   })
   // F3: acceso al visor desde Administración con la misma sesión (los datos del visor los cubre
   // test:predictive:browser; la API ficticia usa app.main, sin rutas predictivas).
   if(!postgis) await check('acceso al módulo predictivo desde Administración con la sesión activa',async()=>{
-    await click('Volver a reportes')
-    await page.waitForSelector('.admin-header a[href="/admin/predictivo"]')
-    await page.click('.admin-header a[href="/admin/predictivo"]')
+    await menu('reportes')
+    await page.waitForSelector('.admin-nav a[href="/admin/predictivo"]')
+    assert.equal(await page.$('.admin-header a[href="/admin/predictivo"]'),null)
+    await menu('predictivo')
     await page.waitForFunction(()=>location.pathname==='/admin/predictivo' && document.querySelector('.pv'))
     assert.equal(await page.$('.admin-login'),null)
     await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
-    await page.click('.admin-predictive-bar a[href="/admin/reportes"]')
+    await menu('reportes')
     await page.waitForFunction(()=>location.pathname==='/admin/reportes' && document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
   })
   if(integral || postgis) await check('revisión administrativa del reporte, privacidad y sesión revocada',async()=>{
-    await click('Volver a reportes')
+    await menu('reportes')
     await page.waitForFunction(code=>[...document.querySelectorAll('.report-inbox button')].some(b=>b.textContent.includes(code)),{},trackingCode)
     await fill('.admin-filters input[placeholder="Buscar barrio"]','FICTICIO SIN RESULTADOS')
     await page.waitForFunction(()=>document.querySelector('.report-inbox > header strong')?.textContent==='0 reportes')
@@ -305,7 +308,7 @@ try {
         await page.waitForSelector('.admin-update')
       }
     }
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
   })
   await check('creación rechazada sin confirmación correcta y alta autorizada',async()=>{
     await click('Crear cuenta')
@@ -328,7 +331,7 @@ try {
     await login('stage14-second@example.test','fictitious-rotated-password')
   })
   await check('rotación propia cierra sesión y exige credencial nueva',async()=>{
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     await page.click('button[aria-label="Rotar contraseña de stage14-second@example.test"]')
     await submitAction('fictitious-rotated-password','fictitious-final-password')
     await page.waitForSelector('.admin-login [role="status"]')
@@ -337,7 +340,7 @@ try {
     await login('stage14-second@example.test','fictitious-final-password')
   })
   await check('desactivación propia cierra sesión y bloquea login',async()=>{
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     await page.click('button[aria-label="Desactivar stage14-second@example.test"]')
     await submitAction('fictitious-final-password')
     await page.waitForSelector('.admin-login [role="status"]')
@@ -346,15 +349,18 @@ try {
     await login('stage14-admin@example.test','fictitious-initial-password')
   })
   await check('error de carga, reintento, lista de estados y retorno a reportes',async()=>{
+    // After the re-login the route is already /admin/cuentas: leave it so the next visit reloads the list.
+    await menu('reportes')
+    await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
     failListing=true
-    await click('Gestionar cuentas')
+    await menu('cuentas')
     await page.waitForSelector('.admin-accounts [role="alert"]')
     failListing=false
     await click('Reintentar carga');await accountLoaded()
     assert.ok((await page.$eval('.account-list tbody',e=>e.textContent)).includes('Inactiva'))
-    await click('Volver a reportes')
+    await menu('reportes')
     await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
   })
   await check('escritorio, móvil y formularios sin credenciales visibles',async()=>{
     await mkdir(output,{recursive:true})

@@ -10,7 +10,7 @@
 // A previous `npm run build` is needed for the production check.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { preview } from 'vite'
@@ -18,6 +18,7 @@ import { finalFixtureResponse } from '../security/predictive.fixture.mjs'
 import { PREDICTIVE_ROUTE, SESSION_EXPIRED, SESSION_REQUIRED } from '../src/services/adminSession.mjs'
 import { alertsRuntime } from './dev-alerts.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 
 const require = createRequire(import.meta.url), puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
@@ -32,8 +33,8 @@ const tileLat = (y, z) => Math.atan(Math.sinh(Math.PI * (1 - 2 * y / 2 ** z))) *
 const tileLng = (x, z) => x / 2 ** z * 360 - 180
 const origin = process.env.SIGARD_MODULE_ORIGIN || 'http://127.0.0.1:5173'
 const frontendRoot = fileURLToPath(new URL('..', import.meta.url))
-const output = resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112', process.env.SIGARD_SHOTS_LABEL || 'despues', real ? 'real' : 'fictional', tilesOnline ? 'con-calles' : 'sin-conexion')
-await mkdir(output, { recursive: true })
+// Private screenshots: a new folder per run label (SIGARD_SHOTS_LABEL, timestamp by default); never overwritten.
+const output = await newRunDirectory(resolve(frontendRoot, '..', 'data/interim/official/ux-predictive-redesign-20261112'), runLabel(), real ? 'real' : 'fictional', tilesOnline ? 'con-calles' : 'sin-conexion')
 const privateView = process.env.SIGARD_PRIVATE_VIEW === '1'
 let assertProtectedMode
 for (const port of [5173, 8767]) assert.ok(await portAvailable(port), `Port ${port} must be free; no existing service will be stopped`)
@@ -338,15 +339,17 @@ try {
   await shot('desktop-mapa-publico-enlace')
   await page.click('.predictive-moved a'); await loginNotice(SESSION_REQUIRED)
   assert.equal(new URL(page.url()).pathname + new URL(page.url()).search, PREDICTIVE_ROUTE + legacy)
-  // The menu link to the public map stays the public map in dev, also with a session.
+  // The menu link to the public map stays the public map in dev, also with a session (F4: the public
+  // header is outside the Administración frame, so it is used from the public home).
   await loginForm(); await ready()
+  await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
   await page.click('.main-nav a[href="/mapa"]')
   await page.waitForFunction(() => document.querySelector('.page-intro h1')?.textContent === 'Mapa público agregado')
   assert.equal(await page.$('.pv'), null)
   // Access from Administración (same session).
   await page.goto(`${origin}/admin/reportes`, { waitUntil: 'domcontentloaded' })
-  await page.waitForSelector('.admin-header a[href="/admin/predictivo"]')
-  await page.click('.admin-header a[href="/admin/predictivo"]'); await ready()
+  await page.waitForSelector('.admin-nav a[href="/admin/predictivo"]')
+  await (await page.waitForSelector('.admin-nav a[href="/admin/predictivo"]')).click(); await ready()
   await shot('desktop-desde-administracion')
   assert.deepEqual(errors, [])
   if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
