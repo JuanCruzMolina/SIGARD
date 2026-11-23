@@ -6,14 +6,15 @@
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import path from 'node:path'
+import os from 'node:os'
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const hook = path.join(root, '.claude', 'hooks', 'guard-destructive.mjs')
 const dataAbs = path.join(root, 'data')
+const tmp = os.tmpdir()
 
 const CASES = [
-  // Comando exacto que provocó el borrado.
-  ['ask', 'git worktree remove --force ../SIGARD-f0-bench'],
+  // Worktrees fuera de la carpeta temporal -> ask (el remove --force se deniega más abajo).
   ['ask', 'git worktree add ../SIGARD-bench entrenamiento-ML'],
   ['ask', 'git worktree prune'],
 
@@ -65,13 +66,34 @@ const CASES = [
   ['ask', 'bash -c "rm -rf frontend/dist"'],
   ['ask', 'Get-ChildItem frontend\\dist | Remove-Item -Recurse'],
 
-  // Enlaces -> ask
-  ['ask', 'cmd /c mklink /J ..\\bench\\node_modules frontend\\node_modules'],
-  ['ask', 'mklink /J bench\\data data'],
-  ['ask', 'New-Item -ItemType Junction -Path ..\\bench\\data -Target .\\data'],
-  ['ask', 'New-Item -ItemType SymbolicLink -Path x -Target y'],
-  ['ask', 'New-Item -ItemType HardLink -Path x -Target y'],
-  ['ask', 'ln -s ../SIGARD/frontend/node_modules node_modules'],
+  // Enlaces que tocan el repositorio -> deny
+  ['deny', 'cmd /c mklink /J ..\\bench\\node_modules frontend\\node_modules'],
+  ['deny', 'mklink /J __guard_link backend\\.venv'],
+  ['deny', 'mklink /D bench\\data data'],
+  ['deny', 'mklink /H copia.txt README.md'],
+  ['deny', `mklink /J ${tmp}\\bench\\data ${dataAbs}`],
+  ['deny', 'New-Item -ItemType Junction -Path ..\\bench\\data -Target .\\data'],
+  ['deny', 'New-Item -ItemType SymbolicLink -Path x -Target y'],
+  ['deny', 'New-Item -ItemType HardLink -Path x -Target y'],
+  ['deny', `New-Item -ItemType Junction -Path ${tmp}\\b\\venv -Target ${path.join(root, 'backend', '.venv')}`],
+  ['deny', 'ln -s ../SIGARD/frontend/node_modules node_modules'],
+  ['deny', `ln -s ${root.replace(/\\/g, '/')}/frontend/node_modules ${tmp.replace(/\\/g, '/')}/b/node_modules`],
+  ['deny', 'python -c "import os; os.symlink(\'data\', \'C:/otro/data\')"'],
+  ['deny', 'node -e "require(\'fs\').symlinkSync(\'backend/.venv\', \'C:/otro/venv\', \'junction\')"'],
+  // Enlaces totalmente fuera del repositorio -> ask
+  ['ask', `mklink /J ${tmp}\\a ${tmp}\\b`],
+  ['ask', 'ln -s /c/otro/a /c/otro/b'],
+
+  // Escenario completo del accidente (worktree en carpeta temporal + junctions + remove --force)
+  ['deny', `git worktree add ${tmp}\\SIGARD-f0-bench entrenamiento-ML`],
+  ['deny', 'git worktree add -b bench $env:TEMP\\SIGARD-f0-bench'],
+  ['deny', 'git worktree add /tmp/SIGARD-f0-bench'],
+  ['deny', `cmd /c mklink /J ${tmp}\\SIGARD-f0-bench\\data ${dataAbs}`],
+  ['deny', `New-Item -ItemType Junction -Path ${tmp}\\SIGARD-f0-bench\\frontend\\node_modules -Target ${path.join(root, 'frontend', 'node_modules')}`],
+  ['deny', 'git worktree remove --force ../SIGARD-f0-bench'],
+  ['deny', `git worktree remove -f ${tmp}\\SIGARD-f0-bench`],
+  ['deny', 'git -C ../SIGARD worktree remove --force ../SIGARD-f0-bench'],
+  ['ask', 'git worktree remove ../SIGARD-f0-bench'],
 
   // Git destructivo -> ask
   ['ask', 'git reset --hard HEAD~1'],

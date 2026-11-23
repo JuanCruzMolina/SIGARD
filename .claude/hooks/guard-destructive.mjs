@@ -36,12 +36,21 @@ const MOVE_PATTERNS = [
   [/\bshutil\.move\b|\bos\.(?:rename|replace)\s*\(|\bfs\.(?:promises\.)?rename\b|\brenamesync\b/, 'rename/move'],
 ]
 
+// Enlaces: deny si tocan el repositorio (data, .venv, node_modules o cualquier ruta del repo); si no, ask.
+const LINK_PATTERNS = [
+  [new RegExp(`${CMD}mklink${END}`), 'mklink'],
+  [/(?:new-item|\bni\b|\bmd\b|\bmkdir\b)[^\n]*(?:junction|symboliclink|hardlink)|-(?:itemtype|type|it)\s*:?\s*['"]?(?:junction|symboliclink|hardlink)/, 'New-Item Junction/SymbolicLink/HardLink'],
+  [new RegExp(`${CMD}ln${END}`), 'ln'],
+  [/\bos\.(?:symlink|link)\s*\(|\.(?:symlink_to|hardlink_to)\s*\(|\bfs\.(?:promises\.)?(?:symlink|link)\b|\b(?:symlinksync|linksync|createsymboliclink)\b|\bfsutil\s+hardlink\b|\bjunction(?:64)?(?:\.exe)?\s/, 'symlink/junction/hardlink'],
+]
+const LINK_WORDS = new Set(['mklink', 'new-item', 'ni', 'md', 'mkdir', 'ln', 'cmd', 'cmd.exe', 'powershell', 'pwsh', 'python', 'python3',
+  'node', 'bash', 'sh', 'junction', 'symboliclink', 'hardlink', 'import', 'require', 'os', 'fs', 'pathlib', 'path', 'fsutil', 'create'])
+
+const WORKTREE_FORCE_REMOVE = new RegExp(`${GIT}worktree\\s+remove\\b[^;&|\\n]*(?:\\s-[a-z]*f[a-z]*\\b|--force)`, 'i')
+const WORKTREE_ADD = new RegExp(`${GIT}worktree\\s+add\\b`, 'i')
+
 const ASK_PATTERNS = [
   [new RegExp(`${GIT}worktree\\s+(?:add|remove|prune|move)\\b`, 'i'), 'git worktree add/remove/prune/move (un worktree con enlaces provocó el borrado de data/interim/official, .venv y node_modules)'],
-  [new RegExp(`${CMD}mklink${END}`), 'crea un enlace (mklink)'],
-  [/(?:new-item|\bni\b|\bmd\b|\bmkdir\b)[^\n]*(?:junction|symboliclink|hardlink)|-(?:itemtype|type|it)\s*:?\s*['"]?(?:junction|symboliclink|hardlink)/, 'crea un enlace (New-Item Junction/SymbolicLink/HardLink)'],
-  [new RegExp(`${CMD}ln${END}`), 'crea un enlace (ln)'],
-  [/\bos\.(?:symlink|link)\s*\(|\.(?:symlink_to|hardlink_to)\s*\(|\bfs\.(?:promises\.)?(?:symlink|link)\b|\b(?:symlinksync|linksync|createsymboliclink)\b|\bfsutil\s+hardlink\b|\bjunction(?:64)?(?:\.exe)?\s/, 'crea un enlace (symlink/junction/hardlink)'],
   [new RegExp(`${GIT}reset\\b[^;&|\\n]*--hard`, 'i'), 'git reset --hard descarta cambios locales'],
   [new RegExp(`${GIT}checkout\\b[^;&|\\n]*(?:\\s--(?=\\s|$)|\\s\\.(?=\\s|$)|\\s-f\\b|--force)`, 'i'), 'git checkout -- / . / -f descarta cambios locales'],
   [new RegExp(`${GIT}restore\\b(?![^;&|\\n]*--staged(?![^;&|\\n]*(?:--worktree|\\s-w\\b)))`, 'i'), 'git restore descarta cambios del árbol de trabajo'],
@@ -96,7 +105,25 @@ function context(input) {
   const project = normPath(process.env.CLAUDE_PROJECT_DIR || input.cwd || process.cwd())
   const cwd = normPath(input.cwd || process.env.CLAUDE_PROJECT_DIR || process.cwd())
   const names = [...new Set(['sigard', path.posix.basename(project)].filter(Boolean))].map(esc).join('|')
-  return { project, cwd, data: `${project}/data`, home: normPath(os.homedir()), names }
+  const home = normPath(os.homedir())
+  const temps = [os.tmpdir(), process.env.TEMP, process.env.TMP, `${home}/appdata/local/temp`]
+    .filter(Boolean).map(normPath)
+  return { project, cwd, data: `${project}/data`, home, names, temp: temps[0], temps: [...new Set(temps)] }
+}
+
+// Rutas temporales: carpetas temporales del sistema, /tmp y variables equivalentes.
+function isTempPath(resolved, ctx) {
+  return ctx.temps.some((t) => isWithin(resolved, t)) || /(?:^|\/)appdata\/local\/temp(?:\/|$)|^\/tmp(?:\/|$)/.test(resolved)
+}
+
+function resolvedTokens(segment, ctx, skip) {
+  const out = []
+  for (const raw of tokens(segment)) {
+    if (skip.has(raw) || /^(?:os|fs|pathlib|path)\.|\.(?:symlink\w*|link\w*|hardlink_to|symlink_to)$/.test(raw)) continue
+    const resolved = resolveToken(raw, ctx)
+    if (resolved) out.push(resolved)
+  }
+  return out
 }
 
 // "data" como carpeta de la raíz: data, ./data, ../data, <...>/SIGARD*/data, $CLAUDE_PROJECT_DIR/data, $PWD/data.
@@ -112,6 +139,7 @@ function resolveToken(token, ctx) {
     .replace(/^(?:\$\{?claude_project_dir\}?|\$env:claude_project_dir|%claude_project_dir%)/, ctx.project)
     .replace(/^(?:\$pwd|\$\(pwd\)|%cd%)/, ctx.cwd)
     .replace(/^(?:~|\$home|\$env:userprofile|%userprofile%)(?=\/|$)/, ctx.home)
+    .replace(/^(?:\$env:(?:temp|tmp)|%(?:temp|tmp)%|\$\{?(?:tmpdir|temp|tmp)\}?)(?=\/|$)/, ctx.temp)
   return normPath(/^[a-z]:/.test(t) || t.startsWith('/') ? t : `${ctx.cwd}/${t}`)
 }
 
@@ -187,6 +215,22 @@ function decide(input) {
         return ['deny', `BLOQUEADO: ${label} sobre ${target}. data/ no se borra ni se mueve desde Claude Code. Si es imprescindible, pedíselo al responsable explicando qué y por qué. Comando: ${shown}`]
       }
       if (del) ask = ask || `Borrado detectado (${label}). Se borraría: ${describeTargets(delSegs) || '(no determinado)'}. Comando: ${shown}`
+    }
+    if (WORKTREE_FORCE_REMOVE.test(text)) {
+      return ['deny', `BLOQUEADO: git worktree remove --force/-f. Así se borraron data/interim/official, backend/.venv y frontend/node_modules (el worktree tenía enlaces a carpetas reales). Si es imprescindible, pedíselo al responsable explicando qué y por qué. Comando: ${shown}`]
+    }
+    for (const seg of segments(text).filter((s) => WORKTREE_ADD.test(s))) {
+      const hit = resolvedTokens(seg, ctx, VERB_WORDS).find((r) => isTempPath(r, ctx))
+      if (hit) return ['deny', `BLOQUEADO: git worktree add con destino en una carpeta temporal (${hit}); allí las confirmaciones se aprueban solas. Para comparar versiones, usar un clon separado (AGENTS.md). Comando: ${shown}`]
+    }
+    const link = firstMatch(text, LINK_PATTERNS)
+    if (link) {
+      for (const seg of segments(text).filter((s) => firstMatch(s, LINK_PATTERNS))) {
+        const hit = resolvedTokens(seg, ctx, LINK_WORDS)
+          .find((r) => isWithin(r, ctx.project) || /(?:^|\/)(?:data|\.venv|node_modules)(?:\/|$)/.test(r))
+        if (hit) return ['deny', `BLOQUEADO: crear enlaces (${link}) hacia o desde el repositorio (${hit}) está prohibido: data/, backend/.venv y frontend/node_modules no se enlazan (AGENTS.md). Comando: ${shown}`]
+      }
+      ask = ask || `crea un enlace (${link}) fuera del repositorio. Se ejecutaría: ${shown}`
     }
     const other = firstMatch(text, ASK_PATTERNS)
     if (other) ask = ask || `${other}. Se ejecutaría: ${shown}`
