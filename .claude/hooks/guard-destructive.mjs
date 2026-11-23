@@ -20,12 +20,14 @@ const DELETE_PATTERNS = [
   [new RegExp(`${CMD}(?:rmdir|rd)${END}`), 'rmdir/rd'],
   [new RegExp(`${CMD}(?:del|erase|ri)${END}`), 'del/erase/ri'],
   [new RegExp(`${CMD}remove-item\\b`), 'Remove-Item'],
-  [/(?:directory|file|fileinfo|directoryinfo)\]::delete\b|\.delete\(\s*(?:\$true|true)\s*\)/, '.NET Delete'],
+  [/(?:directory|file|fileinfo|directoryinfo)\]::delete\b|\.delete\(\s*(?:\$true|true)\s*\)/, '.NET Delete', 'dotnet'],
   [new RegExp(`${GIT}clean\\b`, 'i'), 'git clean'],
   [/\brobocopy\b[^\n]*\/(?:mir|purge|move|mov)\b/, 'robocopy /MIR|/PURGE|/MOVE'],
-  [/\brmtree\s*\(/, 'shutil.rmtree'],
-  [/\bos\.(?:remove|unlink|rmdir|removedirs)\s*\(|\.unlink\s*\(|\.rmdir\s*\(/, 'os.remove/unlink/rmdir'],
-  [/\bfs\.(?:promises\.)?(?:rm|rmdir|unlink)\b|\b(?:rmsync|rmdirsync|unlinksync)\b|\b(?:rm|rmdir)\s*\([^)]*recursive/, 'fs.rm/rmSync/rmdirSync'],
+  // Language APIs ('code'): they only count inside executed code (node -e, python -c, powershell
+  // -Command, a heredoc fed to an interpreter…), never as arguments of grep/rg/sed/cat/git log.
+  [/\brmtree\s*\(/, 'shutil.rmtree', 'code'],
+  [/\bos\.(?:remove|unlink|rmdir|removedirs)\s*\(|\.unlink\s*\(|\.rmdir\s*\(/, 'os.remove/unlink/rmdir', 'code'],
+  [/\bfs\.(?:promises\.)?(?:rm|rmdir|unlink)\b|\b(?:rmsync|rmdirsync|unlinksync)\b|\b(?:rm|rmdir)\s*\([^)]*recursive/, 'fs.rm/rmSync/rmdirSync', 'code'],
   [/\brimraf\b|\bdel-cli\b/, 'rimraf'],
   [/\bfind\b[^\n]*\s-delete\b/, 'find -delete'],
 ]
@@ -33,7 +35,7 @@ const DELETE_PATTERNS = [
 const MOVE_PATTERNS = [
   [new RegExp(`${CMD}(?:mv|move|mi|ren|rename)${END}`), 'mv/move'],
   [/\b(?:move|rename)-item\b/, 'Move-Item/Rename-Item'],
-  [/\bshutil\.move\b|\bos\.(?:rename|replace)\s*\(|\bfs\.(?:promises\.)?rename\b|\brenamesync\b/, 'rename/move'],
+  [/\bshutil\.move\b|\bos\.(?:rename|replace)\s*\(|\bfs\.(?:promises\.)?rename\b|\brenamesync\b/, 'rename/move', 'code'],
 ]
 
 // Enlaces: deny si tocan el repositorio (data, .venv, node_modules o cualquier ruta del repo); si no, ask.
@@ -88,6 +90,56 @@ function normPath(p) {
 }
 
 const isWithin = (child, parent) => child === parent || child.startsWith(parent.endsWith('/') ? parent : `${parent}/`)
+
+// ---------- text that is not a command ----------
+// Interpreters that execute what they receive (inline code flag or a heredoc on stdin).
+const INTERPRETER = String.raw`(?:^|[\s;&|(/\\])(?:bash|sh|zsh|dash|ksh|powershell|pwsh|python[\d.]*|py|node|deno|bun|ruby|perl|php|cmd)(?:\.exe)?(?=\s|$|[;&|)])`
+const INLINE_CODE = [
+  /(?:^|[\s;&|(/\\])(?:node|bun)(?:\.exe)?\s+(?:[^\n;&|]*\s)?(?:-e|--eval|-p|--print)\b/i,
+  /(?:^|[\s;&|(/\\])deno(?:\.exe)?\s+eval\b/i,
+  /(?:^|[\s;&|(/\\])(?:python[\d.]*|py)(?:\.exe)?\s+(?:-[a-z]+\s+)*-c\b/i,
+  /(?:^|[\s;&|(/\\])(?:powershell|pwsh)(?:\.exe)?\s[^\n]*?(?:\s-c\b|-command\b|-e(?:nc|ncodedcommand)?\s)/i,
+  /(?:^|[\s;&|(/\\])(?:ruby|perl|php)(?:\.exe)?\s+(?:[^\n;&|]*\s)?-[er]\b/i,
+]
+const SCRIPT_FILE = /(?:>|\btee\b)\s*['"]?[^\s'"]+\.(?:sh|bash|zsh|ps1|psm1|py|js|mjs|cjs|ts|bat|cmd|rb|pl|php)\b/i
+
+// Heredoc bodies are text unless the heredoc feeds an interpreter or becomes a script file.
+function stripHeredocs(command) {
+  const lines = command.split('\n')
+  let code = false
+  for (let i = 0; i < lines.length; i++) {
+    const header = lines[i]
+    const ops = [...header.matchAll(/(?<!<)<<(-?)\s*(['"]?)([A-Za-z_][\w.-]*)\2/g)]
+    if (!ops.length) continue
+    const keep = new RegExp(INTERPRETER, 'i').test(header.replace(/<<-?\s*(['"]?)[\w.-]+\1/g, ' ')) || SCRIPT_FILE.test(header)
+    if (keep) code = true
+    for (const [, dash, , word] of ops) {
+      let j = i + 1
+      while (j < lines.length && (dash ? lines[j].replace(/^\t+/, '') : lines[j]).trimEnd() !== word) { if (!keep) lines[j] = ''; j++ }
+      i = j
+    }
+  }
+  return { text: lines.join('\n'), code }
+}
+
+// Commit/tag messages (-m "…", --message=…, PowerShell here-strings) are text, not commands.
+function stripMessages(command) {
+  const re = /(\bgit(?:\.exe)?\b[^\n]*?\s(?:-m|--message)(?:=|\s+))(@'[\s\S]*?\n'@|@"[\s\S]*?\n"@|"(?:[^"\\]|\\.)*"|'[^']*')/i
+  let text = command
+  for (let i = 0; i < 20 && re.test(text); i++) text = text.replace(re, '$1MSG_TEXT')
+  return text
+}
+
+function prepare(command, tool) {
+  const heredoc = stripHeredocs(command)
+  const text = stripMessages(heredoc.text)
+  const code = heredoc.code || INLINE_CODE.some(re => re.test(text))
+  return { text, code, dotnet: code || tool === 'PowerShell' }
+}
+
+function active(patterns, prepared) {
+  return patterns.filter(([, , kind]) => !kind || (kind === 'code' && prepared.code) || (kind === 'dotnet' && prepared.dotnet))
+}
 
 function variants(command) {
   const a = command.replace(/\\/g, '/').toLowerCase()
@@ -193,13 +245,15 @@ function decide(input) {
   const shown = command.length > 400 ? `${command.slice(0, 400)}…` : command
   let ask = null
 
-  for (const text of variants(command)) {
-    const del = firstMatch(text, DELETE_PATTERNS)
-    const move = firstMatch(text, MOVE_PATTERNS)
+  const prepared = prepare(command, input.tool_name)
+  const DELETES = active(DELETE_PATTERNS, prepared), MOVES = active(MOVE_PATTERNS, prepared)
+  for (const text of variants(prepared.text)) {
+    const del = firstMatch(text, DELETES)
+    const move = firstMatch(text, MOVES)
     if (del || move) {
       const label = del || move
-      const delSegs = segments(text).filter((s) => firstMatch(s, DELETE_PATTERNS) || firstMatch(s, MOVE_PATTERNS))
-      const onlyGitClean = del === 'git clean' && delSegs.every((s) => firstMatch(s, DELETE_PATTERNS) === 'git clean')
+      const delSegs = segments(text).filter((s) => firstMatch(s, DELETES) || firstMatch(s, MOVES))
+      const onlyGitClean = del === 'git clean' && delSegs.every((s) => firstMatch(s, DELETES) === 'git clean')
       const ignoredClean = new RegExp(`${GIT}clean\\b[^;&|\\n]*\\s-[a-z]*x`, 'i').test(text)
       let target = null
       if (dataRe.test(text)) target = 'data/'

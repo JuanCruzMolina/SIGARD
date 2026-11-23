@@ -141,6 +141,56 @@ const CASES = [
   ['allow', 'cp data/README.md C:/tmp/readme.md'],
   ['allow', 'mv frontend/dist frontend/dist-old'],
   ['allow', ''],
+
+  // Falsos positivos reales de F4: los patrones de lenguaje en búsquedas y el texto de un heredoc
+  // de mensaje de commit (líneas que empiezan con "del") no son comandos.
+  ['allow', 'grep -n "emptyOutDir\\|rmSync\\|rm(\\|unlink" frontend/scripts/performance.browser.mjs'],
+  ['allow', 'rg -n "rmSync|rmdirSync|shutil.rmtree|os.remove" data/interim/official/README.md'],
+  ['allow', 'git log -S"rmSync" --oneline -- frontend/scripts'],
+  ['allow', "sed -n '60,80p' frontend/scripts/performance.browser.mjs | grep -n \"fs.rm\\|rmSync\""],
+  ['allow', 'git grep -n "shutil.rmtree" -- ml'],
+  ['allow', `git commit -q -F - <<'EOF'
+docs: marco de Administración v2
+del visor predictivo: «Datos hasta» sale de data/interim/official
+rm -rf y Remove-Item quedan documentados como prohibidos
+EOF`],
+  ['allow', `cat > C:/tmp/msg.txt <<'EOF'
+fix(frontend): ajustes
+del mapa público; rd /s data no se usa
+EOF`],
+  ['allow', 'git commit -m "fix: del visor; rm -rf data/interim ya no se ejecuta" -m "detalle: Remove-Item"'],
+  ['allow', `git commit -m @'
+docs: del manual
+rm -rf data
+'@`],
+
+  // Las denegaciones sobre data/ no se debilitan: heredoc a un intérprete, script, código en línea.
+  ['deny', `bash <<'EOF'
+rm -rf data/interim/official
+EOF`],
+  ['deny', `python - <<'EOF'
+import shutil
+shutil.rmtree('data/interim/official')
+EOF`],
+  ['deny', `cat <<EOF | sh
+del /s /q data\\interim
+EOF`],
+  ['deny', `cat > borrar.sh <<'EOF'
+rm -rf data/interim
+EOF`],
+  ['deny', `node <<'EOF'
+require('fs').rmSync('data/interim', { recursive: true })
+EOF`],
+  ['deny', 'git commit -m "docs: limpieza" && rm -rf data/interim'],
+  ['deny', 'git commit -F msg.txt; Remove-Item -Recurse .\\data\\processed'],
+  ['deny', '.\\backend\\.venv\\Scripts\\python.exe -c "import shutil; shutil.rmtree(\'data/interim\')"'],
+  ['deny', 'powershell -Command "[System.IO.Directory]::Delete(\'data\\interim\', $true)"'],
+  ['deny', "[System.IO.Directory]::Delete('data\\interim', $true)", 'PowerShell'],
+  ['allow', "[System.IO.Directory]::Delete('data\\interim', $true)", 'Bash'],
+  ['ask', 'node -e "require(\'fs\').rmSync(\'frontend/dist\', { recursive: true })"'],
+  ['ask', `bash <<'EOF'
+rm -rf frontend/dist
+EOF`],
 ]
 
 function run(stdin) {
@@ -176,9 +226,9 @@ const check = (expected, label, stdin) => {
   if (!ok && got.reason) console.log(`       ${got.reason}`)
 }
 
-for (const [expected, command] of CASES) {
-  check(expected, `[Bash] ${command || '(vacío)'}`, payload('Bash', command))
-  check(expected, `[PowerShell] ${command || '(vacío)'}`, payload('PowerShell', command))
+// A third column limits a case to one tool (e.g. .NET calls are PowerShell code only there).
+for (const [expected, command, tool] of CASES) {
+  for (const name of tool ? [tool] : ['Bash', 'PowerShell']) check(expected, `[${name}] ${command || '(vacío)'}`, payload(name, command))
 }
 check('ask', 'JSON inválido', '{"tool_input": {"command": "rm -rf x"')
 check('ask', 'entrada vacía', '')
