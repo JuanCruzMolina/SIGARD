@@ -147,7 +147,7 @@ function RuleForm({ token, status, rule, busy, onSave, onCancel, onFail }) {
   </form>
 }
 
-export default function AdminAlerts({ token, onBack, onLogout, onSessionExpired }) {
+export default function AdminAlerts({ token, onSessionExpired }) {
   const [tab, setTab] = useState('pending')
   const [status, setStatus] = useState(null)
   const [rules, setRules] = useState([])
@@ -201,13 +201,12 @@ export default function AdminAlerts({ token, onBack, onLogout, onSessionExpired 
   return <main className="admin-page admin-alerts">
     <header className="admin-header">
       <div><h1>Alertas internas</h1><p>Rol administrador · avisos sólo en este panel · sin correo, SMS ni publicación ciudadana.</p></div>
-      <div><button className="secondary-button" type="button" onClick={onBack}>Volver a reportes</button><button className="text-button" type="button" onClick={onLogout}>Cerrar sesión</button></div>
     </header>
     <div className="alerts-banner" role="note">
       <p><strong>Ningún algoritmo publica alertas.</strong> {CHANNEL_NOTE}</p>
       <p>{RETROSPECTIVE_NOTE}{status?.fictional ? ' Fuente ficticia generada para pruebas.' : ''}</p>
     </div>
-    {status && !status.source_available && <p className="form-error admin-error" role="alert">{status.reason || 'Fuente de predicciones no disponible: las alertas internas se evalúan sólo en el entorno local de investigación (npm run dev:alerts).'}</p>}
+    {status && !status.source_available && <p className="form-error admin-error" role="alert">{status.reason || 'Fuente de predicciones no disponible: las alertas internas se evalúan sólo en el entorno local de investigación (npm run dev).'}</p>}
     {error && <p className="form-error admin-error" role="alert">{error}</p>}
     {notice && <p className="account-notice" role="status">{notice}</p>}
     <nav className="alerts-tabs" aria-label="Secciones de alertas">{TABS.map(([id, label]) => <button key={id} type="button" data-tab={id} aria-pressed={tab === id} onClick={() => setTab(id)}>

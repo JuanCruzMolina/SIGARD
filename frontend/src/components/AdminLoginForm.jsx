@@ -1,11 +1,17 @@
 import { useEffect, useRef, useState } from 'react'
 import { ShieldIcon } from './InfoIcons'
 import { adminLogin } from '../services/citizenReports'
-import { SESSION_KEY } from '../services/adminSession.mjs'
+import { EMAIL_KEY, SESSION_KEY } from '../services/adminSession.mjs'
 
 // Administración login shared by /admin/reportes and /admin/predictivo. It stores the session
-// token in sessionStorage (same key as before F3) and hands it to the page that rendered it,
+// token in sessionStorage (same key as before F3), with the email used to log in (F4 top bar) and hands it to the page that rendered it,
 // so the page stays on its own route after logging in.
+// The only writer of the session: the token and, for the F4 top bar, the email used to log in.
+function keep(token, email) {
+  sessionStorage.setItem(SESSION_KEY, token)
+  try { if (email) sessionStorage.setItem(EMAIL_KEY, email); else sessionStorage.removeItem(EMAIL_KEY) } catch { /* The email is optional. */ }
+}
+
 export default function AdminLoginForm({ title, description, notice, onLogin }) {
   const [credentials, setCredentials] = useState({ email: '', password: '' })
   const [loading, setLoading] = useState(false)
@@ -21,7 +27,7 @@ export default function AdminLoginForm({ title, description, notice, onLogin }) 
     setLoading(true); setError(''); setSubmitted(true)
     try {
       const result = await adminLogin(credentials, { signal: current.signal })
-      if (!current.signal.aborted) { sessionStorage.setItem(SESSION_KEY, result.access_token); onLogin(result.access_token) }
+      if (!current.signal.aborted) { keep(result.access_token, credentials.email.trim()); onLogin(result.access_token) }
     } catch (requestError) { if (!current.signal.aborted) setError(requestError.message) }
     finally { if (!current.signal.aborted) { setLoading(false); setCredentials({ email: '', password: '' }) } }
   }

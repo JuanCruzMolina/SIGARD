@@ -113,6 +113,10 @@ export function yearOptions(weeks) {
     return { year, available, label: available ? String(year) : `${year} · ${status === 'outside_coverage' ? 'sin datos' : 'sin predicción'}` }
   })
 }
+// Last week the viewer can show with data (the latest 'available' week of the calendar).
+export function lastEvaluableWeek(weeks) {
+  return (weeks || []).filter(w => w.availability_status === 'available').reduce((last, w) => !last || w.target_week > last.target_week ? w : last, null)
+}
 export const latestEvaluableYear = weeks => Math.max(...weeks.filter(w => w.availability_status === 'available').map(w => w.target_year))
 
 // Most disclosable radios in the active mode; ties: more records, then the latest week.

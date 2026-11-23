@@ -62,6 +62,11 @@ const weekPath = (year, week, mode) => `/comparison?year=${year}&week=${week}&di
 // Starts a week request before the calendar is known (URL-selected week); validated later.
 export function prefetchWeek(year, week, mode = 'presentation') { cached(weekPath(year, week, mode)).catch(() => {}) }
 
+// Calendar only (F4: the Administración frame shows the viewer's last evaluable week). Same cache
+// entry as backtestSetup, so opening the viewer afterwards sends no second /calendar request.
+export async function backtestCalendar(signal) {
+  return validateBacktestCatalog(await abortable(cached('/calendar'), signal))
+}
 export async function backtestSetup(signal) {
   const [calendar, geo, meta] = await abortable(Promise.all([cached('/calendar'), cached('/geometry'), cached('/metadata')]), signal)
   const catalog = validateBacktestCatalog(calendar)

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
+import AdminLayout from '../components/AdminLayout'
 import AdminLoginForm from '../components/AdminLoginForm'
 import HistoricalBacktest from '../components/HistoricalBacktest'
 import { PageIntro } from '../components/SigardComponents'
@@ -11,6 +12,7 @@ import '../Prevention.css'
 // F3: the predictive viewer inside Administración. Only an unexpired administrator session
 // renders it; otherwise the login is shown here and, once logged in, the same URL (with its
 // anio/se/vista/metodo/capa/radio/modelo state) opens the viewer. The API still checks every request.
+// F4: the viewer is shown inside AdminLayout; «Cerrar sesión» is in its top bar.
 export default function AdminPredictivo() {
   const [token, setToken] = useState(readSession)
   const [notice, setNotice] = useState(() => {
@@ -29,12 +31,11 @@ export default function AdminPredictivo() {
   // An expired token found on arrival is cleared so it is never sent.
   useEffect(() => { if (token && sessionExpired(token)) endSession() }, [token])
 
-  if (!localResearchEnabled()) return <main className="admin-page"><header className="admin-header"><div><h1>Módulo predictivo</h1><p>El visor predictivo sólo está disponible en el entorno local de investigación (npm run dev).</p></div><div><Link className="secondary-button" to="/admin/reportes">Volver a Administración</Link></div></header></main>
+  if (!localResearchEnabled()) return <main className="admin-page"><header className="admin-header"><div><h1>Módulo predictivo</h1><p>El visor predictivo sólo está disponible en el entorno local de investigación (npm run dev).</p></div><div><Link className="secondary-button" to="/admin">Volver a Administración</Link></div></header></main>
   if (!active) return <AdminLoginForm key={token || 'no-session'} title="Módulo predictivo" description="Acceso restringido a cuentas de Administración. Reconstrucción histórica experimental, no uso operativo." notice={notice} onLogin={value => { clearBacktestCache(); setToken(value); setNotice(adminSessionActive(value) ? SESSION_REQUIRED : ROLE_REQUIRED) }}/>
 
-  return <main><div className="content-wrap">
-    <nav className="admin-predictive-bar" aria-label="Administración"><Link className="secondary-button" to="/admin/reportes">Volver a Administración</Link><button className="text-button" type="button" onClick={() => leave(SESSION_REQUIRED)}>Cerrar sesión</button></nav>
+  return <AdminLayout active="predictivo" token={token} onLogout={() => leave(SESSION_REQUIRED)} onExpire={() => leave(SESSION_EXPIRED)}><main><div className="content-wrap">
     <PageIntro title="Predicción semanal de dengue por radio censal"><p>Elegí una semana y mirá dónde y cuántos registros se esperaban, comparados con lo que ocurrió.</p><p className="pv-badge">Prototipo experimental — reconstrucción histórica, no uso operativo</p></PageIntro>
     <HistoricalBacktest onSessionError={leave} />
-  </div></main>
+  </div></main></AdminLayout>
 }

@@ -21,6 +21,7 @@
   --shadow-low: 0 5px 16px rgba(18, 58, 61, .08);
   --radius: 14px;
   --radius-sm: 8px;
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; /* weeks, codes and figures */
 }
 
 #root { min-height: 100svh; }

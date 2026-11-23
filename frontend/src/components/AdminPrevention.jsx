@@ -26,7 +26,7 @@ function changedFields(entry) {
   return fields.length ? `Cambios: ${fields.map(field => fieldLabels[field]).join(', ')}` : ''
 }
 
-export default function AdminPrevention({ token, onBack, onLogout, onSessionExpired }) {
+export default function AdminPrevention({ token, onSessionExpired }) {
   const [sections, setSections] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [form, setForm] = useState(emptyForm)
@@ -114,7 +114,7 @@ export default function AdminPrevention({ token, onBack, onLogout, onSessionExpi
   const publishHint = !selected ? '' : dirty ? 'Guardá el borrador antes de publicar.' : !selected.source_url || !selected.source_label ? 'Indicá fuente y enlace sanitario para poder publicar.' : !selected.has_pending_changes ? 'No hay cambios pendientes de publicación.' : ''
 
   return <main className="admin-page admin-prevention">
-    <header className="admin-header"><div><h1>Contenido preventivo</h1><p>Edición institucional de la página pública de prevención. Sólo orientación sanitaria general: nunca datos de personas, casos ni direcciones.</p></div><div><button className="secondary-button" type="button" disabled={busy} onClick={onBack}>Volver a reportes</button><button className="text-button" type="button" onClick={onLogout}>Cerrar sesión</button></div></header>
+    <header className="admin-header"><div><h1>Contenido preventivo</h1><p>Edición institucional de la página pública de prevención. Sólo orientación sanitaria general: nunca datos de personas, casos ni direcciones.</p></div></header>
     {error && <p className="form-error admin-error" role="alert">{error}</p>}
     {notice && <p className="account-notice" role="status">{notice}</p>}
     <div className="prevention-admin-grid">

@@ -4,7 +4,7 @@ import { createAdminAccount, deactivateAdminAccount, listAdminAccounts, rotateAd
 const emptyCredentials = { email: '', password: '', confirmation: '', current_password: '', confirmed: false }
 const actionLabels = { create: 'Crear cuenta administrativa', rotate: 'Rotar contraseña', deactivate: 'Desactivar cuenta' }
 
-export default function AdminAccounts({ token, onBack, onLogout, onSessionExpired }) {
+export default function AdminAccounts({ token, onSessionExpired }) {
   const [listing, setListing] = useState(null)
   const [page, setPage] = useState(1)
   const [attempt, setAttempt] = useState(0)
@@ -75,7 +75,7 @@ export default function AdminAccounts({ token, onBack, onLogout, onSessionExpire
 
   const disabled = busy || loading
   return <main className="admin-page admin-accounts">
-    <header className="admin-header"><div><h1>Cuentas administrativas</h1><p>Acceso exclusivo de administradores autorizados.</p></div><div><button type="button" className="secondary-button" onClick={onBack}>Volver a reportes</button><button type="button" className="text-button" onClick={onLogout}>Cerrar sesión</button></div></header>
+    <header className="admin-header"><div><h1>Cuentas administrativas</h1><p>Acceso exclusivo de administradores autorizados.</p></div></header>
     <p className="account-policy">Cada cambio requiere tu contraseña actual y una confirmación. Debe quedar al menos una cuenta administrativa activa.</p>
     {notice && <p className="account-notice" role="status">{notice}</p>}
     {error && <p className="form-error" role="alert">{error}</p>}

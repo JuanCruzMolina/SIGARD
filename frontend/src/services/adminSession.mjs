@@ -1,7 +1,9 @@
 // Administrator session as seen by the predictive viewer (F2/F3). The token is the one the
 // Administración login keeps in sessionStorage; this module only reads it or removes it when the
-// server (or its own expiry) says it is no longer valid. It never writes any other value.
+// server (or its own expiry) says it is no longer valid. F4: the login form also keeps the email the
+// person typed (EMAIL_KEY), only to show it in the top bar; this module reads it and removes both.
 export const SESSION_KEY = 'sigard_admin_token'
+export const EMAIL_KEY = 'sigard_admin_email'
 export const PREDICTIVE_ROUTE = '/admin/predictivo'
 export const SESSION_REQUIRED = 'Iniciá sesión con una cuenta de Administración para consultar el visor predictivo.'
 export const SESSION_EXPIRED = 'La sesión de Administración venció o fue cerrada. Ingresá nuevamente para volver al visor predictivo.'
@@ -12,8 +14,11 @@ export const VIEWER_PARAMS = ['anio', 'se', 'vista', 'metodo', 'capa', 'radio', 
 export function readSession(storage = globalThis.sessionStorage) {
   try { return storage.getItem(SESSION_KEY) || '' } catch { return '' }
 }
+export function readEmail(storage = globalThis.sessionStorage) {
+  try { return storage.getItem(EMAIL_KEY) || '' } catch { return '' }
+}
 export function endSession(storage = globalThis.sessionStorage) {
-  try { storage.removeItem(SESSION_KEY) } catch { /* Storage unavailable: nothing to clear. */ }
+  try { storage.removeItem(SESSION_KEY); storage.removeItem(EMAIL_KEY) } catch { /* Storage unavailable: nothing to clear. */ }
 }
 // Reads the claims of the token without verifying it: the server always validates it.
 function claims(token) {
