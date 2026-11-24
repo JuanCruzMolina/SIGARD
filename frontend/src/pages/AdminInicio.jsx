@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import AdminLayout, { Icon } from '../components/AdminLayout'
 import AdminLoginForm from '../components/AdminLoginForm'
+import { Badge, ScreenHeader } from '../components/AdminUI'
 import { countText, EXPERIMENTAL_LABEL, formatReceived, integrityText, loaded, modelsText, NOT_AVAILABLE, oldestReportPages, PENDING_LIMIT, pendingItems, publicMapText } from '../services/adminHome.mjs'
 import { ADMIN_SECTIONS, environmentLabel, visibleSections } from '../services/adminShell.mjs'
 import { adminSessionActive, endSession, readSession, sessionExpired } from '../services/adminSession.mjs'
@@ -134,10 +135,8 @@ function HomeContent({ token, onSessionError }) {
   const viewerLink = viewer && week?.year ? `/admin/predictivo?anio=${week.year}&se=${week.week}` : '/admin/predictivo'
 
   return <main className="admin-page admin-home">
-    <header className="admin-header home-header">
-      <div><h1>Inicio</h1><p>Lo que requiere una decisión hoy y el estado del sistema.</p></div>
-      <div><span className="home-badge">{EXPERIMENTAL_LABEL}</span></div>
-    </header>
+    <ScreenHeader className="home-header" title="Inicio" subtitle="Lo que requiere una decisión hoy y el estado del sistema."
+      aside={<Badge tone="warn" className="home-badge">{EXPERIMENTAL_LABEL}</Badge>} />
 
     <div className="home-grid">
       <section className="home-card home-attention" aria-labelledby="home-atencion">
