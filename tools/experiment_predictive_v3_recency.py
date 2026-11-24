@@ -26,6 +26,11 @@ from sigard_ml.official.epidemiological_preflight.evidence import canonical_byte
 
 from diagnose_predictive_v3 import errors, protected_hashes, join_panel
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 NAME = 'poisson_v3_recency_13w'
 HALF_LIFE_WEEKS = 13.
 SPECIFICATION = dict(
@@ -128,7 +133,7 @@ def main():
     root,out,diagnosis=args.root.resolve(),args.output.resolve(),args.diagnosis.resolve()
     assert out.parent==root/'data/interim/official' and out.name.startswith('predictive_recency_') and not out.exists()
     assert diagnosis.parent==root/'data/interim/official' and diagnosis.name.startswith('predictive_diagnosis_')
-    assert subprocess.check_output(['git','branch','--show-current'],cwd=root,text=True).strip()=='entrenamiento-ML'
+    assert subprocess.check_output(['git','branch','--show-current'],cwd=root,text=True, creationflags=NO_WINDOW).strip()=='entrenamiento-ML'
     authorization=verify_authorization(root)
     before=protected_hashes(root)
     artifact=FrozenArtifact(root/'ml/artifacts/official'/VERSION)

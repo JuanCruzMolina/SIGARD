@@ -22,8 +22,11 @@ export function spawnOwned(command, args, options = {}) {
   const { input = false, silent = false, ...spawnOptions } = options
   // Separate process group/console: Ctrl+C is handled by the coordinator, so
   // Windows' venv launcher and its Python child can be stopped together.
+  // Windows: windowsHide alone already gives the child its own console without a window (it does not
+  // receive the terminal's Ctrl+C) and the venv launcher's Python inherits it. `detached` there means
+  // DETACHED_PROCESS, which voids that hidden console: the launcher's Python then opened a visible one.
   const child = spawn(command, args, {
-    ...spawnOptions, detached: true, windowsHide: true, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], shell: false,
+    ...spawnOptions, detached: process.platform !== 'win32', windowsHide: true, stdio: [input ? 'pipe' : 'ignore', 'pipe', 'pipe'], shell: false,
   })
   if (!silent) {
     child.stdout.pipe(process.stdout)

@@ -10,6 +10,11 @@ from pathlib import Path
 import httpx
 import pytest
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 pa = pytest.importorskip("pyarrow", reason="Instalar requirements.research.txt para las pruebas locales A/B")
 import pyarrow.parquet as pq
 
@@ -405,7 +410,7 @@ let blocked=false; try {validateScores(scores,catalog.models[0],scores.target_we
 if(!blocked) throw Error('invalid null accepted');
 """
     run = subprocess.run([shutil.which("node"), "--input-type=module", "-e", script], cwd=ROOT,
-        input=json.dumps({"catalog": adapter.list_experiments(), "scores": result}), text=True, capture_output=True)
+        input=json.dumps({"catalog": adapter.list_experiments(), "scores": result}), text=True, capture_output=True, creationflags=NO_WINDOW)
     assert run.returncode == 0, run.stderr
 
 
@@ -472,7 +477,7 @@ validateEvaluation(evaluation,catalog); validateHistory(history,catalog,'000002'
 """
     result = subprocess.run([shutil.which("node"), "--input-type=module", "-e", script], cwd=ROOT,
         input=json.dumps({"catalog": adapter.list_experiments(), "evaluation": adapter.get_evaluation(), "history": adapter.history("000002")}),
-        text=True, capture_output=True)
+        text=True, capture_output=True, creationflags=NO_WINDOW)
     assert result.returncode == 0, result.stderr
 
 

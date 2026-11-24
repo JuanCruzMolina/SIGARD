@@ -23,6 +23,11 @@ from app.predictive_admin import PREFIX, audit
 from app.predictive_service import MODULE, PredictiveService
 from predictive_admin_support import LOCAL, ORIGIN, add_account, admin_app, bearer, client
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 BACKEND = Path(__file__).resolve().parents[1]
 WEEK = '?year=2021&week=1'
 
@@ -294,7 +299,7 @@ def run_fresh(code, tmp_path):
     env.update(SECRET_KEY='fresh-process-secret-with-enough-entropy', DATABASE_URL=f"sqlite:///{(tmp_path / 'fresh.db').as_posix()}",
                PYTHONPATH=str(BACKEND))
     result = subprocess.run([sys.executable, '-B', '-c', code], cwd=tmp_path, env=env, capture_output=True,
-                            text=True, timeout=120)
+                            text=True, timeout=120, creationflags=NO_WINDOW)
     assert result.returncode == 0, result.stderr[-2000:]
     return json.loads(result.stdout.strip().splitlines()[-1])
 
@@ -365,7 +370,7 @@ def test_local_launcher_process_serves_the_viewer_behind_login(tmp_path):
     with TemporaryDirectory(prefix='sigard-alerts-', dir=BACKEND / '.tmp') as directory:
         process = subprocess.Popen([sys.executable, '-I', '-B', str(BACKEND / 'app/alerts_local.py'), 'session',
                                     '--directory', directory, '--source', 'fictional'], cwd=directory, env=env,
-                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True)
+                                   stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL, text=True, creationflags=NO_WINDOW)
         try:
             ready = json.loads(process.stdout.readline())
             assert ready['predictive'] is False and ready['storage'] == 'disposable-sqlite'

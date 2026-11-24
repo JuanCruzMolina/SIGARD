@@ -26,7 +26,7 @@
     "test:alerts:layout:browser": "node scripts/alerts-layout.browser.mjs",
     "test:reports:layout:browser": "node scripts/reports-layout.browser.mjs",
     "test:performance": "node scripts/performance.browser.mjs",
-    "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs scripts/private-output.test.mjs",
+    "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs scripts/private-output.test.mjs scripts/hidden-windows.test.mjs",
     "dev": "node scripts/dev.mjs",
     "dev:demo": "node scripts/dev-demo.mjs",
     "dev:alerts": "node scripts/dev.mjs",

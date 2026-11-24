@@ -20,6 +20,11 @@ import pyarrow.parquet as pq
 from sigard_ml.forecasting.thesis_validation import FrozenArtifact, digest, write_json
 from sigard_ml.forecasting.v3 import BASELINES, CANDIDATES, FEATURES, VERSION
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 SEED = 20261026
 GROUPS = {
     'count_history': list(FEATURES[:6]),
@@ -182,7 +187,7 @@ def main():
     root, out = args.root.resolve(), args.output.resolve()
     assert out.parent == root/'data/interim/official' and out.name.startswith('predictive_diagnosis_')
     assert not out.exists(), 'Never overwrite a diagnosis'
-    assert subprocess.check_output(['git','branch','--show-current'],cwd=root,text=True).strip() == 'entrenamiento-ML'
+    assert subprocess.check_output(['git','branch','--show-current'],cwd=root,text=True, creationflags=NO_WINDOW).strip() == 'entrenamiento-ML'
     before = protected_hashes(root)
     artifact = FrozenArtifact(root/'ml/artifacts/official'/VERSION)
     panels, oofs = {}, {}

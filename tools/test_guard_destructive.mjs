@@ -199,6 +199,7 @@ function run(stdin) {
     encoding: 'utf8',
     env: { ...process.env, CLAUDE_PROJECT_DIR: root },
     timeout: 10000,
+    windowsHide: true,
   })
   if (result.status !== 0) return { decision: `exit ${result.status}`, reason: result.stderr }
   const out = result.stdout.trim()

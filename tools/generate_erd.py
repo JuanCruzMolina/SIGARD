@@ -20,6 +20,11 @@ import subprocess
 import sys
 from pathlib import Path
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 ROOT = Path(__file__).resolve().parents[1]
 BACKEND = ROOT / 'backend'
 OUTPUT = ROOT / 'docs/tecnica/modelo-datos.md'
@@ -31,7 +36,7 @@ def public_sql():
     env = {**os.environ, 'SECRET_KEY': 'offline-rendering-placeholder-not-a-secret-0123456789',
            'DATABASE_URL': 'postgresql://offline@127.0.0.1:1/offline', 'PYTHONPATH': str(BACKEND), 'PYTHONIOENCODING': 'utf-8'}
     result = subprocess.run([sys.executable, '-B', '-m', 'alembic', '-c', str(BACKEND / 'alembic.ini'), 'upgrade', 'head', '--sql'],
-                            cwd=BACKEND, env=env, capture_output=True, text=True, encoding='utf-8', errors='replace')
+                            cwd=BACKEND, env=env, capture_output=True, text=True, encoding='utf-8', errors='replace', creationflags=NO_WINDOW)
     if result.returncode:
         raise SystemExit(f'Alembic offline falló:\n{result.stderr[-2000:]}')
     return result.stdout
