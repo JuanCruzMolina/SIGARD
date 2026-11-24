@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { alertsRequest, downloadAlertsExport } from '../services/citizenReports'
+import { epiWeekOf } from '../services/adminShell.mjs'
+import { localResearchEnabled } from '../services/experimentalResults'
+import { Icon } from './AdminLayout'
+import { Badge, Card, Notice, ScreenHeader, UiButton, UiTable } from './AdminUI'
 import {
-  ACTION_LABELS, CHANNEL_NOTE, FLOW_STEPS, MINIMUM_COUNT, PERIODICITY_NOTE, PREVIEW_LABEL, REASON_LABELS,
+  ACTION_LABELS, CAPABILITY_LABELS, CHANNEL_NOTE, FLOW_STEPS, MINIMUM_COUNT, PERIODICITY_NOTE, PREVIEW_LABEL, REASON_LABELS,
   RETROSPECTIVE_NOTE, STATUS_LABELS, evaluationText, formatValue, formatWeek, modelName, modelsFor, previewText,
   rulePayload, ruleSummary, validateRuleForm,
 } from '../services/internalAlerts.mjs'
@@ -22,9 +26,29 @@ function weekLabel(week) {
   return `SE ${week.target_epi_week}/${week.target_year} · ${formatWeek(week.target_week)}`
 }
 
+// F6.2 (docs/diseno/admin-v2/Alertas.dc.html): presentation only; the decision flow, requests,
+// validations and texts are the same as before.
+const ICONS = {
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z',
+  clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 7v5l3 2',
+  check: 'M5 12l4 4 10-10',
+  cross: 'M6 6l12 12M18 6L6 18',
+}
+const STATUS_STYLE = { pending: ['warn', ICONS.clock], approved_internal: ['ok', ICONS.check], discarded: ['alert', ICONS.cross] }
+
+// The candidate's week and radio in the predictive viewer (local research only, where it exists).
+function viewerLink(candidate, models) {
+  const week = epiWeekOf(candidate.target_week)
+  if (!week) return null
+  const reference = models?.find(model => model.id === candidate.rule.model)?.reference
+  const params = new URLSearchParams({ anio: String(week.year), se: String(week.week), vista: candidate.rule.capability === 'presence' ? 'donde' : 'cuantos', metodo: reference ? 'referencia' : 'ml' })
+  if (/^\d{9}$/.test(candidate.radio_id)) params.set('radio', candidate.radio_id)
+  return `/admin/predictivo?${params}`
+}
+
 function Evidence({ candidate }) {
   const presence = candidate.rule.capability === 'presence'
-  return <table className="alerts-evidence">
+  return <UiTable className="alerts-evidence">
     <caption>Evidencia de {candidate.evidence.length} semana(s) · *observado en la reconstrucción retrospectiva · valores menores a {MINIMUM_COUNT} se muestran como «protegido»</caption>
     <thead><tr><th scope="col">Semana</th><th scope="col">{presence ? `Posición (top-${candidate.rule.k})` : 'Esperados'}</th><th scope="col">Observado*</th><th scope="col">Cumple</th></tr></thead>
     <tbody>{candidate.evidence.map(item => <tr key={item.target_week}>
@@ -33,7 +57,7 @@ function Evidence({ candidate }) {
       <td data-observed={item.observed ?? ''}>{formatValue(item.observed)}</td>
       <td>{item.met ? 'Sí' : 'No'}</td>
     </tr>)}</tbody>
-  </table>
+  </UiTable>
 }
 
 function Decision({ candidate, busy, onDecide }) {
@@ -58,19 +82,30 @@ function Decision({ candidate, busy, onDecide }) {
   </form>
 }
 
-function CandidateCard({ candidate, busy, onDecide }) {
-  return <article className="alerts-card" data-candidate={candidate.id} data-status={candidate.status}>
+function CandidateCard({ candidate, busy, onDecide, models }) {
+  const [tone, icon] = STATUS_STYLE[candidate.status] || ['neutral', null]
+  const week = epiWeekOf(candidate.target_week)
+  const link = localResearchEnabled() ? viewerLink(candidate, models) : null
+  return <article className="alerts-card ui-card" data-candidate={candidate.id} data-status={candidate.status} aria-labelledby={`alerts-candidate-${candidate.id}`}>
     <header>
-      <span className={`status-chip alert-${candidate.status}`}>{STATUS_LABELS[candidate.status]}</span>
-      <h3>Radio {candidate.radio_id} · semana del {formatWeek(candidate.target_week)}</h3>
-      <p>{candidate.rule.name} · {ruleSummary(candidate.rule, candidate.rule.k)}</p>
-      {candidate.rule_changed_since && <p className="alerts-warning">La regla se editó después de generar esta candidata; se muestra la versión usada en la evaluación.</p>}
+      <h3 id={`alerts-candidate-${candidate.id}`}>Radio <span className="mono">{candidate.radio_id}</span> · semana del {formatWeek(candidate.target_week)}</h3>
+      <Badge tone={tone} icon={icon} className={`status-chip alert-${candidate.status}`}>{STATUS_LABELS[candidate.status]}</Badge>
     </header>
+    <dl className="alerts-facts">
+      <div><dt>Regla</dt><dd>{candidate.rule.name}</dd></div>
+      <div><dt>Condición</dt><dd>{ruleSummary(candidate.rule, candidate.rule.k)}</dd></div>
+      <div><dt>Pregunta y modelo</dt><dd>{CAPABILITY_LABELS[candidate.rule.capability]} · {modelName(candidate.rule.model)}</dd></div>
+      {week && <div><dt>Semana epidemiológica</dt><dd className="mono mono-week">SE {week.week}/{week.year}</dd></div>}
+    </dl>
+    {candidate.rule_changed_since && <Notice tone="warn" icon={null} className="alerts-warning"><p>La regla se editó después de generar esta candidata; se muestra la versión usada en la evaluación.</p></Notice>}
     <Evidence candidate={candidate} />
     {candidate.status === 'pending'
       ? <Decision candidate={candidate} busy={busy} onDecide={onDecide} />
       : <p className="alerts-decided">{candidate.status === 'discarded' ? `Motivo: ${REASON_LABELS[candidate.discard_reason]} · ` : ''}«{candidate.decision_comment}» · {candidate.decided_by} · {new Date(candidate.decided_at).toLocaleString('es-AR')}</p>}
-    <p className="alerts-blocked">Publicación ciudadana: bloqueada (fuera del alcance del prototipo).</p>
+    <div className="alerts-card-foot">
+      <p className="alerts-blocked">Publicación ciudadana: bloqueada (fuera del alcance del prototipo).</p>
+      {link && <UiButton to={link} className="alerts-map-link">Ver en el mapa</UiButton>}
+    </div>
   </article>
 }
 
@@ -198,39 +233,55 @@ export default function AdminAlerts({ token, onSessionExpired }) {
   const decided = candidates.filter(candidate => candidate.status !== 'pending')
   const kFor = rule => status?.models?.find(model => model.id === rule.model)?.rule?.k
 
+  const activeRules = rules.filter(rule => rule.enabled)
+  const newRule = () => { setTab('rules'); setEditing('new') }
+
   return <main className="admin-page admin-alerts">
-    <header className="admin-header">
-      <div><h1>Alertas internas</h1><p>Rol administrador · avisos sólo en este panel · sin correo, SMS ni publicación ciudadana.</p></div>
-    </header>
-    <div className="alerts-banner" role="note">
-      <p><strong>Ningún algoritmo publica alertas.</strong> {CHANNEL_NOTE}</p>
+    <ScreenHeader breadcrumb={[{ label: 'Inicio', to: '/admin/inicio' }, { label: 'Alertas internas' }]} title="Alertas internas"
+      subtitle="Rol administrador · avisos sólo en este panel · sin correo, SMS ni publicación ciudadana."
+      aside={<UiButton variant="primary" disabled={busy || !status?.source_available} onClick={newRule}>Nueva regla</UiButton>} />
+    <section className="alerts-banner ui-card" role="note" aria-label="Cómo funciona una alerta interna">
+      <p className="alerts-banner-title"><Icon d={ICONS.shield} size={20}/><strong>Ningún algoritmo publica alertas.</strong></p>
+      <ol className="alerts-steps">{FLOW_STEPS.map(([title], index) => <li key={title}><span className="mono">{index + 1}</span> {title}</li>)}</ol>
+      <p>{CHANNEL_NOTE}</p>
       <p>{RETROSPECTIVE_NOTE}{status?.fictional ? ' Fuente ficticia generada para pruebas.' : ''}</p>
-    </div>
-    {status && !status.source_available && <p className="form-error admin-error" role="alert">{status.reason || 'Fuente de predicciones no disponible: las alertas internas se evalúan sólo en el entorno local de investigación (npm run dev).'}</p>}
-    {error && <p className="form-error admin-error" role="alert">{error}</p>}
-    {notice && <p className="account-notice" role="status">{notice}</p>}
+    </section>
+    {status && !status.source_available && <Notice tone="danger" icon={null} role="alert" className="form-error admin-error"><p>{status.reason || 'Fuente de predicciones no disponible: las alertas internas se evalúan sólo en el entorno local de investigación (npm run dev).'}</p></Notice>}
+    {error && <Notice tone="danger" icon={null} role="alert" className="form-error admin-error"><p>{error}</p></Notice>}
+    {notice && <Notice tone="info" icon={ICONS.check} role="status" className="account-notice"><p>{notice}</p></Notice>}
     <nav className="alerts-tabs" aria-label="Secciones de alertas">{TABS.map(([id, label]) => <button key={id} type="button" data-tab={id} aria-pressed={tab === id} onClick={() => setTab(id)}>
       {label}{id === 'pending' && pending.length ? ` (${pending.length})` : ''}</button>)}</nav>
 
-    {tab === 'pending' && <section className="panel" aria-label="Candidatas pendientes">
-      <form className="alerts-evaluate" onSubmit={event => { event.preventDefault(); if (targetWeek) evaluate() }}>
-        <label>Semana a evaluar<select value={targetWeek} disabled={!status?.source_available} onChange={event => setTargetWeek(event.target.value)}>
-          {(status?.weeks || []).map(week => <option key={week.target_week} value={week.target_week}>{weekLabel(week)}</option>)}
-        </select></label>
-        <button className="primary-button" disabled={busy || !status?.source_available || !targetWeek}>Evaluar semana</button>
-        <small>{PERIODICITY_NOTE} Las reglas activas generan alertas candidatas; nada se notifica fuera de este panel.</small>
-      </form>
-      {pending.length ? pending.map(candidate => <CandidateCard key={candidate.id} candidate={candidate} busy={busy} onDecide={decide} />)
-        : <p className="alerts-empty">No hay alertas candidatas pendientes de revisión.</p>}
-    </section>}
+    {tab === 'pending' && <div className="alerts-layout">
+      <section className="alerts-list" aria-label="Candidatas pendientes">
+        {pending.length ? pending.map(candidate => <CandidateCard key={candidate.id} candidate={candidate} busy={busy} onDecide={decide} models={status?.models} />)
+          : <Card className="alerts-empty-card"><p className="alerts-empty">No hay alertas candidatas pendientes de revisión.</p></Card>}
+      </section>
+      <aside className="alerts-side" aria-label="Evaluación y reglas activas">
+        <Card title="Evaluar una semana" titleId="alerts-evaluate-title" level={2}>
+          <form className="alerts-evaluate" onSubmit={event => { event.preventDefault(); if (targetWeek) evaluate() }}>
+            <label>Semana a evaluar<select value={targetWeek} disabled={!status?.source_available} onChange={event => setTargetWeek(event.target.value)}>
+              {(status?.weeks || []).map(week => <option key={week.target_week} value={week.target_week}>{weekLabel(week)}</option>)}
+            </select></label>
+            <button className="primary-button" disabled={busy || !status?.source_available || !targetWeek}>Evaluar semana</button>
+            <small>{PERIODICITY_NOTE} Las reglas activas generan alertas candidatas; nada se notifica fuera de este panel.</small>
+          </form>
+        </Card>
+        <Card title="Reglas activas" titleId="alerts-active-title" level={2} className="alerts-active">
+          {activeRules.length ? <ul>{activeRules.map(rule => <li key={rule.id}><strong>{rule.name}</strong><span>{ruleSummary(rule, kFor(rule))}</span></li>)}</ul>
+            : <p className="alerts-empty">No hay reglas activas.</p>}
+          <button type="button" className="text-button" onClick={() => setTab('rules')}>Ver todas las reglas</button>
+        </Card>
+      </aside>
+    </div>}
 
     {tab === 'rules' && <section className="panel" aria-label="Reglas">
       {editing !== null && status?.source_available
-        ? <RuleForm key={editing === 'new' ? 'new' : editing.id} token={token} status={status} rule={editing === 'new' ? null : editing} busy={busy}
-            onSave={saveRule} onCancel={() => setEditing(null)} onFail={fail} />
+        ? <Card className="alerts-form-card"><RuleForm key={editing === 'new' ? 'new' : editing.id} token={token} status={status} rule={editing === 'new' ? null : editing} busy={busy}
+            onSave={saveRule} onCancel={() => setEditing(null)} onFail={fail} /></Card>
         : <button type="button" className="primary-button" disabled={!status?.source_available} onClick={() => setEditing('new')}>Nueva regla</button>}
-      <ul className="alerts-rules">{rules.map(rule => <li key={rule.id} data-rule={rule.id}>
-        <div><strong>{rule.name}</strong> <span className={`status-chip ${rule.enabled ? 'alert-active' : 'alert-inactive'}`}>{rule.enabled ? 'Activa' : 'Inactiva'}</span></div>
+      <ul className="alerts-rules">{rules.map(rule => <li key={rule.id} data-rule={rule.id} className="ui-card">
+        <div><strong>{rule.name}</strong> <Badge tone={rule.enabled ? 'ok' : 'neutral'} className={`status-chip ${rule.enabled ? 'alert-active' : 'alert-inactive'}`}>{rule.enabled ? 'Activa' : 'Inactiva'}</Badge></div>
         <p>{ruleSummary(rule, kFor(rule))}</p>
         <small>Versión {rule.revision} · editada por {rule.updated_by} · {new Date(rule.updated_at).toLocaleString('es-AR')}</small>
         <button type="button" className="text-button" disabled={busy || !status?.source_available} onClick={() => setEditing(rule)}>Editar</button>
@@ -241,7 +292,7 @@ export default function AdminAlerts({ token, onSessionExpired }) {
     {tab === 'history' && <section className="panel" aria-label="Historial">
       <div className="alerts-actions"><button type="button" className="secondary-button" disabled={busy} onClick={() => downloadAlertsExport(token).catch(fail)}>Exportar CSV (valores protegidos)</button></div>
       <h2>Decisiones</h2>
-      {decided.length ? decided.map(candidate => <CandidateCard key={candidate.id} candidate={candidate} busy={busy} onDecide={decide} />)
+      {decided.length ? decided.map(candidate => <CandidateCard key={candidate.id} candidate={candidate} busy={busy} onDecide={decide} models={status?.models} />)
         : <p className="alerts-empty">Todavía no hay decisiones registradas.</p>}
       <h2>Auditoría</h2>
       <ol className="prevention-history alerts-audit">{auditRows.map(row => <li key={row.id} data-action={row.action}>
