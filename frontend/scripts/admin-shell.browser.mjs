@@ -53,9 +53,14 @@ try {
   page.on('pageerror', e => errors.push(e.message))
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()) })
   await page.setRequestInterception(true)
+  // Session-expiry checks: requests carrying a script-made token are held without an answer (never
+  // 401, never data), so the frame's timer is measured whatever each screen asks the API.
+  const heldTokens = new Set(), held = []
   page.on('request', r => {
     const u = new URL(r.url())
     if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
+    const bearer = (r.headers().authorization || '').replace(/^Bearer /, '')
+    if (heldTokens.has(bearer)) { held.push(r); return }
     if (u.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return r.continue()
     if (/^[abc]\.tile\.openstreetmap\.org$/.test(u.hostname)) return r.abort() // offline map, as predictive.browser
     if (u.hostname !== '127.0.0.1' || !['5173', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
@@ -291,15 +296,20 @@ try {
     const stored = () => page.evaluate(() => [sessionStorage.getItem('sigard_admin_token'), sessionStorage.getItem('sigard_admin_email')])
     const plant = (token, mail) => page.evaluate((token, mail) => { sessionStorage.setItem('sigard_admin_token', token); sessionStorage.setItem('sigard_admin_email', mail) }, token, mail)
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
-    // The frame's timer is checked on a screen without requests of its own (Auditoría): since F5,
-    // Inicio queries the admin APIs, which reject this unsigned token at once (checked below).
-    await plant(fakeToken(Math.floor(Date.now() / 1000) + 6), 'vence@example.test')
-    await page.goto(`${origin}/admin/auditoria`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector(nav)
-    assert.ok((await page.$eval('.admin-topbar', e => e.textContent)).includes('vence@example.test'))
-    await page.waitForSelector('.admin-login', { timeout: 20000 })
-    assert.deepEqual(await stored(), [null, null], 'al vencer se borran token y correo')
-    assert.match(await page.$eval('.admin-login', e => e.textContent), /La sesión venció/)
-    await plant(fakeToken(Math.floor(Date.now() / 1000) - 60), 'vencido@example.test')
+    // The frame's timer, on every section: its requests are held (see heldTokens), so no screen
+    // ends the session by itself; only the timer at exp can.
+    for (const [path] of SECTIONS) {
+      const token = fakeToken(Math.floor(Date.now() / 1000) + 6); heldTokens.add(token)
+      await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
+      await plant(token, 'vence@example.test')
+      await page.goto(`${origin}${path}`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector(nav)
+      assert.ok((await page.$eval('.admin-topbar', e => e.textContent)).includes('vence@example.test'), `${path}: marco con el correo`)
+      await page.waitForSelector('.admin-login', { timeout: 20000 })
+      assert.deepEqual(await stored(), [null, null], `${path}: al vencer se borran token y correo`)
+      assert.match(await page.$eval('.admin-login', e => e.textContent), path === '/admin/predictivo' ? /La sesión de Administración venció/ : /La sesión venció/)
+    }
+    const expired = fakeToken(Math.floor(Date.now() / 1000) - 60); heldTokens.add(expired)
+    await plant(expired, 'vencido@example.test')
     await page.goto(`${origin}/admin/auditoria`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector('.admin-login')
     await page.waitForFunction(() => sessionStorage.getItem('sigard_admin_email') === null)
     assert.deepEqual(await stored(), [null, null], 'un token vencido al llegar se borra con el correo')
@@ -309,7 +319,9 @@ try {
     await page.waitForFunction(() => sessionStorage.getItem('sigard_admin_token') === null)
     assert.deepEqual(await stored(), [null, null], 'un token rechazado por la API en Inicio se borra con el correo')
     assert.match(await page.$eval('.admin-login', e => e.textContent), /revocada/)
-    checkpoint('vencimiento: el marco borra token y correo (temporizador, token vencido al llegar y token rechazado en Inicio)')
+    await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
+    for (const request of held.splice(0)) await request.abort().catch(() => {}) // already gone with its page
+    checkpoint(`vencimiento: el marco borra token y correo en las ${SECTIONS.length} secciones (temporizador con consultas retenidas), token vencido al llegar y token rechazado en Inicio`)
 
     // Public chrome: the site header links to /admin; / is the public home also in dev.
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
