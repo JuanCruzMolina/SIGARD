@@ -133,6 +133,14 @@ alarma.
 
 ![Confirmación antes de publicar](img/admin-prevencion-publicar.png)
 
+**La pantalla:** a la izquierda, la lista de secciones con su estado (insignia con ícono:
+«Publicada · v*N*», «Publicada · cambios sin publicar», «Borrador» o «Despublicada · borrador»).
+**Nueva sección** está arriba a la derecha. Al elegir una sección se abre el editor: los campos a
+la izquierda y, al lado, la **Vista previa del borrador**, con el mismo formato que la página
+pública. Abajo están **Publicar**, **Guardar borrador** y **Despublicar**, y debajo el
+**Historial**. En el celular, las secciones son una fila de pestañas que se desplaza hacia el
+costado.
+
 **Formato permitido:** texto, párrafos, listas que empiezan con `- `, `**negrita**` y enlaces
 `[texto](https://…)`. El sistema **rechaza** HTML, enlaces que no sean `https://`, correos y
 números con formato de documento. Esto es un resguardo y no garantiza que no haya datos

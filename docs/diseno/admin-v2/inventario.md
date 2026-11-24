@@ -376,3 +376,55 @@ Implementado en `entrenamiento-ML` (24/11/2026), después de F6.3 y antes de F6.
   - Verificado con un registro de ventanas visibles: antes del cambio, `dev` abría una ventana de
     Windows Terminal con la consola de Python; después, ninguna en `dev`, las suites de navegador
     ni la regresión.
+
+## F6.4 · Contenido preventivo
+
+Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-4`.
+
+- **Pantalla** (`components/AdminPrevention.jsx` + `AdminPrevention.css`, `Contenido.dc.html`).
+  Sólo presentación, con `AdminUI`:
+  - encabezado con ruta y «Nueva sección» (antes estaba en la lista);
+  - lista de secciones en tarjeta, con insignias de estado (ícono y el mismo texto de estado);
+  - editor en tarjeta con estado y «Última publicación … por …»;
+  - campos y «Vista previa del borrador» lado a lado (desde 1200 px), y barra de acciones
+    (Publicar, Guardar borrador, Despublicar a la derecha);
+  - confirmación en la paleta dorada e historial en su propia tarjeta;
+  - en pantallas apiladas (< 1000 px) las secciones son una fila de pestañas con desplazamiento
+    horizontal, sin partirse en dos líneas.
+
+  Mismas peticiones, flujo de borrador y publicación, validaciones, historial y textos. La página
+  pública no cambia: la vista previa usa los mismos componentes (`RestrictedMarkdown`,
+  `SectionSource`).
+- **Diferencias deliberadas con la maqueta**:
+  - Se conservan los rótulos y textos reales:
+    - «Contenido», no «Texto»;
+    - «Fuente o referencia sanitaria», no «Fuente sanitaria»;
+    - la ayuda de formato completa, con el contador de caracteres;
+    - «Vista previa del borrador», no «Vista previa pública»;
+    - «Historial», no «Historial de esta sección»;
+    - el subtítulo actual;
+    - «Publicar» sin «…».
+  - Se conservan los campos «Orden» e «Identificador» (este último sólo al crear), que la maqueta
+    no muestra.
+  - Estados reales: «Publicada · v*N*», «Publicada · cambios sin publicar», «Borrador» y
+    «Despublicada · borrador», en lugar de «Publicada», «Cambios sin publicar» y «Despublicada».
+    La lista agrega el identificador y el orden.
+  - El historial conserva lo que registra la API: acción, autor, fecha y hora, campos cambiados y
+    versión publicada. No hay entrada «Creada por» aparte: la carga inicial figura como «Carga
+    inicial».
+  - Se mantiene la confirmación antes de publicar o despublicar, y el aviso «Guardá el borrador
+    antes de publicar».
+- **Pruebas**:
+  - `test:prevention:browser` pasa cambiando sólo el selector de la línea de estado
+    (`.prevention-state`).
+  - Nueva `test:content:layout:browser` (demo con SQLite descartable). Cubre lista, edición,
+    borrador con cambios sin publicar, nueva sección publicada y error de API, en 1440 y 390 px,
+    con contraste AA, teclado, 44 px, textos de 14 px o más y pestañas en una fila con
+    desplazamiento.
+  - La misma prueba compara la sección recién publicada con el sitio público: mismo título, texto y
+    fuente que la vista previa (el sitio agrega « · versión 1»).
+  - La prueba no usa interceptación salvo en el estado de error, que es un GET (ver
+    «Estabilidad»).
+  - Capturas en `data/interim/official/ux-admin-v2-f6-4/<etiqueta>/`: antes en `f6-4-antes`,
+    después en `f6-4-regresion`.
+- **Rendimiento**: no se midió; la pantalla no toca el servidor ni el visor.
