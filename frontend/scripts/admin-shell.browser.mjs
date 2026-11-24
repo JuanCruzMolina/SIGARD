@@ -291,8 +291,10 @@ try {
     const stored = () => page.evaluate(() => [sessionStorage.getItem('sigard_admin_token'), sessionStorage.getItem('sigard_admin_email')])
     const plant = (token, mail) => page.evaluate((token, mail) => { sessionStorage.setItem('sigard_admin_token', token); sessionStorage.setItem('sigard_admin_email', mail) }, token, mail)
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
+    // The frame's timer is checked on a screen without requests of its own (Auditoría): since F5,
+    // Inicio queries the admin APIs, which reject this unsigned token at once (checked below).
     await plant(fakeToken(Math.floor(Date.now() / 1000) + 6), 'vence@example.test')
-    await page.goto(`${origin}/admin/inicio`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector(nav)
+    await page.goto(`${origin}/admin/auditoria`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector(nav)
     assert.ok((await page.$eval('.admin-topbar', e => e.textContent)).includes('vence@example.test'))
     await page.waitForSelector('.admin-login', { timeout: 20000 })
     assert.deepEqual(await stored(), [null, null], 'al vencer se borran token y correo')
@@ -301,7 +303,13 @@ try {
     await page.goto(`${origin}/admin/auditoria`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector('.admin-login')
     await page.waitForFunction(() => sessionStorage.getItem('sigard_admin_email') === null)
     assert.deepEqual(await stored(), [null, null], 'un token vencido al llegar se borra con el correo')
-    checkpoint('vencimiento: el marco borra token y correo (temporizador y token vencido al llegar)')
+    // A token the API rejects (401) on Inicio ends the session too: token and email removed.
+    await plant(fakeToken(Math.floor(Date.now() / 1000) + 600), 'rechazado@example.test')
+    await page.goto(`${origin}/admin/inicio`, { waitUntil: 'domcontentloaded' }); await page.waitForSelector('.admin-login')
+    await page.waitForFunction(() => sessionStorage.getItem('sigard_admin_token') === null)
+    assert.deepEqual(await stored(), [null, null], 'un token rechazado por la API en Inicio se borra con el correo')
+    assert.match(await page.$eval('.admin-login', e => e.textContent), /revocada/)
+    checkpoint('vencimiento: el marco borra token y correo (temporizador, token vencido al llegar y token rechazado en Inicio)')
 
     // Public chrome: the site header links to /admin; / is the public home also in dev.
     await page.goto(`${origin}/`, { waitUntil: 'domcontentloaded' })
