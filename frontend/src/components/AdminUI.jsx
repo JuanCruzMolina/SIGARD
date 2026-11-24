@@ -38,7 +38,7 @@ export function Card({ as: Tag = 'section', title, titleId, level = 2, actions, 
   </Tag>
 }
 
-// Badge: short status text; tone sets the colours (all AA on their background).
+// Badge: short status text; tone (warn, neutral, ok, alert, info) sets the colours (all AA on their background).
 export function Badge({ tone = 'neutral', icon, className, children }) {
   return <span className={join('ui-badge', `ui-tone-${tone}`, className)}>{icon && <Icon d={icon} size={14}/>}{children}</span>
 }

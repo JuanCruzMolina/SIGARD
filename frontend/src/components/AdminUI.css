@@ -15,6 +15,7 @@
 .ui-tone-neutral { border-color: var(--line); background: var(--canvas-deep); color: var(--ink); }
 .ui-tone-ok { border-color: #b9dccf; background: var(--mint); color: var(--teal-deep); }
 .ui-tone-alert { border-color: #f0c7a8; background: #fbe9dc; color: #8a3a0c; }
+.ui-tone-info { border-color: #b7d3da; background: var(--blue); color: var(--navy); }
 
 .ui-notice { display: flex; align-items: flex-start; gap: 10px; padding: 12px 16px; border: 1px solid; border-radius: 10px; font-size: .94rem; line-height: 1.5; }
 .ui-notice > svg { flex: none; margin-top: 2px; }
