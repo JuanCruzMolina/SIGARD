@@ -148,7 +148,10 @@ def attach(app, source, storage):
     @app.middleware("http")
     async def local_boundary(request, call_next):
         if request.url.path.startswith("/api/v1/geocoding/"):
-            return JSONResponse(status_code=503, content={"detail": "No disponible en el entorno local de alertas."})
+            # Answered before CORSMiddleware: the local origin gets its CORS header here so the
+            # page shows this message instead of a network failure.
+            headers = {"Access-Control-Allow-Origin": ORIGIN, "Vary": "Origin"} if request.headers.get("origin") == ORIGIN else {"Vary": "Origin"}
+            return JSONResponse(status_code=503, content={"detail": "No disponible en el entorno local de alertas."}, headers=headers)
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-store"
         return response
