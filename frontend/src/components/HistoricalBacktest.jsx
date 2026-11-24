@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { backtestHistory, backtestSetup, backtestWeek, clearBacktestCache, prefetchWeek } from '../services/backtestResults'
 import { experimentalView, formatValue } from '../services/backtestContract.mjs'
-import { candidateName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
+import { candidateName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, priorityList, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
 import WeekTimeline from './WeekTimeline'
 import SummaryCards, { InfoTip } from './SummaryCards'
 import BacktestMaps from './BacktestMaps'
@@ -12,6 +12,8 @@ import ModelPerformance from './ModelPerformance'
 import DataTable from './DataTable'
 import './HistoricalBacktest.css'
 import { privateViewEnabled } from '../services/privateView'
+import { demoMode } from '../services/demoMode'
+import { Badge, Card, UiButton } from './AdminUI'
 
 function Segmented({ label, options, value, onChange, name }) {
   return <div className="pv-segmented" role="group" aria-label={label} data-control={name}>
@@ -41,6 +43,30 @@ function Guide() {
       <dt>Semana con resultado verificable</dt><dd>Semana con predicción guardada y registros para comparar.</dd>
     </dl>
   </div>
+}
+
+// F6.1: list beside the map (docs/diseno/admin-v2/Predictivo.dc.html). Only radios the map
+// already shows (priorityList); choosing one opens the existing radio panel.
+function PriorityList({ rows, view, mode, source, radio, onRadio }) {
+  const { items, total } = priorityList(rows, view)
+  const title = view === 'presence' ? 'Radios priorizados esta semana' : 'Radios con más registros esperados'
+  return <Card as="aside" className="pv-priority" title={title} titleId="pv-priority-title">
+    <p className="pv-caption">{source} · {mode === 'presentation'
+      ? 'sólo radios visibles (5 o más registros); los protegidos no se listan.'
+      : view === 'presence' ? 'incluye radios priorizados sin registros (falsas alarmas).' : 'todos los radios comparables.'}</p>
+    {items.length ? <ol className="pv-priority-list">{items.map((item, index) => <li key={item.radio_id}>
+      <button type="button" aria-pressed={radio === item.radio_id} onClick={() => onRadio(item.radio_id)}>
+        <span className="mono pv-priority-rank">{String(item.rank ?? index + 1).padStart(2, '0')}</span>
+        <span className="mono">{item.radio_id}</span>
+        <Badge tone={item.tone} className="pv-priority-status">{item.status}</Badge>
+      </button></li>)}</ol>
+      : <p className="pv-caption" role="status">{view === 'presence' ? 'Ningún radio priorizado es visible esta semana.' : 'Ningún radio tiene un valor visible esta semana.'}</p>}
+    {total > items.length && <p className="pv-caption">Se muestran {items.length} de {total}. Elegí un radio para ver su historia.</p>}
+    {!demoMode && <div className="pv-priority-foot">
+      <span>¿Querés seguir estos radios las próximas semanas?</span>
+      <UiButton to="/admin/alertas" variant="primary">Crear regla de alerta</UiButton>
+    </div>}
+  </Card>
 }
 
 function Skeleton() {
@@ -169,7 +195,7 @@ export default function HistoricalBacktest({ onSessionError }) {
   const hasCells = shown?.availability_status === 'available' && shown.metrics.n_comparable > 0
 
   return <section className="historical-backtest pv" aria-label="Predicción semanal" data-state={current?.value ? 'ready' : current?.error ? 'error' : 'loading'} data-week={shown?.target_week || ''}>
-    <div className="pv-controls">
+    <div className="pv-controls ui-card">
       {selected ? <WeekTimeline weeks={weeks} selected={selected} series={historyFor(selected.target_year)?.value?.series} onSelect={select}
         onMostActive={goMostActive} mostActive={globalBest} mode={disclosure} /> : <p role="status">Buscando la semana con más actividad…</p>}
       <div className="pv-toggles">
@@ -212,9 +238,14 @@ export default function HistoricalBacktest({ onSessionError }) {
       : <div className={current ? 'pv-body' : 'pv-body pv-updating'} aria-busy={!current}>
         {mlMissing && hasCells && <p className="pv-notice" role="status">El modelo ML no tiene predicción guardada para esta semana. <button type="button" onClick={() => update({ method: 'reference' })}>Ver método de referencia</button></p>}
         <SummaryCards result={shown} view={view} primary={primary} other={other} mode={disclosure} onMostActive={goMostActive} mostActive={globalBest && globalBest !== shown.target_week} />
-        {hasCells && <div className={radioRow ? 'pv-main pv-main-panel' : 'pv-main'}>
-          <BacktestMaps geometry={setup.geometry} panels={panels} view={view} layer={method === 'compare' ? 'expected' : url.layer} mode={disclosure} radio={url.radio} onRadio={id => update({ radio: id })} />
-          {radioRow?.reference && <RadioPanel radio={url.radio} rows={radioRow} sources={ordered} view={view} mode={disclosure} result={shown} catalog={setup.catalog} selected={selected} onClose={() => update({ radio: '' })} />}
+        {hasCells && <div className={radioRow ? 'pv-main pv-layout pv-main-panel' : 'pv-main pv-layout'}>
+          <Card className="pv-map-card" title="Mapa de radios censales" titleId="pv-map-title">
+            <BacktestMaps geometry={setup.geometry} panels={panels} view={view} layer={method === 'compare' ? 'expected' : url.layer} mode={disclosure} radio={url.radio} onRadio={id => update({ radio: id })} />
+          </Card>
+          <div className="pv-side">
+            {radioRow?.reference && <RadioPanel radio={url.radio} rows={radioRow} sources={ordered} view={view} mode={disclosure} result={shown} catalog={setup.catalog} selected={selected} onClose={() => update({ radio: '' })} />}
+            <PriorityList rows={display[primary.source].rows} view={view} mode={disclosure} source={primary.label} radio={url.radio} onRadio={id => update({ radio: id })} />
+          </div>
         </div>}
       </div>}
 

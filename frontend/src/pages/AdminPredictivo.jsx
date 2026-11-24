@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import AdminLayout from '../components/AdminLayout'
 import AdminLoginForm from '../components/AdminLoginForm'
 import HistoricalBacktest from '../components/HistoricalBacktest'
-import { PageIntro } from '../components/SigardComponents'
+import { Badge, ScreenHeader } from '../components/AdminUI'
 import { clearBacktestCache } from '../services/backtestResults'
 import { adminSessionActive, endSession, readSession, ROLE_REQUIRED, SESSION_EXPIRED, SESSION_REQUIRED, sessionExpired, sessionRemaining } from '../services/adminSession.mjs'
 import { localResearchEnabled } from '../services/experimentalResults'
@@ -34,8 +34,11 @@ export default function AdminPredictivo() {
   if (!localResearchEnabled()) return <main className="admin-page"><header className="admin-header"><div><h1>Módulo predictivo</h1><p>El visor predictivo sólo está disponible en el entorno local de investigación (npm run dev).</p></div><div><Link className="secondary-button" to="/admin">Volver a Administración</Link></div></header></main>
   if (!active) return <AdminLoginForm key={token || 'no-session'} title="Módulo predictivo" description="Acceso restringido a cuentas de Administración. Reconstrucción histórica experimental, no uso operativo." notice={notice} onLogin={value => { clearBacktestCache(); setToken(value); setNotice(adminSessionActive(value) ? SESSION_REQUIRED : ROLE_REQUIRED) }}/>
 
-  return <AdminLayout active="predictivo" token={token} onLogout={() => leave(SESSION_REQUIRED)} onExpire={() => leave(SESSION_EXPIRED)}><main><div className="content-wrap">
-    <PageIntro title="Predicción semanal de dengue por radio censal"><p>Elegí una semana y mirá dónde y cuántos registros se esperaban, comparados con lo que ocurrió.</p><p className="pv-badge">Prototipo experimental — reconstrucción histórica, no uso operativo</p></PageIntro>
+  // F6.1: header, cards and side list follow docs/diseno/admin-v2/Predictivo.dc.html (presentation only).
+  return <AdminLayout active="predictivo" token={token} onLogout={() => leave(SESSION_REQUIRED)} onExpire={() => leave(SESSION_EXPIRED)}><main className="admin-page pv-page">
+    <ScreenHeader breadcrumb={[{ label: 'Inicio', to: '/admin/inicio' }, { label: 'Módulo predictivo' }]} title="Predicción semanal de dengue por radio censal"
+      subtitle="Elegí una semana y mirá dónde y cuántos registros se esperaban, comparados con lo que ocurrió."
+      aside={<Badge tone="warn" className="pv-badge">Prototipo experimental — reconstrucción histórica, no uso operativo</Badge>} />
     <HistoricalBacktest onSessionError={leave} />
-  </div></main></AdminLayout>
+  </main></AdminLayout>
 }
