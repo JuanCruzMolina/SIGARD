@@ -10,6 +10,7 @@
     "test:backtest": "node --test security/backtest.test.mjs security/predictive-view.test.mjs security/private-view.test.mjs",
     "test:backtest:browser": "node scripts/predictive.browser.mjs",
     "test:predictive:browser": "node scripts/predictive.browser.mjs",
+    "test:predictive:layout:browser": "node scripts/predictive-layout.browser.mjs",
     "test:public-map": "node --test security/public-map.test.mjs",
     "test:public-activity": "node --test security/public-activity.test.mjs",
     "test:public-activity:browser": "node scripts/public-activity.browser.mjs",
