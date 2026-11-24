@@ -304,9 +304,75 @@ Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-3`.
   209 / 639, 88 / 291 y 144 / 394, y el código de `antes-f6-3` (`f6-3-diag-rendimiento-base`)
   1.231 / 3.454, 180 / 684, 70 / 232 y 171 / 434 (visor carga, cambio de semana, consulta de
   radio, panel de alertas). La vista Reportes no tiene operación propia en esta medición.
-- **Observado, sin cambiar**: `test:predictive:browser --real` falla de forma intermitente también
-  con el código de `antes-f6-3` (2 de 5 corridas instrumentadas, más 1 de 3 sin instrumentar): a
-  veces el `POST /api/v1/admin/session` del ingreso falla en el navegador (`net::ERR_FAILED`, sin
-  respuesta del servidor) justo después de su preflight, y a veces una petición del visor de la
-  página anterior se cuenta durante el paso a producción (línea 361). Causa raíz no determinada;
-  no depende de los archivos de F6.3.
+- **Observado en F6.3** (resuelto después, ver «Estabilidad»): `test:predictive:browser --real`
+  fallaba de forma intermitente también con el código de `antes-f6-3`.
+
+## Estabilidad · ingreso con interceptación, carrera de la prueba y ventanas en Windows
+
+Implementado en `entrenamiento-ML` (24/11/2026), después de F6.3 y antes de F6.4.
+
+- **Fallo del ingreso en `test:predictive:browser --real`** (`POST /api/v1/admin/session` →
+  `net::ERR_FAILED` tras el preflight):
+  - Causa: la interceptación de peticiones de DevTools (dominio `Fetch`, la que usa
+    `setRequestInterception` de Puppeteer). Con ella activa, Chromium a veces cancela el POST con
+    preflight CORS en el mismo milisegundo en que termina su preflight. No afecta a usuarios reales.
+  - Evidencia del navegador: en el registro de red de Chromium el POST sale completo (cuerpo de 86
+    bytes) y 5 ms después figura `CANCELLED`, sin error de conexión ni bloqueo CORS
+    (`Network.loadingFailed` sin `blockedReason` ni `corsErrorStatus`).
+  - Evidencia del servidor: con un registro liviano del lado del servidor, en los fallos el POST
+    llegó y se respondió `200` con `access-control-allow-origin`, mientras el navegador ya lo había
+    dado por fallido.
+  - Con un registro del servidor que escribe en cada petición, el fallo desaparece (0 de 18
+    corridas y 0 de 80 ingresos): la respuesta se demora unos milisegundos y se cierra la ventana
+    de la carrera.
+  - Tasas medidas con una reproducción del mismo paso, con interceptación (20 sesiones, 4 ingresos
+    cada una):
+
+    | Código | Ingresos fallidos |
+    |---|---|
+    | `antes-f6-1` | 4 / 77 |
+    | `antes-f6-2` | 3 / 72 |
+    | HEAD | 6 / 103 |
+    | HEAD sin interceptación | 0 / 60 |
+
+    La hipótesis de los cambios de contención de F6.1 no se sostiene: ningún commit del rango lo
+    introduce.
+  - Corrección: en `--real` la prueba ya no habilita la interceptación. Observa las peticiones con
+    las mismas comprobaciones y bloquea lo externo con el resolvedor del navegador
+    (`--host-resolver-rules`). La corrida ficticia sigue interceptando porque sirve el fixture.
+  - Resultado: 20 de 20 corridas seguidas de `--real`; antes fallaban alrededor de la mitad, entre
+    este fallo y la carrera de la línea 361.
+  - `test:demo:browser` tenía el mismo problema en el `POST` de la carga de CSV ficticio (falló 4 de
+    8 corridas después del cambio de `dev.mjs`; antes había pasado en todas las regresiones,
+    posiblemente por un cambio de tiempos, sin verificar). Esa prueba interceptaba sólo para dejar
+    pasar lo local y registrar lo externo; ahora observa sin interceptar y bloquea lo externo con el
+    resolvedor. Resultado: 10 de 10, con las mismas comprobaciones (11, 0 errores, 0 peticiones
+    externas inesperadas).
+  - Pendiente: otras 12 suites de navegador siguen interceptando porque inyectan errores o sirven
+    fixtures. Pasaron en la regresión, pero un `POST` con preflight puede toparse con la misma carrera
+    de Chromium.
+- **Carrera de la línea 361**:
+  - La prueba contaba como de producción una carga de año en segundo plano del visor de desarrollo
+    que salía al cambiar de página.
+  - Ahora espera explícitamente a que el visor quede quieto antes de contar: sin peticiones en
+    curso ni nuevas durante 1 s.
+  - Las peticiones de un documento descartado (recarga, navegación) dejan de contar como en curso.
+- **CORS en errores**:
+  - Un error no controlado lo responde `ServerErrorMiddleware`, por fuera de `CORSMiddleware`.
+    Ahora el 500 lleva `Access-Control-Allow-Origin` para los orígenes permitidos, con un mensaje
+    genérico sin detalle interno.
+  - El 503 de geocodificación de la API local también lleva el encabezado.
+  - Prueba: `backend/tests/test_error_cors.py`.
+- **Ventanas en Windows**:
+  - `dev.mjs` lanzaba la API con `detached` + `windowsHide`. En Windows `detached` es
+    `DETACHED_PROCESS`, que anula la consola oculta, y el Python real del lanzador del venv abría
+    una consola visible (Windows Terminal).
+  - Ahora en Windows se lanza sólo con `windowsHide`. El hijo tiene su propia consola sin ventana,
+    sigue sin recibir el Ctrl+C de la terminal y el nieto la hereda.
+  - Python de pruebas y herramientas: `creationflags=NO_WINDOW` (`CREATE_NO_WINDOW` sólo si el
+    proceso no tiene consola).
+  - `test:dev` incluye `hidden-windows.test.mjs`, que falla ante un `spawn`/`exec*`/`fork` sin
+    `windowsHide`, con `shell: true` o con `detached: true`, y ante `subprocess` sin `creationflags`.
+  - Verificado con un registro de ventanas visibles: antes del cambio, `dev` abría una ventana de
+    Windows Terminal con la consola de Python; después, ninguna en `dev`, las suites de navegador
+    ni la regresión.
