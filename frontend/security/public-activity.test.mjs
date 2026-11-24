@@ -47,15 +47,18 @@ test('contract rejects excluded years, overlaps, small or malformed city weeks a
 
 test('view is disabled by default: 404, network failure or invalid package', async () => {
   const response = (status, body) => async () => ({ ok: status === 200, status, json: async () => body })
-  for (const fetcher of [response(404, { detail: 'no habilitado' }), async () => { throw new Error('offline') }, response(200, { schema: 'x' })]) {
+  resetActivityCache()
+  assert.deepEqual(await loadActivity(response(404, { detail: 'no habilitado' })), { enabled: false })
+  // A failure is still disabled for the public pages, but marked as unknown (Inicio: «No disponible»).
+  for (const fetcher of [async () => { throw new Error('offline') }, response(200, { schema: 'x' }), response(500, {})]) {
     resetActivityCache()
-    assert.deepEqual(await loadActivity(fetcher), { enabled: false })
+    assert.deepEqual(await loadActivity(fetcher), { enabled: false, unavailable: true })
   }
   // A probe that never answers is aborted and fails closed instead of staying pending.
   resetActivityCache()
   const hanging = (url, options) => new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason)))
   const started = Date.now()
-  assert.deepEqual(await loadActivity(hanging, 50), { enabled: false })
+  assert.deepEqual(await loadActivity(hanging, 50), { enabled: false, unavailable: true })
   assert.ok(Date.now() - started < 2000)
   resetActivityCache()
   const enabled = await loadActivity(response(200, sample()))

@@ -1,4 +1,5 @@
-// Administración v2 (F4): side menu and top bar around the existing screens.
+// Administración v2 (F4): side menu and top bar around the existing screens. Inicio's own content
+// (F5) is checked by scripts/admin-home.browser.mjs.
 // Owns its environment like test:alerts:browser: Vite (5173) + the local administrative API (8767)
 // in session mode (disposable SQLite, generated admin kept in memory, fictional alerts source).
 // The predictive viewer is fed by the generated fixture (intercepted), never by real aggregates.
@@ -168,7 +169,7 @@ try {
     // Groups and items, in the design's order; the Inicio and Auditoría placeholders.
     assert.deepEqual(await page.$$eval(`${nav} .admin-nav-group-title`, e => e.map(x => x.textContent)), ['Operación', 'Gestión'])
     assert.deepEqual(await page.$$eval(`${nav} a.admin-nav-item`, e => e.map(x => x.getAttribute('href'))), SECTIONS.map(s => s[0]))
-    assert.match(await page.$eval('main', e => e.textContent), /Próximamente/)
+    assert.match(await page.$eval('main', e => e.textContent), /Requiere tu atención/, 'Inicio tiene pantalla propia desde F5')
     assert.equal(await page.$('.admin-header a[href="/admin/predictivo"]'), null, 'el botón «Módulo predictivo» del encabezado ya no existe')
     await shoot('inicio')
 

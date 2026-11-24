@@ -74,7 +74,7 @@ test('public activity: a transient failure still shows the data; 404 stays disab
   assert.equal(transient.calls.length, 2)
   resetActivityCache()
   const twice = script(status(503), status(503))
-  assert.deepEqual(await loadActivity(twice.fetcher), { enabled: false })
+  assert.deepEqual(await loadActivity(twice.fetcher), { enabled: false, unavailable: true })
   assert.equal(twice.calls.length, 2)
   resetActivityCache()
   const disabled = script(status(404), ok(valid))

@@ -35,6 +35,7 @@
     "test:read-retry": "node --test security/read-retry.test.mjs",
     "test:admin": "node --test security/admin-shell.test.mjs",
     "test:admin:browser": "node scripts/admin-shell.browser.mjs",
+    "test:admin:home:browser": "node scripts/admin-home.browser.mjs",
     "test:guard": "node ../tools/test_guard_destructive.mjs"
   },
   "dependencies": {

@@ -55,8 +55,9 @@ test('«Datos hasta» in local research = last evaluable week of the viewer, wit
   assert.equal(lastEvaluableWeek(undefined), null)
   const layout = await source('../src/components/AdminLayout.jsx')
   const has = (text, ...parts) => { for (const part of parts) assert.ok(text.includes(part), part) }
-  has(layout, 'const viewerWeek = mode.localResearch && adminSessionActive(token)', 'const last = lastEvaluableWeek(catalog.weeks)',
-    'label: `SE ${last.target_epi_week}/${last.target_year}`', "(viewerWeek ? loadViewerWeek() : loadManifestWeek())")
+  has(layout, 'const viewerWeek = mode.localResearch && adminSessionActive(token)', 'loadDataWeek(viewerWeek)')
+  has(await source('../src/services/adminWeek.js'), 'const last = lastEvaluableWeek(catalog.weeks)',
+    'label: `SE ${last.target_epi_week}/${last.target_year}`', 'return viewer ? loadViewerWeek() : loadManifestWeek()')
   has(await source('../src/services/backtestResults.js'), "export async function backtestCalendar(signal) {", "validateBacktestCatalog(await abortable(cached('/calendar'), signal))")
 })
 
@@ -109,6 +110,64 @@ test('counters only come from API answers (pending candidates and received repor
   assert.match(layout, /alertsRequest\(token, '\/status', \{ signal \}\)\.then\(status => Number\.isInteger\(status\?\.pending\) \? status\.pending : null\)/)
   assert.match(layout, /listAdminReports\(token, \{ status: 'recibido', page_size: '1' \}/)
   assert.match(layout, /Number\.isInteger\(value\) && value > 0/)
-  assert.match(layout, /fetch\('\/data\/available_weeks\.json'/)
-  assert.doesNotMatch(layout, /SE \d+\/\d{4}/, 'no hand-written week')
+  // F5: the week loaders moved to services/adminWeek.js, shared with Inicio.
+  const week = await source('../src/services/adminWeek.js')
+  assert.match(layout, /loadDataWeek\(viewerWeek\)/)
+  assert.match(week, /fetch\('\/data\/available_weeks\.json'/)
+  for (const code of [layout, week]) assert.doesNotMatch(code, /SE \d+\/\d{4}/, 'no hand-written week')
+})
+
+// ---- Inicio (F5) ---------------------------------------------------------------------------
+test('Inicio: a source without an answer is «No disponible», never a number', async () => {
+  const { countText, NOT_AVAILABLE } = await import('../src/services/adminHome.mjs')
+  assert.equal(countText({ status: 'ok', count: 0 }), '0')
+  assert.equal(countText({ status: 'ok', count: 7 }), '7')
+  assert.equal(countText({ status: 'loading' }), 'Cargando…')
+  for (const source of [{ status: 'error' }, { status: 'absent' }, { status: 'ok' }, { status: 'ok', count: '3' }, undefined]) assert.equal(countText(source), NOT_AVAILABLE)
+})
+
+test('Inicio: oldest received reports are read from the last page(s) of the newest-first listing', async () => {
+  const { oldestReportPages } = await import('../src/services/adminHome.mjs')
+  assert.deepEqual(oldestReportPages(0), []); assert.deepEqual(oldestReportPages(10), [])
+  assert.deepEqual(oldestReportPages(11), [1, 2]); assert.deepEqual(oldestReportPages(20), [2]); assert.deepEqual(oldestReportPages(23), [2, 3])
+  assert.deepEqual(oldestReportPages(null), [])
+})
+
+test('Inicio: one pending list, oldest first, with type badges and section links', async () => {
+  const { pendingItems } = await import('../src/services/adminHome.mjs')
+  const items = pendingItems({
+    alerts: { status: 'ok', items: [{ id: 1, rule: { name: 'Regla ficticia' }, radio_id: 'FX0000001', target_week: '2024-03-03', created_at: '2026-10-05T10:00:00Z' }] },
+    reports: { status: 'ok', items: [{ id: 'r', tracking_code: 'FICT-0001', category: 'microbasural', created_at: '2026-10-01T10:00:00Z' }] },
+    content: { status: 'ok', items: [{ id: 3, title: 'Ficticia', updated_at: '2026-10-03T10:00:00Z' }] },
+  })
+  assert.deepEqual(items.map(i => [i.kind, i.href, i.detail.join(' · ')]), [
+    ['reporte', '/admin/reportes', 'Microbasural · seguimiento FICT-0001'],
+    ['contenido', '/admin/contenido', 'Sección «Ficticia» con cambios sin publicar'],
+    ['alerta', '/admin/alertas', 'Regla ficticia · Radio FX0000001 · SE 10/2024'],
+  ])
+  assert.deepEqual(pendingItems({ alerts: { status: 'error' }, reports: { status: 'loading' }, content: { status: 'absent' } }), [])
+})
+
+test('Inicio: system state only from API answers', async () => {
+  const { integrityText, modelsText, publicMapText, NOT_AVAILABLE } = await import('../src/services/adminHome.mjs')
+  assert.equal(publicMapText({ enabled: true }), 'Activado · la API pública sirve el paquete autorizado')
+  assert.equal(publicMapText({ enabled: false }), 'Desactivado · la API pública no lo habilita')
+  assert.equal(publicMapText({ enabled: false, unavailable: true }), NOT_AVAILABLE)
+  assert.equal(modelsText(catalog), `Experimentales · no promovidos para uso operativo (${catalog.experimental_candidates.length} candidatos)`)
+  assert.equal(modelsText({}), NOT_AVAILABLE)
+  assert.equal(modelsText({ experimental_candidates: [{ promotion: { decision: 'promoted' } }] }), NOT_AVAILABLE)
+  assert.equal(integrityText({ viewer: true, catalog }), 'Verificada por la API en esta consulta')
+  assert.equal(integrityText({ viewer: true, error: { status: 503 } }), 'No verificada · el paquete falta o no pudo verificarse')
+  assert.equal(integrityText({ viewer: true, error: new Error('x') }), NOT_AVAILABLE)
+  assert.match(integrityText({ viewer: false }), /^No disponible/)
+})
+
+test('Inicio: route, experimental label and no hand-written numbers in the screen', async () => {
+  const area = await source('../src/pages/AdminArea.jsx'), home = await source('../src/pages/AdminInicio.jsx')
+  assert.match(area, /<Route path="inicio" element={<AdminInicio\/>}\/>/)
+  assert.doesNotMatch(area, /inicio: \{ title/)
+  const { EXPERIMENTAL_LABEL } = await import('../src/services/adminHome.mjs')
+  assert.equal(EXPERIMENTAL_LABEL, 'Prototipo experimental — reconstrucción histórica, no uso operativo')
+  assert.doesNotMatch(home, /SE \d+\/\d{4}/, 'la semana no se escribe a mano')
+  assert.match(home, /loadDataWeek\(viewer\)/, 'misma fuente de semana que el menú')
 })
