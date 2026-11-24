@@ -258,7 +258,7 @@ try {
     await menu('predictivo')
     await page.waitForFunction(()=>location.pathname==='/admin/predictivo' && document.querySelector('.pv'))
     assert.equal(await page.$('.admin-login'),null)
-    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
+    await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Predicción semanal de dengue por radio censal')
     await menu('reportes')
     await page.waitForFunction(()=>location.pathname==='/admin/reportes' && document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
     await menu('cuentas');await accountLoaded()
