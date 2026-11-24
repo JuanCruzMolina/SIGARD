@@ -24,7 +24,7 @@ def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
     def week_result(year, week, radio, disclosure):
         return adapter.week(year, week, radio, mode=disclosure) if unified else adapter.week(year, week, radio)
 
-    def call(request, allowed, operation):
+    def value_of(request, allowed, operation):
         # Runs in the threadpool (sync route). The JSON is encoded HERE, byte for byte as
         # FastAPI + JSONResponse would, because without a response_model FastAPI encodes the
         # returned value on the event loop: large viewer payloads (geometry, history) then froze
@@ -37,7 +37,10 @@ def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
         except NotAvailable: raise HTTPException(404, 'territory_not_available') from None
         except (ArtifactBlocked, KeyError, ValueError, TypeError, OSError):
             raise HTTPException(503, 'backtest_artifacts_blocked') from None
-        return encoded(value)
+        return value
+
+    def call(request, allowed, operation):
+        return encoded(value_of(request, allowed, operation))
 
     @router.get('/calendar')
     def calendar(request: Request): return call(request, set(), adapter.catalog if adapter else None)
@@ -54,20 +57,20 @@ def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
 
     @router.get('/predicted')
     def predicted(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
         result['rows'] = [{k: row[k] for k in ('radio_id', 'predicted', 'baseline', 'availability_status', 'territorial_quality', 'ml', 'ml_availability') if k in row} for row in result['rows']]
-        result.pop('department'); result.pop('metrics'); return result
+        result.pop('department'); result.pop('metrics'); return encoded(result)
 
     @router.get('/observed')
     def observed(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
         result['rows'] = [{k: row[k] for k in ('radio_id', 'observed', 'coverage_status', 'zero_provenance', 'territorial_quality')} for row in result['rows']]
-        result.pop('metrics'); return result
+        result.pop('metrics'); return encoded(result)
 
     @router.get('/metrics')
     def metrics(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
-        result.pop('rows'); return result
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result.pop('rows'); return encoded(result)
 
     @router.get('/history')
     def history(request: Request, start: str, end: str, radio: str | None = None, disclosure: str = 'presentation'):
