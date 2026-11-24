@@ -28,6 +28,7 @@ const ICONS = {
   entorno: 'M4 5h16v11H4zM8 20h8M12 16v4',
 }
 const KIND_LABELS = { alerta: 'Alerta', reporte: 'Reporte', contenido: 'Contenido' }
+const MOBILE_PENDING = 5
 
 // Loads the three «Requiere tu atención» sources from the existing admin APIs. A 401/403 ends the
 // session; any other failure leaves that source as «No disponible».
@@ -120,6 +121,7 @@ function HomeContent({ token, onSessionError }) {
   const mode = { demo: demoMode, localResearch: localResearchEnabled(), dev: import.meta.env.DEV }
   const viewer = mode.localResearch && adminSessionActive(token)
   const sections = new Set(visibleSections(mode).map(section => section.key))
+  const [expanded, setExpanded] = useState(false)
   const sources = useAttention(token, mode, onSessionError)
   const system = useSystem(viewer, onSessionError)
   const items = pendingItems(sources)
@@ -152,7 +154,7 @@ function HomeContent({ token, onSessionError }) {
       <section className="home-card home-status" aria-labelledby="home-estado">
         <h2 id="home-estado">Estado del sistema</h2>
         <Status name="datos" icon={ICONS.datos} tone="ok" title="Datos epidemiológicos">
-          {week === undefined ? 'Cargando…' : week ? <>Disponibles hasta <span className="mono" title={`Hasta el ${week.date.split('-').reverse().join('/')} (${week.source})`}>{week.label}</span></> : NOT_AVAILABLE}
+          {week === undefined ? 'Cargando…' : week ? <>Disponibles hasta <span className="mono mono-week" title={`Hasta el ${week.date.split('-').reverse().join('/')} (${week.source})`}>{week.label}</span></> : NOT_AVAILABLE}
         </Status>
         <Status name="modelos" icon={ICONS.modelos} tone="warn" title="Modelos">
           {viewer ? (system.catalog ? modelsText(system.catalog) : system.catalogError ? NOT_AVAILABLE : 'Cargando…') : `${NOT_AVAILABLE} · sin visor predictivo en este entorno`}
@@ -171,15 +173,17 @@ function HomeContent({ token, onSessionError }) {
       {failed.length > 0 && <p className="home-note" role="status">No disponible: no se pudieron cargar los pendientes de {failed.join(', ')}.</p>}
       {loading && <p className="home-note" role="status">Cargando pendientes…</p>}
       {!loading && !items.length && !failed.length && <p className="home-note" role="status">No hay pendientes.</p>}
-      {shown.length > 0 && <table className="home-table">
+      {shown.length > 0 && <table className={`home-table${expanded ? ' expanded' : ''}`} id="home-pending-table">
         <thead><tr><th scope="col">Tipo</th><th scope="col">Detalle</th><th scope="col">Recibido</th><th scope="col"><span className="home-sr">Acción</span></th></tr></thead>
-        <tbody>{shown.map(item => <tr key={item.id} data-kind={item.kind}>
+        <tbody>{shown.map((item, index) => <tr key={item.id} data-kind={item.kind} className={index >= MOBILE_PENDING ? 'home-extra' : undefined}>
           <td><span className={`home-chip home-tone-${item.kind}`}><Icon d={ICONS[item.kind]} size={14}/>{KIND_LABELS[item.kind]}</span></td>
           <td>{item.detail.join(' · ')}</td>
           <td className="home-date"><time dateTime={item.date}>{formatReceived(item.date)}</time></td>
           <td><Link to={item.href} aria-label={`Revisar ${KIND_LABELS[item.kind].toLowerCase()}: ${item.detail.join(' · ')}`}>Revisar</Link></td>
         </tr>)}</tbody>
       </table>}
+      {/* Narrow screens list the 5 oldest first; «Ver más» shows the rest of the 10. */}
+      {shown.length > MOBILE_PENDING && <button type="button" className="home-more" aria-expanded={expanded} aria-controls="home-pending-table" onClick={() => setExpanded(value => !value)}>{expanded ? 'Ver menos' : 'Ver más'}</button>}
       {total > shown.length && shown.length > 0 && <p className="home-note">Se muestran los {shown.length} más antiguos de {total}. El resto está en cada sección.</p>}
     </section>
 

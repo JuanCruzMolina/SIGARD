@@ -2,6 +2,8 @@
 .admin-shell { --admin-nav-ink: #d9e9e6; --admin-nav-soft: #a9c7c2; --admin-nav-line: #2c5a5d; --admin-badge: #a64a12;
   display: flex; min-height: 100svh; background: var(--canvas); color: var(--ink); }
 .mono { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+/* «SE 52/2024»: one space in the text; the monospaced space is as wide as a digit and read as two. */
+.mono-week { word-spacing: -.3em; white-space: nowrap; }
 
 .admin-nav { flex: 0 0 256px; background: var(--navy); color: var(--admin-nav-ink); }
 .admin-nav-inner { position: sticky; top: 0; min-height: 100svh; max-height: 100svh; overflow-y: auto; display: flex; flex-direction: column;

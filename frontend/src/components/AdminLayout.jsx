@@ -80,7 +80,7 @@ export default function AdminLayout({ active, token, onLogout, onExpire, childre
         <dl className="admin-context" aria-label="Contexto de los datos">
           <div><dt>Entorno</dt><dd>{environmentLabel(mode)}</dd></div>
           <div><dt>Divulgación</dt><dd>Protegida</dd></div>
-          <div><dt>Datos hasta</dt><dd className="mono" data-week={week?.date || ''} data-week-source={week?.source || ''} title={week ? `Hasta el ${week.date.split('-').reverse().join('/')} (${week.source})` : undefined}>{week ? week.label : '—'}</dd></div>
+          <div><dt>Datos hasta</dt><dd className="mono mono-week" data-week={week?.date || ''} data-week-source={week?.source || ''} title={week ? `Hasta el ${week.date.split('-').reverse().join('/')} (${week.source})` : undefined}>{week ? week.label : '—'}</dd></div>
         </dl>
         {/* Narrow screens: «Cerrar sesión» closes the drop-down menu (the top bar keeps one line). */}
         <button type="button" className="admin-nav-logout" onClick={onLogout}>Cerrar sesión</button>

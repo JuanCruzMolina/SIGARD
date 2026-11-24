@@ -12,7 +12,7 @@
 .home-tone-warn { color: #6b4e10; }
 .home-tone-neutral { color: var(--ink-soft); }
 
-.home-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; }
+.home-grid { display: flex; flex-wrap: wrap; gap: 24px; align-items: stretch; }
 .home-card { min-width: 0; border: 1px solid var(--line); border-radius: 14px; background: var(--paper); }
 .home-attention { flex: 999 1 540px; box-shadow: 0 5px 16px rgba(18, 58, 61, .08); }
 .home-attention h2 { padding: 20px 24px 14px; border-bottom: 1px solid var(--line); }
@@ -48,6 +48,7 @@
 .home-table th, .home-table td { border-top: 0; white-space: normal; text-transform: none; letter-spacing: normal; }
 .home-table .home-date { color: var(--muted); white-space: nowrap; }
 .home-table a { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; color: var(--teal-deep); font-weight: 600; }
+.home-more { display: none; }
 .home-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
 .home-quick { display: flex; flex-direction: column; gap: 12px; }
@@ -70,4 +71,15 @@
   .home-table td:nth-child(4) { grid-column: 2; grid-row: 1; }
   .home-table td:nth-child(3) { grid-column: 1; grid-row: 3; }
   .home-quick .home-button { flex: 1 1 100%; justify-content: center; }
+  .home-chip { font-size: .875rem; }
+  /* The whole pending row is the touch target (stretched «Revisar» link, ≥ 44 px). */
+  .home-table tr { position: relative; min-height: 44px; }
+  .home-table td:nth-child(4) a::after { content: ''; position: absolute; inset: 0; border-radius: 8px; }
+  .home-table td:nth-child(4) a:focus-visible { outline: none; }
+  .home-table td:nth-child(4) a:focus-visible::after { outline: 3px solid var(--teal); outline-offset: -3px; }
+  .home-table:not(.expanded) .home-extra { display: none; }
+  .home-more { min-height: 44px; display: block; width: 100%; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: var(--radius-sm);
+    background: var(--paper); color: var(--teal-deep); font: inherit; font-weight: 600; cursor: pointer; }
+  .home-more:hover { border-color: var(--teal); background: var(--mint); }
+  .home-more:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
 }

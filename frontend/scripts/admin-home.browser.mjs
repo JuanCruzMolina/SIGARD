@@ -200,6 +200,30 @@ try {
     assert.ok(await tabReaches(page, '.home-attention-row a[href="/admin/alertas"]'), 'Tab llega a «Revisar alertas»')
     const ring = await page.evaluate(() => { const s = getComputedStyle(document.activeElement); return { style: s.outlineStyle, width: parseFloat(s.outlineWidth) } })
     assert.ok(ring.style !== 'none' && ring.width >= 2, `foco visible: ${JSON.stringify(ring)}`)
+    // The double border of «Revisar alertas» in the screenshots is only the keyboard focus ring:
+    // with focus, outline 3 px; without focus, a single 1 px border, no outline and no shadow.
+    const reviewButton = '.home-attention-row a[href="/admin/alertas"]'
+    const buttonStyle = () => page.$eval(reviewButton, e => { const s = getComputedStyle(e); return { outline: s.outlineStyle, border: s.borderTopWidth, shadow: s.boxShadow } })
+    const focused = await buttonStyle()
+    await page.$eval(reviewButton, e => e.scrollIntoView({ block: 'center' }))
+    await (await page.$(reviewButton)).screenshot({ path: resolve(output, 'revisar-alertas-con-foco.private.png') })
+    await page.evaluate(() => document.activeElement?.blur())
+    const unfocused = await buttonStyle()
+    await (await page.$(reviewButton)).screenshot({ path: resolve(output, 'revisar-alertas-sin-foco.private.png') })
+    assert.equal(focused.outline, 'solid'); assert.deepEqual(unfocused, { outline: 'none', border: '1px', shadow: 'none' }, 'sin foco: un solo borde')
+    // «SE 52/2024» with a single space (text) and a normal-width space (rendering), menu and status.
+    for (const selector of ['.home-status-row[data-status="datos"] .mono-week', '.admin-context [data-week]']) {
+      const week = await page.$eval(selector, e => {
+        const text = e.textContent, range = document.createRange(), node = e.firstChild, at = text.indexOf(' ')
+        range.setStart(node, at); range.setEnd(node, at + 1)
+        return { text, space: range.getBoundingClientRect().width, size: parseFloat(getComputedStyle(e).fontSize) }
+      })
+      assert.match(week.text, /^SE \d{1,2}\/\d{4}$/, `${selector}: un solo espacio en «${week.text}»`)
+      assert.ok(week.space <= week.size * .35, `${selector}: espacio de ${week.space.toFixed(1)} px con fuente de ${week.size} px`)
+    }
+    // Desktop: «Requiere tu atención» and «Estado del sistema» with the same height.
+    const heights = await page.$$eval('.home-attention, .home-status', e => e.map(x => Math.round(x.getBoundingClientRect().height)))
+    assert.ok(Math.abs(heights[0] - heights[1]) <= 1, `misma altura: ${heights}`)
     await shoot('inicio-datos')
     // 390 px: no horizontal scroll, 44 px targets, stacked pending rows.
     await page.setViewport({ width: 390, height: 900 }); await settle()
@@ -212,9 +236,39 @@ try {
     const mobileAudit = await auditAccessibility(page, '.admin-shell')
     assert.deepEqual(mobileAudit.lowContrast, [], 'contraste AA en 390 px')
     assert.ok(parseFloat(await page.$eval('.admin-home .admin-header p', e => getComputedStyle(e).fontSize)) >= 14, 'subtítulo ≥ 14 px')
+    // Every visible text of Inicio is at least 14 px at 390 px (descriptions, badges, dates, notes).
+    const small = await page.evaluate(() => {
+      const found = [], walker = document.createTreeWalker(document.querySelector('.admin-home'), NodeFilter.SHOW_TEXT)
+      for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+        const e = node.parentElement
+        if (!node.textContent.trim() || !e.getClientRects().length || e.closest('.home-sr, thead')) continue
+        const size = parseFloat(getComputedStyle(e).fontSize); if (size < 14) found.push(`${node.textContent.trim().slice(0, 30)} (${size} px)`)
+      }
+      return found
+    })
+    assert.deepEqual(small, [], 'textos de al menos 14 px en móvil')
+    // Pending list: 5 rows, «Ver más» shows the 10; each whole row is a ≥ 44 px target.
+    const visibleRows = () => page.$$eval('.home-table tbody tr', rows => rows.filter(r => r.getClientRects().length).length)
+    assert.equal(await visibleRows(), 5, 'en móvil se ven 5 pendientes')
+    assert.equal(await page.$eval('.home-more', e => [e.textContent, e.getAttribute('aria-expanded')].join('|')), 'Ver más|false')
+    await page.screenshot({ path: resolve(output, 'inicio-datos-movil-5-mobile.private.png'), fullPage: true })
+    await page.click('.home-more')
+    assert.equal(await visibleRows(), 10, '«Ver más» despliega los 10')
+    assert.equal(await page.$eval('.home-more', e => [e.textContent, e.getAttribute('aria-expanded')].join('|')), 'Ver menos|true')
+    const rows = await page.$$eval('.home-table tbody tr', rows => rows.map(r => { const a = r.querySelector('a').getBoundingClientRect(), t = r.getBoundingClientRect(), after = getComputedStyle(r.querySelector('a'), '::after')
+      return { height: t.height, cover: after.position === 'absolute' && after.content !== 'none', inside: a.top >= t.top && a.bottom <= t.bottom } }))
+    for (const row of rows) assert.ok(row.height >= 44 && row.cover && row.inside, `fila completa como área táctil: ${JSON.stringify(row)}`)
+    await page.screenshot({ path: resolve(output, 'inicio-datos-movil-10-mobile.private.png'), fullPage: true })
+    // Tapping the row away from «Revisar» (on the date) opens the section.
+    const date = await page.$('.home-table tbody tr:nth-child(2) .home-date')
+    const box = await date.boundingBox()
+    await page.mouse.click(box.x + 4, box.y + box.height / 2)
+    await page.waitForFunction(() => location.pathname === '/admin/contenido')
+    await openHome(); await page.setViewport({ width: 390, height: 900 }); await settle()
+    assert.ok(await tabReaches(page, '.home-attention-row a[href="/admin/alertas"]'))
     await page.keyboard.press('Enter'); await heading('Alertas internas')
     await page.setViewport({ width: 1440, height: 1000 })
-    checkpoint('fixture con datos: cantidades, pendientes por antigüedad con insignia, estado del sistema, AA, teclado y 390 px')
+    checkpoint('fixture con datos: cantidades, pendientes por antigüedad con insignia, estado del sistema, AA, teclado y 390 px (5 + «Ver más», fila táctil, textos ≥ 14 px, «SE 52/2024», misma altura, foco)')
 
     // 3b. Empty: zeros come from the API; the public map probe fails → «No disponible».
     scenario = { alerts: 'empty', reports: 'empty', content: 'empty', activity: 'error', calendar: 'ok' }
