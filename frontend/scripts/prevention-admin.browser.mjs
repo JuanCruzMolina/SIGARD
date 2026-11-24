@@ -116,7 +116,7 @@ try {
   for (let i = 0; i < ' <script>'.length; i += 1) await page.keyboard.press('Backspace')
   await clickText('Guardar borrador')
   await page.waitForFunction(() => document.querySelector('.admin-prevention .account-notice')?.textContent.includes('Borrador guardado'))
-  assert.match(await page.$eval('.prevention-editor p.content-status', node => node.textContent), /cambios sin publicar/)
+  assert.match(await page.$eval('.prevention-editor .prevention-state', node => node.textContent), /cambios sin publicar/)
   await shoot('admin-editor')
   checkpoint('Admin saved a draft with preview; HTML was rejected client-side')
 
