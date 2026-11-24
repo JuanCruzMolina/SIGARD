@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import RestrictedMarkdown, { SectionSource } from './RestrictedMarkdown'
+import { Badge, Card, Notice, ScreenHeader, UiButton } from './AdminUI'
 import {
   createPreventionSection, getPreventionHistory, listPreventionSections,
   transitionPreventionSection, updatePreventionSection,
 } from '../services/citizenReports'
 import { SECTION_LIMITS, SECTION_SLUG, validateSection } from '../services/preventionContent.mjs'
+import './AdminPrevention.css'
 
 const EDITABLE = ['title', 'body', 'position', 'source_label', 'source_url']
 const emptyForm = { slug: '', title: '', body: '', position: 100, source_label: '', source_url: '' }
@@ -13,6 +15,22 @@ const fieldLabels = { slug: 'identificador', title: 'título', body: 'contenido'
 
 function formFrom(section) {
   return section ? Object.fromEntries(['slug', ...EDITABLE].map(field => [field, section[field] ?? ''])) : emptyForm
+}
+
+// F6.4 (docs/diseno/admin-v2/Contenido.dc.html): presentation only. Requests, the draft → publish
+// flow, validations, history and texts are the same; the public page is not touched.
+const ICONS = {
+  pencil: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z',
+  check: 'M5 12l4 4 10-10',
+  hidden: 'M3 3l18 18M10.6 10.6a2 2 0 0 0 2.8 2.8M9.9 5.1A9.8 9.8 0 0 1 12 5c5 0 9 7 9 7a16 16 0 0 1-2.2 2.9M6.1 6.1C3.8 7.6 3 12 3 12s4 7 9 7a9.6 9.6 0 0 0 4-1',
+  draft: 'M6 3h9l3 3v15H6zM9 9h6M9 13h6M9 17h3',
+}
+const STATUS_STYLE = { pending: ['alert', ICONS.pencil], published: ['ok', ICONS.check], draft: ['neutral', ICONS.draft], unpublished: ['neutral', ICONS.hidden] }
+
+function StatusBadge({ section }) {
+  const status = statusOf(section)
+  const [tone, icon] = STATUS_STYLE[status.key === 'draft' && section.version ? 'unpublished' : status.key]
+  return <Badge tone={tone} icon={icon} className="content-badge">{status.label}</Badge>
 }
 
 function statusOf(section) {
@@ -114,51 +132,56 @@ export default function AdminPrevention({ token, onSessionExpired }) {
   const publishHint = !selected ? '' : dirty ? 'Guardá el borrador antes de publicar.' : !selected.source_url || !selected.source_label ? 'Indicá fuente y enlace sanitario para poder publicar.' : !selected.has_pending_changes ? 'No hay cambios pendientes de publicación.' : ''
 
   return <main className="admin-page admin-prevention">
-    <header className="admin-header"><div><h1>Contenido preventivo</h1><p>Edición institucional de la página pública de prevención. Sólo orientación sanitaria general: nunca datos de personas, casos ni direcciones.</p></div></header>
-    {error && <p className="form-error admin-error" role="alert">{error}</p>}
-    {notice && <p className="account-notice" role="status">{notice}</p>}
+    <ScreenHeader breadcrumb={[{ label: 'Inicio', to: '/admin/inicio' }, { label: 'Contenido preventivo' }]} title="Contenido preventivo"
+      subtitle="Edición institucional de la página pública de prevención. Sólo orientación sanitaria general: nunca datos de personas, casos ni direcciones."
+      aside={<UiButton variant="primary" disabled={busy} onClick={() => select('new')}>Nueva sección</UiButton>} />
+    {error && <Notice tone="danger" icon={null} role="alert" className="form-error admin-error"><p>{error}</p></Notice>}
+    {notice && <Notice tone="info" icon={ICONS.check} role="status" className="account-notice"><p>{notice}</p></Notice>}
     <div className="prevention-admin-grid">
-      <section className="panel prevention-section-list" aria-label="Secciones" aria-busy={!sections}>
-        <div className="account-list-heading"><h2>Secciones</h2><button type="button" className="secondary-button" disabled={busy} onClick={() => select('new')}>Nueva sección</button></div>
-        {!sections ? <p role="status">Cargando secciones…</p> : !sections.length ? <p>No hay secciones. Ejecutá la carga inicial o creá una nueva.</p> : <ul>{sections.map(section => {
-          const status = statusOf(section)
-          return <li key={section.id}><button type="button" disabled={busy} aria-pressed={selectedId === section.id} className={selectedId === section.id ? 'selected' : ''} onClick={() => select(section)}><strong>{section.title}</strong><span className={`content-status ${status.key}`}>{status.label}</span><small>{section.slug} · orden {section.position}</small></button></li>
-        })}</ul>}
-      </section>
+      <Card className="prevention-section-list" title="Secciones" titleId="prevention-sections-title" aria-busy={!sections}>
+        {!sections ? <p role="status">Cargando secciones…</p> : !sections.length ? <p>No hay secciones. Ejecutá la carga inicial o creá una nueva.</p> : <ul>{sections.map(section => <li key={section.id}>
+          <button type="button" disabled={busy} aria-pressed={selectedId === section.id} className={selectedId === section.id ? 'selected' : ''} onClick={() => select(section)}>
+            <strong>{section.title}</strong><StatusBadge section={section}/><small>{section.slug} · orden {section.position}</small>
+          </button></li>)}</ul>}
+      </Card>
 
-      {selectedId ? <section className="panel prevention-editor" aria-label="Editor">
-        <h2>{creating ? 'Nueva sección (borrador)' : `Editar: ${selected?.title || ''}`}</h2>
-        {state && <p className={`content-status ${state.key}`}>{state.label}{selected.published_at ? ` · última publicación ${new Date(selected.published_at).toLocaleString('es-AR')}${selected.published_by ? ` por ${selected.published_by}` : ''}` : ''}</p>}
-        <form className="admin-update prevention-form" onSubmit={save} noValidate>
-          <fieldset disabled={busy}>
-            {creating && <label>Identificador<input name="slug" value={form.slug} onChange={update} maxLength="60" placeholder="cuidados-en-verano" aria-invalid={Boolean(fieldErrors.slug)}/>{fieldErrors.slug && <small className="field-error">{fieldErrors.slug}</small>}</label>}
-            <label>Título<input name="title" value={form.title} onChange={update} maxLength={SECTION_LIMITS.title} aria-invalid={Boolean(fieldErrors.title)}/>{fieldErrors.title && <small className="field-error">{fieldErrors.title}</small>}</label>
-            <label>Orden<input name="position" inputMode="numeric" value={form.position} onChange={update} maxLength="4"/></label>
-            <label className="wide">Contenido<textarea name="body" value={form.body} onChange={update} maxLength={SECTION_LIMITS.body} rows="9" aria-describedby="markdown-help" aria-invalid={Boolean(fieldErrors.body)}/><small id="markdown-help">Texto plano. Formato permitido: párrafos separados por una línea vacía, listas con «- », **negrita** y [enlace](https://…). No se admite HTML. {form.body.length}/{SECTION_LIMITS.body}</small>{fieldErrors.body && <small className="field-error">{fieldErrors.body}</small>}</label>
-            <label>Fuente o referencia sanitaria<input name="source_label" value={form.source_label} onChange={update} maxLength={SECTION_LIMITS.source_label} placeholder="Ministerio de Salud de la Nación" aria-invalid={Boolean(fieldErrors.source_label)}/>{fieldErrors.source_label && <small className="field-error">{fieldErrors.source_label}</small>}</label>
-            <label>Enlace de la fuente<input name="source_url" type="url" value={form.source_url} onChange={update} maxLength={SECTION_LIMITS.source_url} placeholder="https://" aria-invalid={Boolean(fieldErrors.source_url)}/>{fieldErrors.source_url && <small className="field-error">{fieldErrors.source_url}</small>}</label>
-            <div className="prevention-actions wide">
-              <button className="primary-button" type="submit" disabled={busy || !dirty}>{busy && !confirming ? 'Guardando…' : 'Guardar borrador'}</button>
-              {!creating && <button className="secondary-button" type="button" disabled={busy || !canPublish} onClick={() => setConfirming('publish')}>Publicar</button>}
-              {!creating && selected?.status === 'published' && <button className="text-button" type="button" disabled={busy} onClick={() => setConfirming('unpublish')}>Despublicar</button>}
-              {publishHint && !creating && <small>{publishHint}</small>}
-            </div>
-          </fieldset>
-        </form>
-        {confirming && <div className="prevention-confirm" role="alertdialog" aria-labelledby="prevention-confirm-title">
-          <h3 id="prevention-confirm-title" tabIndex="-1" ref={confirmHeading}>{confirming === 'publish' ? `¿Publicar la versión ${selected.version + 1}?` : '¿Despublicar esta sección?'}</h3>
-          <p>{confirming === 'publish' ? 'El contenido guardado será visible de inmediato para cualquier visitante de la página de prevención. Verificá que provenga de una fuente sanitaria oficial.' : 'La sección dejará de mostrarse en la página pública. El texto y su historial se conservan.'}</p>
-          <div><button className="primary-button" type="button" disabled={busy} onClick={confirmTransition}>{confirming === 'publish' ? 'Confirmar publicación' : 'Confirmar despublicación'}</button><button className="text-button" type="button" disabled={busy} onClick={() => setConfirming(null)}>Cancelar</button></div>
-        </div>}
-        <section className="prevention-preview" aria-label="Vista previa">
-          <h3>Vista previa del borrador</h3>
-          <article><h4>{form.title || 'Sin título'}</h4><RestrictedMarkdown text={form.body}/><SectionSource section={{ source_label: form.source_label, source_url: /^https:\/\//.test(form.source_url) ? form.source_url : null }}/></article>
-        </section>
-        {!creating && <section className="prevention-history" aria-label="Historial">
-          <h3>Historial</h3>
+      {selectedId ? <div className="prevention-main">
+        <Card className="prevention-editor" title={creating ? 'Nueva sección (borrador)' : `Editar: ${selected?.title || ''}`} titleId="prevention-editor-title"
+          actions={state && <p className="prevention-state"><StatusBadge section={selected}/>{selected.published_at && <span>Última publicación {new Date(selected.published_at).toLocaleString('es-AR')}{selected.published_by ? ` por ${selected.published_by}` : ''}</span>}</p>}>
+          <form className="admin-update prevention-form" onSubmit={save} noValidate>
+            <fieldset disabled={busy}>
+              <div className="prevention-fields">
+                {creating && <label>Identificador<input name="slug" value={form.slug} onChange={update} maxLength="60" placeholder="cuidados-en-verano" aria-invalid={Boolean(fieldErrors.slug)}/>{fieldErrors.slug && <small className="field-error">{fieldErrors.slug}</small>}</label>}
+                <div className="prevention-row">
+                  <label>Título<input name="title" value={form.title} onChange={update} maxLength={SECTION_LIMITS.title} aria-invalid={Boolean(fieldErrors.title)}/>{fieldErrors.title && <small className="field-error">{fieldErrors.title}</small>}</label>
+                  <label className="prevention-position">Orden<input name="position" inputMode="numeric" value={form.position} onChange={update} maxLength="4"/></label>
+                </div>
+                <label>Contenido<textarea name="body" value={form.body} onChange={update} maxLength={SECTION_LIMITS.body} rows="9" aria-describedby="markdown-help" aria-invalid={Boolean(fieldErrors.body)}/><small id="markdown-help">Texto plano. Formato permitido: párrafos separados por una línea vacía, listas con «- », **negrita** y [enlace](https://…). No se admite HTML. {form.body.length}/{SECTION_LIMITS.body}</small>{fieldErrors.body && <small className="field-error">{fieldErrors.body}</small>}</label>
+                <label>Fuente o referencia sanitaria<input name="source_label" value={form.source_label} onChange={update} maxLength={SECTION_LIMITS.source_label} placeholder="Ministerio de Salud de la Nación" aria-invalid={Boolean(fieldErrors.source_label)}/>{fieldErrors.source_label && <small className="field-error">{fieldErrors.source_label}</small>}</label>
+                <label>Enlace de la fuente<input name="source_url" type="url" value={form.source_url} onChange={update} maxLength={SECTION_LIMITS.source_url} placeholder="https://" aria-invalid={Boolean(fieldErrors.source_url)}/>{fieldErrors.source_url && <small className="field-error">{fieldErrors.source_url}</small>}</label>
+              </div>
+              <section className="prevention-preview" aria-label="Vista previa">
+                <h3>Vista previa del borrador</h3>
+                <article><h4>{form.title || 'Sin título'}</h4><RestrictedMarkdown text={form.body}/><SectionSource section={{ source_label: form.source_label, source_url: /^https:\/\//.test(form.source_url) ? form.source_url : null }}/></article>
+              </section>
+              <div className="prevention-actions">
+                {!creating && <UiButton variant="primary" disabled={busy || !canPublish} onClick={() => setConfirming('publish')}>Publicar</UiButton>}
+                <button className={creating ? 'ui-button ui-button-primary' : 'ui-button ui-button-secondary'} type="submit" disabled={busy || !dirty}>{busy && !confirming ? 'Guardando…' : 'Guardar borrador'}</button>
+                {!creating && selected?.status === 'published' && <UiButton className="prevention-unpublish" disabled={busy} onClick={() => setConfirming('unpublish')}>Despublicar</UiButton>}
+                {publishHint && !creating && <small>{publishHint}</small>}
+              </div>
+            </fieldset>
+          </form>
+          {confirming && <div className="prevention-confirm" role="alertdialog" aria-labelledby="prevention-confirm-title">
+            <h3 id="prevention-confirm-title" tabIndex="-1" ref={confirmHeading}>{confirming === 'publish' ? `¿Publicar la versión ${selected.version + 1}?` : '¿Despublicar esta sección?'}</h3>
+            <p>{confirming === 'publish' ? 'El contenido guardado será visible de inmediato para cualquier visitante de la página de prevención. Verificá que provenga de una fuente sanitaria oficial.' : 'La sección dejará de mostrarse en la página pública. El texto y su historial se conservan.'}</p>
+            <div><UiButton variant="primary" disabled={busy} onClick={confirmTransition}>{confirming === 'publish' ? 'Confirmar publicación' : 'Confirmar despublicación'}</UiButton><UiButton disabled={busy} onClick={() => setConfirming(null)}>Cancelar</UiButton></div>
+          </div>}
+        </Card>
+        {!creating && <Card className="prevention-history" title="Historial" titleId="prevention-history-title">
           {!history.length ? <p>Sin movimientos registrados.</p> : <ol>{history.map(entry => <li key={entry.id}><strong>{actionLabels[entry.action] || entry.action}</strong><span>{entry.actor}</span><time dateTime={entry.created_at}>{new Date(entry.created_at).toLocaleString('es-AR')}</time>{changedFields(entry) && <small>{changedFields(entry)}</small>}{entry.action === 'publish' && entry.after?.version && <small>Versión {entry.after.version}</small>}</li>)}</ol>}
-        </section>}
-      </section> : <section className="panel empty-admin"><h2>Seleccioná una sección</h2><p>Los cambios se guardan como borrador y sólo llegan a la página pública al confirmar la publicación.</p></section>}
+        </Card>}
+      </div> : <Card className="prevention-empty" title="Seleccioná una sección" titleId="prevention-empty-title"><p>Los cambios se guardan como borrador y sólo llegan a la página pública al confirmar la publicación.</p></Card>}
     </div>
   </main>
 }
