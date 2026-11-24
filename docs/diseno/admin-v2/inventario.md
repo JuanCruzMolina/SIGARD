@@ -139,3 +139,54 @@ Implementado en `entrenamiento-ML` (23/11/2026) según `Main.dc.html`, sin copia
   fallando; mapa activado/desactivado/no disponible; AA, teclado, 390 px). Capturas privadas en
   `data/interim/official/ux-admin-v2-f5/<etiqueta>/`; la captura previa de Inicio es
   `ux-admin-v2-f4/f5-ajustes-f4/inicio-*` (después de los ajustes F4, antes de F5).
+
+## F6.1 · Contención visor/alertas, ajustes de Inicio y Módulo predictivo
+
+Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-1`.
+
+- **Contención 8767** (reproducción determinista: `performance.browser.mjs --target production
+  --only visor_carga,visor_cambio_semana,visor_consulta_radio,panel_alertas`; diagnóstico con
+  `--trace-slow`). Antes: panel de alertas con 1 usuario p95 5.308 ms, máx. 20.044 ms. Tres
+  causas encadenadas:
+  1. `backtest_api`: sin `response_model`, FastAPI codificaba el JSON del visor en el bucle de
+     eventos; ahora se codifica en el hilo del endpoint con los mismos bytes (`encoded`).
+  2. `PredictiveGate`: las consultas del visor cuyo cliente ya se desconectó no se calculan
+     (499); antes se procesaban en cola tras cerrar pestañas o contextos.
+  3. Frontend: respuestas cuyo cuerpo no se leía (404 de la sonda de actividad, 5xx
+     reintentados, errores del visor) mantenían abiertas conexiones HTTP/1.1 hasta su tiempo
+     límite; `readRetry.discardBody()` las libera.
+  Después: panel con 1 usuario p95 124–182 ms, máx. 145–588 ms. Pruebas:
+  `test_predictive_access.py` (bytes idénticos, bucle libre durante una codificación grande
+  —falla sin el arreglo—, consulta abandonada no calculada) y `test:read-retry`.
+- **Inicio**: en móvil 5 pendientes y «Ver más» (10), fila completa como área táctil; textos
+  ≥ 14 px; «SE 52/2024» sin espacio doble (monoespaciada con `word-spacing`); tarjetas
+  superiores de igual altura; el doble borde de «Revisar alertas» es sólo el foco de teclado.
+- **Componentes comunes** (`components/AdminUI.jsx` + `.css`): `ScreenHeader` (ruta, título,
+  subtítulo, aside), `Card`, `Badge`, `Notice`, `UiButton` (botón o enlace, 44 px) y `UiTable`.
+- **Módulo predictivo** (`/admin/predictivo`, `Predictivo.dc.html`), sólo presentación: mismos
+  controles, textos, contratos y privacidad. Columna lateral «Radios priorizados esta semana» /
+  «Radios con más registros esperados» (`predictiveView.priorityList`): sólo radios que el mapa
+  ya muestra (misma `cellCategory`); en modo protegido nunca se listan radios protegidos, a
+  diferencia de la maqueta (que muestra «Protegido»), para no revelar predicciones que el mapa
+  oculta. Diferencias deliberadas con la maqueta: se conserva el título y los textos actuales;
+  «¿Qué tan bien funciona el modelo?» sigue plegable (las pruebas y la lectura actual lo usan
+  así); no hay «Ver los 10 con su historial» (no existe esa vista; el historial está en el
+  panel del radio).
+- **Pruebas**: `test:predictive:layout:browser` (nuevo: carga, protegido/privado,
+  ¿Dónde?/¿Cuántos?, lista = API, panel por teclado, semana vacía, error, 1440/390, AA, 44 px,
+  ≥ 14 px); capturas en `data/interim/official/ux-admin-v2-f6/<etiqueta>/`; capturas del visor
+  completo antes/después en `ux-predictive-redesign-20261112/<etiqueta>/`.- **Rendimiento** (`performance.browser.mjs --target production`, 1 y 5 usuarios, p95 en ms;
+  F0 `results.json`, F2 `results-f2-final.json`, F5 `f5-rendimiento`, F6.1 `f6-1-rendimiento`):
+
+  | Operación | Usuarios | F0 | F2 | F5 | F6.1 |
+  |---|---|---|---|---|---|
+  | actividad (fixture) | 1 / 5 | 604 / 1.146 | 344 / 1.297 | 314 / 1.313 | 390 / 1.281 |
+  | prevención | 1 / 5 | 350 / 1.415 | 426 / 1.359 | 326 / 1.312 | 403 / 1.312 |
+  | visor: carga | 1 / 5 | 815 / 2.949 | 1.083 / 3.828 | 1.079 / 4.069 | 1.075 / 3.675 |
+  | visor: cambio de semana | 1 / 5 | 180 / 569 | 190 / 826 | 190 / 685 | 171 / 741 |
+  | visor: consulta de radio | 1 / 5 | 81 / 279 | 100 / 350 | 89 / 260 | 82 / 261 |
+  | panel de alertas | 1 / 5 | 174 / 267 | 141 / 428 | 3.677 / 385 | 1.750 / 505 |
+
+  Presupuesto de la carga del visor con 5 usuarios (≤ 4.069 ms): cumplido (3.675). Panel de
+  alertas con 1 usuario: máximo 20.037 → 1.852 ms; en la secuencia aislada visor→panel, p95
+  124–182 ms. El residuo de la corrida completa (2 de 30 muestras > 1,7 s) no se investigó más.

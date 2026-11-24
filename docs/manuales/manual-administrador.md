@@ -161,6 +161,11 @@ Es una **reconstrucción histórica 2021–2024**: muestra qué hubiera estimado
 método para la semana siguiente y lo compara con lo que ocurrió. **No es un pronóstico actual ni
 un sistema operativo.**
 
+La pantalla (diseño v2, F6.1) se lee de arriba hacia abajo: la ruta **Inicio / Módulo
+predictivo**, la tarjeta para elegir semana, pregunta y método, cuatro cifras de la semana, el
+aviso del modo protegido, el **mapa** con una columna a la derecha (en el celular, debajo), la
+**evolución de la ciudad** y las secciones desplegables (desempeño, tabla y guía).
+
 ### 5.1 Elegir la semana
 
 ![Visor en ¿Dónde?, con el modelo ML (datos ficticios)](img/admin-visor-donde.png)
@@ -211,7 +216,7 @@ Las tarjetas resumen los radios visibles, lo esperado por cada método y lo obse
 
 ![Panel de un radio ficticio](img/admin-visor-panel-radio.png)
 
-Tocá un radio en el mapa o elegilo en el selector para ver:
+Tocá un radio en el mapa, elegilo en el selector o en la lista de la columna derecha para ver:
 
 - qué esperaba cada método;
 - qué ocurrió y si fue acierto;
@@ -219,6 +224,11 @@ Tocá un radio en el mapa o elegilo en el selector para ver:
 - **qué información usa el modelo** (sin mostrar los valores de cada variable).
 
 **Restablecer encuadre** vuelve al mapa completo.
+
+La columna derecha lista **Radios priorizados esta semana** (¿Dónde?) o **Radios con más registros
+esperados** (¿Cuántos?), según el método elegido. Sólo incluye radios que el mapa ya muestra: en
+modo protegido, los priorizados que tuvieron 5 o más registros; los radios protegidos nunca se
+listan. **Crear regla de alerta** lleva a Alertas internas.
 
 ### 5.5 Modo protegido
 
