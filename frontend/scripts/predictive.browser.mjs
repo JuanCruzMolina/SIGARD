@@ -40,7 +40,14 @@ let assertProtectedMode
 for (const port of [5173, 8767]) assert.ok(await portAvailable(port), `Port ${port} must be free; no existing service will be stopped`)
 const runtime = alertsRuntime({ mode: 'session', source: real ? 'local-research' : 'fictional' }); runtime.announce = () => {}
 let environment = await startDevelopment(runtime)
-const browser = await puppeteer.launch({ headless: true }); let production
+// --real needs no response altered: requests are only observed, and anything outside 127.0.0.1
+// (tiles, unless --tiles; fonts; other hosts) is blocked by the browser's resolver. DevTools request
+// interception (the CDP Fetch domain) is left off there: while it is on, Chromium sometimes cancels
+// a CORS-preflighted POST (the login) as its preflight completes (net::ERR_FAILED; the server got
+// the request and answered 200 with CORS). The fictional run still intercepts: it serves the fixture.
+const intercept = !real
+const blocked = tilesOnline ? 'MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE *.tile.openstreetmap.org' : 'MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'
+const browser = await puppeteer.launch({ headless: true, args: intercept ? [] : [`--host-resolver-rules=${blocked}`] }); let production
 const errors = [], external = [], requests = [], timings = [], tileRequests = [], devFontSheets = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 // Unsigned JWT-shaped administrator values made here (never valid on the server): expired, about
@@ -58,10 +65,12 @@ try {
   page.on('pageerror', e => errors.push(e.message))
   page.on('console', m => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push(m.text()) })
   let fail = false
-  await page.setRequestInterception(true)
+  if (intercept) await page.setRequestInterception(true)
+  // Same checks in both modes; without interception the verdicts are only recorded (the resolver blocks).
+  const act = { continue: r => intercept ? r.continue() : undefined, abort: r => intercept ? r.abort() : undefined, respond: (r, value) => intercept ? r.respond(value) : undefined }
   page.on('request', async r => {
     const u = new URL(r.url())
-    if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
+    if (!['http:', 'https:'].includes(u.protocol)) return act.continue(r)
     if (/^[abc]\.tile\.openstreetmap\.org$/.test(u.hostname)) {
       const match = /^\/(\d+)\/(\d+)\/(\d+)\.png$/.exec(u.pathname), [z, x, y] = (match || []).slice(1).map(Number)
       assert.ok(match && u.protocol === 'https:' && !u.search && !u.hash && !u.username, `tile request carries only tile coordinates: ${u.href}`)
@@ -70,25 +79,44 @@ try {
       assert.ok(!r.headers().referer, 'no referrer (page URL, week or radio) sent to the tile server')
       assert.equal(r.method(), 'GET'); assert.equal(r.postData(), undefined)
       tileRequests.push(`${z}/${x}/${y}`)
-      return tilesOnline ? r.continue() : r.abort()
+      return tilesOnline ? act.continue(r) : act.abort(r)
     }
     // The dev page itself must ask for the Google Fonts sheet (IBM Plex Sans), as before F1.
     if (!production && u.protocol === 'https:' && u.hostname === 'fonts.googleapis.com' && u.pathname === '/css2') devFontSheets.push(u.searchParams.get('family'))
-    if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
+    if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8767'].includes(u.port)) { external.push(u.origin); return act.abort(r) }
     if (u.pathname.startsWith('/api/v1/research/')) {
       assert.ok(u.pathname.startsWith('/api/v1/research/predictive/') && u.port === '8767', 'only the authenticated predictive viewer API')
-      if (r.method() === 'OPTIONS') return real ? r.continue() : r.respond({ status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Authorization, X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
+      if (r.method() === 'OPTIONS') return real ? act.continue(r) : act.respond(r, { status: 200, headers: { 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Headers': 'Authorization, X-Sigard-Research', 'Access-Control-Allow-Methods': 'GET' } })
       assert.equal(r.method(), 'GET'); requests.push(`${u.pathname}${u.search}`)
       assert.equal(r.headers()['x-sigard-research'], 'local-read')
       // The fixture stands in for the data only: a missing or script-made (revoked) session gets the
       // server's 401; tokens issued by the real login of the session API are accepted.
       const authorization = r.headers().authorization || ''
-      if (!real && (!authorization.startsWith('Bearer ') || authorization.endsWith('.FICTIONAL'))) return r.respond({ status: 401, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Autenticación administrativa requerida"}' })
-      if (fail && u.pathname.endsWith('/comparison')) return r.respond({ status: 503, headers: { 'Access-Control-Allow-Origin': origin }, body: '{}' })
-      if (!real) return r.respond({ status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify(finalFixtureResponse(u.href)) })
+      if (!real && (!authorization.startsWith('Bearer ') || authorization.endsWith('.FICTIONAL'))) return act.respond(r, { status: 401, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Autenticación administrativa requerida"}' })
+      if (fail && u.pathname.endsWith('/comparison')) return act.respond(r, { status: 503, headers: { 'Access-Control-Allow-Origin': origin }, body: '{}' })
+      if (!real) return act.respond(r, { status: 200, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: JSON.stringify(finalFixtureResponse(u.href)) })
     }
-    return r.continue()
+    return act.continue(r)
   })
+  // Viewer requests in flight: the viewer keeps loading other years in the background (250 ms apart).
+  const viewerInFlight = new Set(); let viewerActivity = Date.now()
+  const isViewer = r => r.url().includes(':8767/api/v1/research/') && r.method() !== 'OPTIONS'
+  page.on('request', r => {
+    // A new document in the main frame (goto, reload): requests of the old one are cancelled with it
+    // and, without interception, never report an end; they cannot affect the new page.
+    if (r.isNavigationRequest() && r.frame() === page.mainFrame()) viewerInFlight.clear()
+    if (isViewer(r)) { viewerInFlight.add(r); viewerActivity = Date.now() }
+  })
+  const settled = r => { if (viewerInFlight.delete(r)) viewerActivity = Date.now() }
+  page.on('requestfinished', settled); page.on('requestfailed', settled)
+  // Idle = nothing in flight and nothing new for `quietMs` (well over the 250 ms between loads).
+  const viewerIdle = async (quietMs = 1000, limitMs = 60000) => {
+    const end = Date.now() + limitMs
+    while (viewerInFlight.size || Date.now() - viewerActivity < quietMs) {
+      assert.ok(Date.now() < end, `the viewer did not become idle: ${[...viewerInFlight].map(r => r.url()).join(' | ')}`)
+      await new Promise(done => setTimeout(done, 100))
+    }
+  }
   const week = () => page.$eval('.pv', e => e.dataset.week)
   const ready = async previous => {
     await page.waitForFunction(p => { const e = document.querySelector('.pv'); return e && e.dataset.state === 'ready' && (!p || e.dataset.week !== p) }, {}, previous || null)
@@ -355,6 +383,9 @@ try {
   if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
   if (!process.env.SIGARD_SKIP_PRODUCTION) {
     production = await preview({ root: frontendRoot, preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
+    // Count only once the dev viewer is idle: a background year load leaving as the page changes
+    // would otherwise be counted as a request of the production build.
+    await viewerIdle()
     const count = requests.length
     for (const path of ['/mapa?anio=2024&se=12', PREDICTIVE_ROUTE]) {
       await page.goto(`http://127.0.0.1:5174${path}`, { waitUntil: 'networkidle0' })
