@@ -56,6 +56,7 @@ export default function AdminReports({ section = 'reportes' }) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [countersVersion, setCountersVersion] = useState(0)
   const requests = useRef({})
   const invalidDates = filters.date_from && filters.date_to && filters.date_from > filters.date_to
   const requestKey = JSON.stringify({ token, filters, page, refresh })
@@ -120,7 +121,7 @@ export default function AdminReports({ section = 'reportes' }) {
     setSaving(true); setError('')
     try {
       const updated = await updateAdminReport(token, selected.id, changes, { signal: request.signal })
-      if (!request.signal.aborted) { setSelected(updated); loadList() }
+      if (!request.signal.aborted) { setSelected(updated); loadList(); setCountersVersion(value => value + 1) }
     } catch (requestError) { if (!request.signal.aborted) handleRequestError(requestError) }
     finally { if (!request.signal.aborted) setSaving(false); request.abort() }
   }
@@ -135,7 +136,7 @@ export default function AdminReports({ section = 'reportes' }) {
 
   if (!token) return <AdminLoginForm title="Bandeja de reportes" description="Acceso restringido a personal autorizado. Las ubicaciones y descripciones son privadas." notice={sessionNotice} onLogin={(value) => { setError(''); setSessionNotice(''); setToken(value) }}/>
 
-  const framed = content => <AdminLayout active={section} token={token} onLogout={logout} onExpire={() => sessionExpired('La sesión venció. Ingresá nuevamente.')}>{content}</AdminLayout>
+  const framed = content => <AdminLayout active={section} token={token} countersVersion={countersVersion} onLogout={logout} onExpire={() => sessionExpired('La sesión venció. Ingresá nuevamente.')}>{content}</AdminLayout>
   if (section === 'cuentas') return framed(<AdminAccounts token={token} onSessionExpired={sessionExpired}/>)
   if (section === 'alertas') return framed(demoMode ? <main className="admin-page"><header className="admin-header"><div><h1>Alertas internas</h1><p>En la demo integral las alertas ficticias están en «Análisis y alertas demo» de Reportes ciudadanos.</p></div></header></main> : <AdminAlerts token={token} onSessionExpired={sessionExpired}/>)
   if (section === 'contenido') return framed(<AdminPrevention token={token} onSessionExpired={sessionExpired}/>)

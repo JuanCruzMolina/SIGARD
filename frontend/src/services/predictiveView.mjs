@@ -76,6 +76,14 @@ export function globalVerdict(metadata, candidate) {
   return GLOBAL_VERDICTS.find(v => v.candidates.includes(candidate)) || null
 }
 export const candidateName = id => METHOD_NAMES[id] || id
+// Shorter names for the model selector on narrow screens (390 px); the full name stays in the description.
+export const METHOD_SHORT_NAMES = {
+  rf_A_epi_climate: 'Bosque aleatorio v1',
+  residual_h1: 'Corrección v1',
+  rf_v2_city_propensity: 'Bosque aleatorio v2',
+  residual_v2: 'Corrección v2',
+}
+export const candidateShortName = id => METHOD_SHORT_NAMES[id] || candidateName(id)
 export function decisionText(candidate) {
   const rule = candidate?.decision_rule
   if (rule?.type === 'top_k') return `Marca los ${rule.k} radios con mayor prioridad cada semana.`

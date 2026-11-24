@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
 import { ADMIN_GROUPS, environmentLabel, minutesLeft, visibleSections } from '../services/adminShell.mjs'
 import { adminSessionActive, endSession, readEmail, sessionRemaining } from '../services/adminSession.mjs'
@@ -6,7 +6,7 @@ import { loadDataWeek } from '../services/adminWeek'
 import { alertsRequest, listAdminReports } from '../services/citizenReports'
 import { demoMode } from '../services/demoMode'
 import { localResearchEnabled } from '../services/experimentalResults'
-import { AdminFrameContext } from './adminFrame'
+import { AdminCountersContext, AdminFrameContext } from './adminFrame'
 import './AdminLayout.css'
 
 // Counters only from numbers the API already returns; any failure means "no number".
@@ -34,13 +34,17 @@ const MENU = 'M4 6h16M4 12h16M4 18h16'
 // Administración v2 frame: side menu (top, collapsible, on narrow screens) and top bar.
 // It wraps the existing screens without changing their content.
 // onExpire runs when the token's exp is reached (default: onLogout); token and email are removed first.
-export default function AdminLayout({ active, token, onLogout, onExpire, children }) {
+// The counters are asked again when the section changes, when a screen inside calls the
+// AdminCountersContext function, or when the owner of the frame changes countersVersion.
+export default function AdminLayout({ active, token, onLogout, onExpire, countersVersion: ownerVersion = 0, children }) {
   const setFrame = useContext(AdminFrameContext)
   const mode = { demo: demoMode, localResearch: localResearchEnabled(), dev: import.meta.env.DEV }
   const [open, setOpen] = useState(false)
   const [now, setNow] = useState(() => Date.now())
   const [week, setWeek] = useState(null)
-  const counters = useCounters(token, active, mode)
+  const [countersVersion, setCountersVersion] = useState(0)
+  const refreshCounters = useCallback(() => setCountersVersion(value => value + 1), [])
+  const counters = useCounters(token, `${active}:${ownerVersion}:${countersVersion}`, mode)
   const email = readEmail()
   const minutes = minutesLeft(sessionRemaining(token, now))
 
@@ -95,7 +99,7 @@ export default function AdminLayout({ active, token, onLogout, onExpire, childre
           <button type="button" className="admin-logout" onClick={onLogout}>Cerrar sesión</button>
         </div>
       </header>
-      <div className="admin-content">{children}</div>
+      <div className="admin-content"><AdminCountersContext.Provider value={refreshCounters}>{children}</AdminCountersContext.Provider></div>
     </div>
   </div>
 }

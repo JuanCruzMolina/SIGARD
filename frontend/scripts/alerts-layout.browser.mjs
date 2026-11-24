@@ -172,8 +172,18 @@ try {
     await page.waitForFunction(id => !document.querySelector(`[data-candidate="${id}"][data-status="pending"]`), {}, id)
   }
   const second = pending.find(c => c.id !== first.id)
+  // F6.3: the side-menu counter follows each decision without leaving the section (no badge at 0).
+  const navBadge = () => page.$eval('a.admin-nav-item[href="/admin/alertas"]', a => a.querySelector('.admin-nav-badge')?.textContent ?? '')
+  const badgeIs = expected => page.waitForFunction(expected => (document.querySelector('a.admin-nav-item[href="/admin/alertas"] .admin-nav-badge')?.textContent ?? '') === expected, { timeout: 5000 }, expected)
+  const shown = n => n > 0 ? String(n) : ''
+  assert.equal(await navBadge(), String(pending.length), 'contador del menú = candidatas pendientes')
+  const pageUrl = page.url()
   await decide(first.id, 'approve', 'Aprobada en la prueba de pantalla (ficticio)')
+  await badgeIs(shown(pending.length - 1))
   await decide(second.id, 'discard', 'Descartada en la prueba de pantalla (ficticio)')
+  await badgeIs(shown(pending.length - 2))
+  assert.equal(page.url(), pageUrl, 'sin cambiar de sección')
+  checkpoint(`contador del menú: ${pending.length} → ${pending.length - 1} → ${pending.length - 2} al decidir, sin cambiar de sección`)
   await tab('history')
   await page.waitForSelector(`[data-candidate="${first.id}"][data-status="approved_internal"]`)
   const decided = await page.$$eval('[data-status="approved_internal"], [data-status="discarded"]', cards => Object.fromEntries(cards.map(c => [c.dataset.status,

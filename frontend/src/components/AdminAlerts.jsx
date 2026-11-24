@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useContext, useEffect, useState } from 'react'
 import { alertsRequest, downloadAlertsExport } from '../services/citizenReports'
 import { epiWeekOf } from '../services/adminShell.mjs'
 import { localResearchEnabled } from '../services/experimentalResults'
 import { Icon } from './AdminLayout'
+import { AdminCountersContext } from './adminFrame'
 import { Badge, Card, Notice, ScreenHeader, UiButton, UiTable } from './AdminUI'
 import {
   ACTION_LABELS, CAPABILITY_LABELS, CHANNEL_NOTE, FLOW_STEPS, MINIMUM_COUNT, PERIODICITY_NOTE, PREVIEW_LABEL, REASON_LABELS,
@@ -193,6 +194,7 @@ export default function AdminAlerts({ token, onSessionExpired }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [notice, setNotice] = useState('')
+  const refreshCounters = useContext(AdminCountersContext)
 
   const fail = useCallback(requestError => {
     if (requestError.status === 401 || requestError.status === 403) onSessionExpired('La sesión venció, fue revocada o ya no tiene permisos. Ingresá nuevamente.')
@@ -210,7 +212,7 @@ export default function AdminAlerts({ token, onSessionExpired }) {
 
   async function act(operation, message) {
     setBusy(true); setError(''); setNotice('')
-    try { const result = await operation(); setNotice(typeof result === 'string' ? result : message); await reload() } catch (requestError) { fail(requestError) } finally { setBusy(false) }
+    try { const result = await operation(); setNotice(typeof result === 'string' ? result : message); await reload(); refreshCounters() } catch (requestError) { fail(requestError) } finally { setBusy(false) }
   }
 
   const evaluate = () => act(async () => {

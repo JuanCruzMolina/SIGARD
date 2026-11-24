@@ -130,6 +130,12 @@ try {
   assert.ok(protectedList.every(([, status]) => status === 'Con registros'), 'en modo protegido no se listan radios protegidos ni falsas alarmas')
   assert.equal(await page.$eval('.pv-priority-foot a', e => e.getAttribute('href')), '/admin/alertas')
   for (const selector of ['.pv-controls', '.pv-map-card', '.pv-priority', '.pv-evolution', '.pv-section']) assert.equal(await page.$eval(selector, e => getComputedStyle(e).borderTopLeftRadius), '14px', `${selector} como tarjeta`)
+  // F6.3: on desktop the model selector (full names), its description and the data context stay in the control bar.
+  const desktopControls = await page.evaluate(() => ({
+    outside: ['[data-control="model"]', '.pv-model-rule', '.pv-context'].every(s => document.querySelector(s) && !document.querySelector(s).closest('.pv-advanced')),
+    options: [...document.querySelectorAll('[data-control="model"] option')].map(o => o.textContent) }))
+  assert.ok(desktopControls.outside, 'escritorio: selector, descripción y contexto fuera de «Opciones avanzadas»')
+  assert.ok(desktopControls.options.includes('Bosque aleatorio v2 (10 radios por semana) · no promovido'), `escritorio: nombres completos ${JSON.stringify(desktopControls.options)}`)
   const audit = await auditAccessibility(page, '.admin-shell')
   assert.deepEqual(audit.unnamed, [], 'controles con nombre'); assert.deepEqual(audit.lowContrast, [], 'contraste AA')
   await shoot('donde-protegido')
@@ -174,6 +180,30 @@ try {
   // 6. Mobile 390: no horizontal scroll, 44 px targets, texts ≥ 14 px, AA.
   await page.setViewport({ width: 390, height: 900 }); await settle()
   assert.ok(await noHorizontalScroll())
+  // F6.3: model selector (short names), description and «Datos usados / Semana previa» folded into «Opciones avanzadas»;
+  // the (i) of «Semana previa» stays on the same line as its text.
+  await page.$eval('.pv-advanced', d => { d.open = false }); await settle()
+  const folded = await page.evaluate(() => {
+    const advanced = document.querySelector('.pv-advanced'), select = document.querySelector('[data-control="model"] select')
+    const context = document.createElement('canvas').getContext('2d'), style = getComputedStyle(select)
+    context.font = `${style.fontWeight} ${style.fontSize} ${style.fontFamily}`
+    const widest = Math.max(...[...select.options].map(o => context.measureText(o.textContent).width))
+    return { inside: ['[data-control="model"]', '.pv-model-rule', '.pv-context'].every(s => document.querySelectorAll(s).length === 1 && advanced.contains(document.querySelector(s))),
+      hidden: !advanced.open && ['[data-control="model"]', '.pv-context'].every(s => !document.querySelector(s).checkVisibility()),
+      options: [...select.options].map(o => o.textContent), fits: widest <= select.clientWidth - 40 }
+  })
+  assert.ok(folded.inside && folded.hidden, `móvil: selector, descripción y contexto dentro de «Opciones avanzadas» plegado ${JSON.stringify(folded)}`)
+  assert.ok(folded.options.includes('Bosque aleatorio v2') && folded.fits, `móvil: etiquetas cortas que entran en el selector ${JSON.stringify(folded)}`)
+  await page.click('.pv-advanced > summary'); await settle()
+  const climate = await page.evaluate(() => {
+    const group = document.querySelector('.pv-context .pv-nowrap'), button = group.querySelector('.pv-info-button')
+    const range = document.createRange(); range.setStartBefore(group.firstChild); range.setEndBefore(button.closest('.pv-info'))
+    const t = range.getBoundingClientRect(), b = button.getBoundingClientRect()
+    return { text: range.toString().trim(), sameLine: b.top < t.bottom && b.bottom > t.top, gap: Math.round(b.left - t.right) }
+  })
+  assert.ok(/ mm$/.test(climate.text) && climate.sameLine && climate.gap >= 0 && climate.gap <= 16, `(i) junto a «Semana previa»: ${JSON.stringify(climate)}`)
+  await page.screenshot({ path: resolve(output, 'visor-opciones-avanzadas-mobile.private.png'), fullPage: true })
+  checkpoint(`móvil: «Opciones avanzadas» plegado con el selector (${folded.options.join(' / ')}), la descripción y el contexto; (i) junto al texto`)
   await page.$$eval('.pv-section', s => s.forEach(e => { e.open = true })); await settle()
   const targets = await smallTargets(); assert.deepEqual(targets, [], `áreas táctiles de 44 px en móvil: ${JSON.stringify(targets)}`)
   const texts = await smallTexts(); assert.deepEqual(texts, [], `textos de al menos 14 px en móvil: ${JSON.stringify(texts)}`)

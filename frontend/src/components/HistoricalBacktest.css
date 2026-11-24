@@ -251,3 +251,9 @@ svg.pv-skeleton { animation: none; opacity: .5; }
   .pv-page .historical-backtest table, .pv-page .historical-backtest :is(th, td, .pv-sort, .pv-info-button) { font-size: .875rem; }
   .pv-page .historical-backtest .pv-info-button { width: 44px; height: 44px; min-height: 44px; }
 }
+
+/* F6.3 · mobile 390: the (i) next to its text; model selector, description and data context folded into «Opciones avanzadas». */
+.pv-nowrap { display: inline-flex; align-items: center; white-space: nowrap; }
+.pv-advanced-model { display: grid; gap: .6rem; padding-bottom: .6rem; border-bottom: 1px solid var(--line); }
+.pv-advanced-model .pv-model-rule, .pv-advanced-model .pv-context { margin: 0; }
+.pv-advanced-model .pv-context { flex-direction: column; gap: .4rem; }

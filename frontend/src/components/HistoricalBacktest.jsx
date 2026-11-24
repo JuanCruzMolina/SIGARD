@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { backtestHistory, backtestSetup, backtestWeek, clearBacktestCache, prefetchWeek } from '../services/backtestResults'
 import { experimentalView, formatValue } from '../services/backtestContract.mjs'
-import { candidateName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, priorityList, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
+import { candidateName, candidateShortName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, priorityList, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
 import WeekTimeline from './WeekTimeline'
 import SummaryCards, { InfoTip } from './SummaryCards'
 import BacktestMaps from './BacktestMaps'
@@ -14,6 +14,7 @@ import './HistoricalBacktest.css'
 import { privateViewEnabled } from '../services/privateView'
 import { demoMode } from '../services/demoMode'
 import { Badge, Card, UiButton } from './AdminUI'
+import { NARROW_SCREEN, useMediaQuery } from '../services/useMediaQuery'
 
 function Segmented({ label, options, value, onChange, name }) {
   return <div className="pv-segmented" role="group" aria-label={label} data-control={name}>
@@ -79,6 +80,7 @@ export default function HistoricalBacktest({ onSessionError }) {
   const url = useMemo(() => readUrlState(params), [params])
   const [initialUrl] = useState(url)
   const [disclosure, setDisclosure] = useState('presentation')
+  const narrow = useMediaQuery(NARROW_SCREEN)
   const [attempt, setAttempt] = useState(0)
   const [setup, setSetup] = useState(null)
   const [setupError, setSetupError] = useState('')
@@ -194,6 +196,24 @@ export default function HistoricalBacktest({ onSessionError }) {
   // Weeks with nothing disclosable get one explanation only, not a map of protected cells.
   const hasCells = shown?.availability_status === 'available' && shown.metrics.n_comparable > 0
 
+  // Model selector, its description and the data context. On narrow screens (390 px) they move
+  // into «Opciones avanzadas» (folded) and the selector shows only short names (the description below
+  // it keeps the full name and «Experimental, no aprobado para uso operativo»); desktop is unchanged.
+  const modelControl = hasML && method !== 'reference' && <label className="pv-model" data-control="model">Modelo ML
+    <select value={model} onChange={e => update({ model: e.target.value })}>
+      {modelOptions.map(c => <option key={c.id} value={c.id}>{narrow ? candidateShortName(c.id) : `${candidateName(c.id)} · ${c.state === 'experimental_not_promoted' ? 'no promovido' : 'evaluado, no promovido'}`}</option>)}
+    </select></label>
+  const modelDetails = <>
+    {hasML && method !== 'reference' && mlSource && <p className="pv-caption pv-model-rule">{candidateName(model)}: {decisionText(mlSource.candidate)} Experimental, no aprobado para uso operativo.</p>}
+    {selected && <p className="pv-context">
+      <span>Datos usados hasta: <strong>{dateLabel(selected.origin_end)}</strong></span>
+      {climate?.availability_status === 'available'
+        ? <span>Semana previa: {formatValue(climate.temperature_mean, 1)} °C · {formatValue(climate.humidity_mean, 0)} % humedad · <span className="pv-nowrap">{formatValue(climate.precipitation_total, 1)} mm
+          <InfoTip label="Sobre el clima">Un único punto de referencia para toda la ciudad, de la semana anterior a la elegida. El modelo ML lo usa; el método de referencia no.</InfoTip></span></span>
+        : shown && <span>Clima de la semana previa no disponible.</span>}
+    </p>}
+  </>
+
   return <section className="historical-backtest pv" aria-label="Predicción semanal" data-state={current?.value ? 'ready' : current?.error ? 'error' : 'loading'} data-week={shown?.target_week || ''}>
     <div className="pv-controls ui-card">
       {selected ? <WeekTimeline weeks={weeks} selected={selected} series={historyFor(selected.target_year)?.value?.series} onSelect={select}
@@ -203,22 +223,13 @@ export default function HistoricalBacktest({ onSessionError }) {
         <Segmented name="method" label="Método" value={method} onChange={v => update({ method: v })} options={hasML
           ? [{ value: 'ml', label: 'Modelo ML' }, { value: 'reference', label: 'Método de referencia' }, { value: 'compare', label: 'Comparar' }]
           : [{ value: 'reference', label: 'Método de referencia' }]} />
-        {hasML && method !== 'reference' && <label className="pv-model" data-control="model">Modelo ML
-          <select value={model} onChange={e => update({ model: e.target.value })}>
-            {modelOptions.map(c => <option key={c.id} value={c.id}>{candidateName(c.id)} · {c.state === 'experimental_not_promoted' ? 'no promovido' : 'evaluado, no promovido'}</option>)}
-          </select></label>}
+        {!narrow && modelControl}
         {view === 'quantity' && method !== 'compare' && <Segmented name="layer" label="Capa del mapa" value={url.layer} onChange={v => update({ layer: v })} options={[{ value: 'expected', label: 'Esperados' }, { value: 'observed', label: 'Observados' }]} />}
       </div>
-      {hasML && method !== 'reference' && mlSource && <p className="pv-caption pv-model-rule">{candidateName(model)}: {decisionText(mlSource.candidate)} Experimental, no aprobado para uso operativo.</p>}
-      {selected && <p className="pv-context">
-        <span>Datos usados hasta: <strong>{dateLabel(selected.origin_end)}</strong></span>
-        {climate?.availability_status === 'available'
-          ? <span>Semana previa: {formatValue(climate.temperature_mean, 1)} °C · {formatValue(climate.humidity_mean, 0)} % humedad · {formatValue(climate.precipitation_total, 1)} mm
-            <InfoTip label="Sobre el clima">Un único punto de referencia para toda la ciudad, de la semana anterior a la elegida. El modelo ML lo usa; el método de referencia no.</InfoTip></span>
-          : shown && <span>Clima de la semana previa no disponible.</span>}
-      </p>}
+      {!narrow && modelDetails}
       <details className="pv-advanced"><summary>Opciones avanzadas</summary>
         <div className="pv-advanced-body">
+          {narrow && <div className="pv-advanced-model">{modelControl}{modelDetails}</div>}
           {privateViewEnabled ? <><label htmlFor="bt-disclosure">Modo de divulgación</label>
             <select id="bt-disclosure" value={disclosure} onChange={e => setDisclosure(e.target.value)}>
               <option value="presentation">Protegido (por defecto)</option><option value="private">Investigación privada · valores exactos</option></select></>
