@@ -247,6 +247,14 @@ Se abren en **Alertas internas** (`/admin/alertas`), en el entorno `npm run dev`
 **avisos internos para el equipo, con aprobación humana**. Ningún algoritmo publica alertas y no
 se envían correos, SMS ni avisos a la ciudadanía.
 
+La pantalla (diseño v2, F6.2) muestra arriba la franja **Ningún algoritmo publica alertas** con los
+cinco pasos del flujo y, debajo, las pestañas **Pendientes**, **Reglas**, **Historial** y **Cómo
+funciona**. En **Pendientes**, cada candidata es una tarjeta con su estado, la regla, la condición,
+la pregunta y el modelo, la semana epidemiológica, la evidencia por semana y los botones para
+decidir. **Ver en el mapa** abre el visor predictivo en esa semana. A la derecha (en el celular,
+debajo) están **Evaluar una semana** y las **Reglas activas**. **Nueva regla**, arriba a la
+derecha, abre el formulario en la pestaña Reglas.
+
 ### 6.1 Reglas
 
 ![Creación de una regla con su frecuencia histórica (fuente ficticia)](img/admin-alertas-regla.png)

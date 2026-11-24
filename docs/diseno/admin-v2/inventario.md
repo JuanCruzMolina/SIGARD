@@ -190,3 +190,50 @@ Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-1`.
   Presupuesto de la carga del visor con 5 usuarios (≤ 4.069 ms): cumplido (3.675). Panel de
   alertas con 1 usuario: máximo 20.037 → 1.852 ms; en la secuencia aislada visor→panel, p95
   124–182 ms. El residuo de la corrida completa (2 de 30 muestras > 1,7 s) no se investigó más.
+
+## F6.2 · Alertas internas
+
+Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-2`.
+
+- **Pantalla** (`components/AdminAlerts.jsx` + `.css`, `Alertas.dc.html`), sólo presentación con
+  `AdminUI`: encabezado con ruta y «Nueva regla» (abre el formulario en Reglas); franja
+  «Ningún algoritmo publica alertas» con los 5 pasos de `FLOW_STEPS` y los textos de canal y
+  reconstrucción; pestañas subrayadas (mismos `data-tab`/`aria-pressed`); candidatas en
+  tarjetas con insignia de estado (ícono + texto), ficha (regla, condición, pregunta y modelo,
+  SE calculada con `epiWeekOf`), evidencia en `UiTable` y «Ver en el mapa» (visor en la semana y
+  la pregunta de la regla; sólo con `localResearchEnabled()`; el radio se pasa sólo si es un
+  código censal de 9 dígitos); columna lateral con «Evaluar una semana» y «Reglas activas»;
+  reglas, formulario e historial en tarjetas; errores y resultados con `Notice`. Mismas
+  peticiones, validaciones, flujo de aprobar/descartar, auditoría y textos.
+- **Diferencias deliberadas con la maqueta**:
+  - Las candidatas pendientes se muestran todas desplegadas (la maqueta pliega las siguientes
+    tras un botón «Revisar»): plegarlas cambiaría el flujo de revisión.
+  - La decisión mantiene el flujo actual (elegir aprobar o descartar y luego escribir el
+    comentario o el motivo); la maqueta muestra el comentario siempre visible.
+  - «Reglas activas» no muestra «Se habría activado N veces»: ese dato sólo existe al calcular
+    la vista previa de una regla y no se guarda; no se inventa ni se recalcula al abrir.
+  - En lugar de «Evaluar la próxima semana pendiente» se conserva el selector de semana con
+    «Evaluar semana» (la API no informa cuál es la próxima semana pendiente).
+  - La ficha no repite «Registros observados»: el observado ya figura en la evidencia, con la
+    misma protección (< 5 → «protegido»); no se muestra nada que el modo protegido oculte.
+  - Se conserva la pestaña «Cómo funciona» y el subtítulo actual.
+- **Pruebas**: `test:alerts` y `test:alerts:browser` pasan sin cambios. Nuevo
+  `test:alerts:layout:browser` (sin candidatas, con candidatas, aprobada, descartada, formulario,
+  error de API, 1440/390, AA, teclado, 44 px, textos ≥ 14 px). Capturas en
+  `data/interim/official/ux-admin-v2-f6-2/<etiqueta>/`; antes/después del recorrido completo en
+  `ux-internal-alerts-20261114/f6-2-antes/` y `.../f6-2-regresion/`.
+- **Rendimiento** (`performance.browser.mjs --target production`, completo, p95 en ms, 1 / 5
+  usuarios; F6.2 `f6-2-rendimiento`):
+
+  | Operación | F0 | F2 | F5 | F6.1 | F6.2 |
+  |---|---|---|---|---|---|
+  | actividad (fixture) | 604 / 1.146 | 344 / 1.297 | 314 / 1.313 | 390 / 1.281 | 353 / 931 |
+  | prevención | 350 / 1.415 | 426 / 1.359 | 326 / 1.312 | 403 / 1.312 | 335 / 1.202 |
+  | visor: carga | 815 / 2.949 | 1.083 / 3.828 | 1.079 / 4.069 | 1.075 / 3.675 | 917 / 2.905 |
+  | visor: cambio de semana | 180 / 569 | 190 / 826 | 190 / 685 | 171 / 741 | 148 / 514 |
+  | visor: consulta de radio | 81 / 279 | 100 / 350 | 89 / 260 | 82 / 261 | 69 / 221 |
+  | panel de alertas | 174 / 267 | 141 / 428 | 3.677 / 385 | 1.750 / 505 | 143 / 293 |
+
+  Panel de alertas: máximo 144 ms con 1 usuario y 844 ms con 5 (F6.1: 1.852 y 670).
+- **Observado, sin cambiar**: el contador del menú lateral se actualiza al cambiar de sección, no
+  tras decidir una candidata en la misma pantalla (comportamiento previo de F4).
