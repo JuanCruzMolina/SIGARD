@@ -1,9 +1,19 @@
 """Read-only result routes. The final predictive module is installed only by
 `predictive_admin.mount` (guarded local administrative API); never by `app.main`."""
+import json
+
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from starlette.responses import Response
 from .experimental_results import ArtifactBlocked, InvalidDate, NotAvailable
 
 PREFIX = '/api/v1/research/backtest'
+
+
+def encoded(value):
+    """The response FastAPI would build for `value` (jsonable_encoder + JSONResponse.render)."""
+    body = json.dumps(jsonable_encoder(value), ensure_ascii=False, allow_nan=False, indent=None, separators=(',', ':')).encode('utf-8')
+    return Response(content=body, media_type='application/json')
 
 
 def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
@@ -15,14 +25,19 @@ def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
         return adapter.week(year, week, radio, mode=disclosure) if unified else adapter.week(year, week, radio)
 
     def call(request, allowed, operation):
+        # Runs in the threadpool (sync route). The JSON is encoded HERE, byte for byte as
+        # FastAPI + JSONResponse would, because without a response_model FastAPI encodes the
+        # returned value on the event loop: large viewer payloads (geometry, history) then froze
+        # every other route of the shared local process (alerts, accounts, login) for seconds.
         if any(k not in allowed or len(request.query_params.getlist(k)) != 1 for k in request.query_params):
             raise HTTPException(400, 'invalid_query')
         if adapter is None: raise HTTPException(503, 'backtest_bundle_unavailable')
-        try: return operation()
+        try: value = operation()
         except InvalidDate: raise HTTPException(400, 'invalid_epi_period') from None
         except NotAvailable: raise HTTPException(404, 'territory_not_available') from None
         except (ArtifactBlocked, KeyError, ValueError, TypeError, OSError):
             raise HTTPException(503, 'backtest_artifacts_blocked') from None
+        return encoded(value)
 
     @router.get('/calendar')
     def calendar(request: Request): return call(request, set(), adapter.catalog if adapter else None)

@@ -19,6 +19,9 @@
 // results.partial.json, build-*/); an existing folder stops the run before anything is written, so earlier
 // results (F0 baseline, F2) are never emptied or overwritten. Without --label a timestamped name is used.
 // --users 1 measures only the one-user level (harness check); the formal measurement keeps 1,5.
+// --trace-slow (diagnosis): writes slow-requests.private.json (requests > 2 s with Chromium's sendStart and
+// receiveHeadersEnd: queued in the browser vs slow in the server) and all-requests.private.json (every
+// request to 8767 with start/end), in the run folder. F6.1 found the alerts-panel contention with it.
 // Usage (repository root): node frontend/scripts/performance.browser.mjs [--reps 30] [--target production] [--label f2] [--users 1]
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
@@ -47,6 +50,8 @@ const only = process.argv.includes('--only') ? new Set(process.argv[process.argv
 const selected = name => !only || only.has(name)
 const label = runLabel(argument('--label') || '')
 const afterWarm = process.argv.includes('--after-warm')
+const traceSlow = process.argv.includes('--trace-slow')
+const slowRequests = [], allRequests = []
 const output = await newRunDirectory(outputBase, label)
 // --users 1 (or 1,5) limits the concurrency levels, e.g. a one-user harness check.
 const USERS = argument('--users') ? argument('--users').split(',').map(Number) : [1, 5]
@@ -115,6 +120,17 @@ async function newPage(browser) {
   // links) and is blocked so the network outside this machine does not count.
   const cdp = await page.createCDPSession()
   await cdp.send('Network.enable')
+  // --trace-slow: every request slower than 2 s (path, ms, outcome), for contention diagnosis.
+  if (traceSlow) {
+    const started = new Map()
+    page.on('request', r => { started.set(r, performance.now()); if (r.url().includes(':8767/')) allRequests.push({ r, start: performance.now(), path: new URL(r.url()).pathname.slice(0, 50), method: r.method() }) })
+    const done = outcome => r => { const ms = performance.now() - (started.get(r) ?? performance.now()); started.delete(r)
+      if (ms > 2000) slowRequests.push({ path: new URL(r.url()).pathname + new URL(r.url()).search.slice(0, 60), ms: Math.round(ms), outcome: outcome === 'ok' ? r.response()?.status() : r.failure()?.errorText, at: new Date().toISOString(),
+        timing: (({ connectStart, connectEnd, sendStart, receiveHeadersEnd } = {}) => ({ connectStart, connectEnd, sendStart, receiveHeadersEnd }))(r.response()?.timing() || undefined) }) }
+    const end = outcome => r => { const entry = allRequests.find(e => e.r === r); if (entry) { entry.end = performance.now(); entry.outcome = outcome; entry.status = r.response()?.status(); entry.sendStart = r.response()?.timing()?.sendStart } }
+    page.on('requestfinished', end('ok')); page.on('requestfailed', end('failed'))
+    page.on('requestfinished', done('ok')); page.on('requestfailed', done('failed'))
+  }
   await cdp.send('Network.setBlockedURLs', { urls: ['https://*'] })
   return { page, close: () => context.close() }
 }
@@ -301,6 +317,8 @@ try {
     phase2_after_alerts_preload: afterWarm, alerts_preload_wait_ms: warmWaitMs,
     repetitions: reps, concurrency: USERS, percentile: 'p95 por rango más cercano', threshold_ms: THRESHOLD_MS,
   }
+  if (traceSlow) await writeFile(resolve(output, 'slow-requests.private.json'), JSON.stringify(slowRequests, null, 2))
+  if (traceSlow) await writeFile(resolve(output, 'all-requests.private.json'), JSON.stringify(allRequests.map(({ r, ...e }) => ({ ...e, start: Math.round(e.start), end: e.end && Math.round(e.end) })), null, 2))
   await writeFile(resolve(output, only ? `results-${[...only].join('+')}.json` : 'results.json'), JSON.stringify({ environment, results, failures }, null, 2))
   console.log(JSON.stringify({ environment, all_pass: results.every(r => r.pass) }))
 } finally {

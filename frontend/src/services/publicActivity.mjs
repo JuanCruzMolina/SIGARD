@@ -1,7 +1,7 @@
 // Public activity view: protected levels by census radio in fixed 4-week blocks.
 // The API answers 404 unless a private authorization binds the package (or the fictional
 // fixture is enabled locally). Nothing of the package is ever bundled or stored in /public.
-import { fetchRead } from './readRetry.mjs'
+import { discardBody, fetchRead } from './readRetry.mjs'
 
 export const SCHEMA = 'sigard-public-activity/1'
 export const PROTECTED = 'protegido'
@@ -83,8 +83,8 @@ export function loadActivity(fetcher = fetch, timeoutMs = PROBE_TIMEOUT_MS) {
     try {
       // One retry on a network failure or 5xx (404 = disabled is never retried), within the same time limit.
       const response = await fetchRead(`${API_URL}/api/v1/public/activity`, { credentials: 'omit', cache: 'no-store', signal: AbortSignal.timeout(timeoutMs) }, { fetcher })
-      if (response.status === 404) return { enabled: false }
-      if (!response.ok) return { enabled: false, unavailable: true }
+      if (response.status === 404) { discardBody(response); return { enabled: false } }
+      if (!response.ok) { discardBody(response); return { enabled: false, unavailable: true } }
       return { enabled: true, activity: validateActivity(await response.json()) }
     } catch {
       return { enabled: false, unavailable: true }

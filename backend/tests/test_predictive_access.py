@@ -180,6 +180,106 @@ async def test_contract_and_protection_are_unchanged(viewer):
 
 
 @pytest.mark.anyio
+async def test_viewer_bytes_are_exactly_what_jsonresponse_would_send(viewer):
+    """F6.1 contention fix: the body is encoded in the threadpool, byte for byte as before."""
+    from starlette.responses import JSONResponse
+    app, headers, _, service = viewer
+    async with client(app) as c:
+        for path, value in (('/calendar', service.catalog()), ('/geometry', service.geometry()), ('/metadata', service.metadata()),
+                            ('/comparison' + WEEK, service.week('2021', '1', None, mode='presentation'))):
+            response = await c.get(PREFIX + path, headers=headers)
+            assert response.status_code == 200
+            assert response.content == JSONResponse(jsonable_encoder(value)).body, path
+            assert response.headers['content-type'] == 'application/json'
+
+
+@pytest.mark.anyio
+async def test_abandoned_viewer_requests_are_not_computed(tmp_path):
+    """F6.1: a queued viewer request whose client already disconnected is dropped unanswered work."""
+    from app.predictive_admin import PredictiveGate, PREFIX as GATE_PREFIX
+    calls, sent = [], []
+
+    async def viewer(scope, receive, send):
+        calls.append(scope['path'])
+        await send({'type': 'http.response.start', 'status': 200, 'headers': []})
+        await send({'type': 'http.response.body', 'body': b'{}'})
+
+    async def other(scope, receive, send):
+        raise AssertionError('viewer paths never reach the admin app')
+
+    gate = PredictiveGate(other, viewer)
+    scope = {'type': 'http', 'method': 'GET', 'scheme': 'http', 'path': GATE_PREFIX + '/history', 'raw_path': b'', 'query_string': b'',
+             'client': ('127.0.0.1', 1234), 'server': ('127.0.0.1', 8767), 'root_path': '', 'http_version': '1.1',
+             'headers': [(b'host', b'127.0.0.1:8767'), (b'origin', ORIGIN.encode()), (b'x-sigard-research', b'local-read')]}
+
+    async def send(message):
+        sent.append(message)
+
+    def receiver(messages):
+        queue = list(messages)
+        async def receive():
+            if queue:
+                return queue.pop(0)
+            import anyio
+            await anyio.sleep_forever()
+        return receive
+
+    await gate(scope, receiver([{'type': 'http.request', 'body': b'', 'more_body': False}, {'type': 'http.disconnect'}]), send)
+    assert calls == [] and sent[0]['status'] == 499
+    sent.clear()
+    await gate(scope, receiver([{'type': 'http.request', 'body': b'', 'more_body': False}]), send)
+    assert calls == [GATE_PREFIX + '/history'] and sent[0]['status'] == 200
+
+
+class _HeavyService:
+    """Fictitious service whose geometry is large enough to take seconds to encode."""
+    def __init__(self, features):
+        self.features = features
+
+    def geometry(self):
+        return {'type': 'FeatureCollection', 'features': [
+            {'type': 'Feature', 'properties': {'id': f'FX{i:07d}', 'value': i / 7}, 'geometry': None} for i in range(self.features)]}
+
+
+@pytest.mark.anyio
+async def test_large_viewer_responses_do_not_block_alerts_or_accounts(tmp_path):
+    """Viewer JSON was encoded on the event loop; alerts/accounts waited behind it (F6.1)."""
+    import asyncio
+    import time
+    features = 150_000
+    started = time.perf_counter(); jsonable_encoder(_HeavyService(features).geometry()); encode_s = time.perf_counter() - started
+    assert encode_s > 0.4, f'the payload must be slow to encode to make this check meaningful ({encode_s:.2f} s)'
+    app, headers, admin = admin_app(tmp_path, _HeavyService(features))
+    gaps, done = [], False
+
+    async def ticker():
+        last = time.perf_counter()
+        while not done:
+            await asyncio.sleep(0.01)
+            now = time.perf_counter(); gaps.append(now - last); last = now
+
+    async with client(app) as c:
+        assert (await c.get('/api/v1/admin/users?page=1', headers=bearer(admin))).status_code == 200  # warm the route
+        tick = asyncio.create_task(ticker())
+        heavy = asyncio.create_task(c.get(PREFIX + '/geometry', headers=headers))
+        await asyncio.sleep(0.05)
+        light = []
+        while not heavy.done():
+            t = time.perf_counter()
+            assert (await c.get('/api/v1/admin/users?page=1', headers=bearer(admin))).status_code == 200
+            light.append((time.perf_counter() - t, heavy.done()))
+            await asyncio.sleep(0.02)
+        response = await heavy
+        done = True; await tick
+    assert response.status_code == 200 and len(response.json()['features']) == features
+    # Before the fix the whole encoding ran on the event loop: one gap as long as the encoding and
+    # no other route answered until the viewer response was done. Light routes still share the CPU
+    # (GIL) with the viewer thread, so their latency varies and is not asserted here.
+    assert max(gaps) < max(0.25, encode_s / 4), f'event loop blocked {max(gaps):.2f} s (encoding takes {encode_s:.2f} s)'
+    assert light, 'the accounts route was queried while the viewer encoded its response'
+
+
+@pytest.mark.anyio
 async def test_unavailable_service_answers_503_after_authentication(tmp_path):
     app, headers, _ = admin_app(tmp_path, None)
     async with client(app) as c:

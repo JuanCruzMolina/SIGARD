@@ -159,8 +159,34 @@ class PredictiveGate:
 
         if response is not None:
             return await response(scope, receive, secured)
+        buffered = []
+
+        async def replay():
+            return buffered.pop(0) if buffered else await receive()
+
+        async def client_gone():
+            # Non-blocking look at the messages already received (the empty GET body, then a
+            # possible disconnect), as Starlette's Request.is_disconnected; kept for the viewer.
+            import anyio
+            for _ in range(2):
+                message = {}
+                with anyio.CancelScope() as scope_:
+                    scope_.cancel()
+                    message = await receive()
+                if not message:
+                    return False
+                if message.get("type") == "http.disconnect":
+                    return True
+                buffered.append(message)
+            return False
+
         async with self.slots:
-            await self.viewer(scope, receive, secured)
+            # F6.1: a viewer request whose client already left (closed tab, navigation) is not
+            # computed. Queued abandoned requests kept the process busy for seconds and the
+            # browser waited for those connections before sending the next admin requests.
+            if await client_gone():
+                return await JSONResponse({"detail": "client_closed_request"}, status_code=499)(scope, replay, secured)
+            await self.viewer(scope, replay, secured)
 
 
 def mount(app, service):

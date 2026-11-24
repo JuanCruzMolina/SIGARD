@@ -1,4 +1,5 @@
 import { backtestCalendar } from './backtestResults'
+import { discardBody } from './readRetry.mjs'
 import { epiWeekLabel } from './adminShell.mjs'
 import { lastEvaluableWeek } from './predictiveView.mjs'
 
@@ -10,7 +11,7 @@ import { lastEvaluableWeek } from './predictiveView.mjs'
 let manifestWeek
 function loadManifestWeek() {
   manifestWeek ||= fetch('/data/available_weeks.json', { cache: 'no-store' })
-    .then(response => response.ok ? response.json() : null)
+    .then(response => response.ok ? response.json() : (discardBody(response), null))
     .then(manifest => manifest?.default_cutoff_date ? { label: epiWeekLabel(manifest.default_cutoff_date), date: manifest.default_cutoff_date, source: 'manifiesto de semanas publicado' } : null)
     .catch(() => null)
   return manifestWeek
