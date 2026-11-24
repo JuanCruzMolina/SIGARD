@@ -28,7 +28,7 @@ async function request(path, signal) {
   if (response.status === 401) { endSession(); throw sessionError(SESSION_EXPIRED) }
   if (!response.ok) {
     const detail = response.status === 403 ? await response.json().then(body => body?.detail, () => null) : null
-    throw new Error(response.status === 503 ? 'El paquete de backtesting falta o no pudo verificarse. Revisá la compilación offline y reintentá.' : detail === 'Rol administrador requerido' ? ROLE_REQUIRED : response.status === 403 ? `Abrí SIGARD en http://127.0.0.1:5173${PREDICTIVE_ROUTE} para consultar los resultados locales.` : 'El período o territorio solicitado no está disponible.')
+    throw Object.assign(new Error(response.status === 503 ? 'El paquete de backtesting falta o no pudo verificarse. Revisá la compilación offline y reintentá.' : detail === 'Rol administrador requerido' ? ROLE_REQUIRED : response.status === 403 ? `Abrí SIGARD en http://127.0.0.1:5173${PREDICTIVE_ROUTE} para consultar los resultados locales.` : 'El período o territorio solicitado no está disponible.'), { status: response.status })
   }
   return response.json()
 }

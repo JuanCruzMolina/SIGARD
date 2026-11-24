@@ -9,3 +9,6 @@ export function insideReportArea(position) {
 }
 
 export const normalizeReportText = value => value.trim().replace(/\s+/g, ' ')
+
+// Short category names of the administrative inbox (Reportes ciudadanos and Inicio).
+export const REPORT_CATEGORY_LABELS = { agua_acumulada: 'Agua acumulada', neumaticos_chatarra: 'Neumáticos o chatarra', microbasural: 'Microbasural', criadero_espacio_publico: 'Criadero en espacio público', alta_presencia_mosquitos: 'Alta presencia de mosquitos', evaluacion_control_vectorial: 'Evaluación de control vectorial', otro: 'Otro' }

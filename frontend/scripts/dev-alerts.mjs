@@ -109,7 +109,7 @@ export function alertsRuntime(options = {}) {
       return createServer({ root: frontend, configFile: join(frontend, 'vite.config.js'), define: developmentDefine() })
     },
     announce() {
-      developmentRuntime.log('ADMINISTRACIÓN: /admin/reportes (reportes, contenido, cuentas y alertas internas). Avisos sólo en el panel; sin correo, SMS ni publicación ciudadana.')
+      developmentRuntime.log('ADMINISTRACIÓN: /admin (abre Inicio; reportes, contenido, cuentas y alertas internas desde el menú). Avisos sólo en el panel; sin correo, SMS ni publicación ciudadana.')
       developmentRuntime.log('VISOR PREDICTIVO: /admin/predictivo, sólo con sesión de administrador (sin sesión o vencida muestra el ingreso de Administración). /mapa es siempre el mapa público.')
       developmentRuntime.log('Puertos: 5173 frontend · 8767 API administrativa (incluye el visor predictivo, sólo con sesión de administrador). No correr en paralelo con dev:demo.')
       if (service?.adminMissing) developmentRuntime.log(ADMIN_MISSING)

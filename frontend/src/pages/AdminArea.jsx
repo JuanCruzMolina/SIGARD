@@ -5,13 +5,13 @@ import { AdminFrameContext } from '../components/adminFrame'
 import AdminLoginForm from '../components/AdminLoginForm'
 import { ADMIN_HOME } from '../services/adminShell.mjs'
 import { endSession, readSession, sessionExpired } from '../services/adminSession.mjs'
+import AdminInicio from './AdminInicio'
 import AdminPredictivo from './AdminPredictivo'
 import AdminReports from './AdminReports'
 import '../Prevention.css'
 
 const EXPIRED = 'La sesión venció. Ingresá nuevamente.'
 const SOON = {
-  inicio: { title: 'Inicio', text: 'Lo que requiere una decisión hoy y el estado del sistema.', soon: 'El resumen de Inicio todavía no tiene pantalla propia. Mientras tanto, usá el menú para ir a cada sección.' },
   auditoria: { title: 'Auditoría', text: 'Registro de acciones administrativas.', soon: 'La consulta de auditoría todavía no tiene pantalla propia. Las decisiones sobre alertas siguen registradas en Alertas internas › Auditoría.' },
 }
 
@@ -31,13 +31,15 @@ function AdminSoon({ section }) {
 }
 
 // Administración v2 (F4): /admin/* routes inside the frame. /admin leads to /admin/inicio and the
-// old /admin/reportes keeps working. Each screen keeps its own session handling.
+// old /admin/reportes keeps working. Each screen keeps its own session handling and its login
+// keeps the URL, so logging in without a requested route lands on /admin/inicio (F5) and a
+// requested route (for example /admin/cuentas) is respected.
 export default function AdminArea({ onFrameChange }) {
   const setFrame = useCallback(value => onFrameChange?.(value), [onFrameChange])
   return <AdminFrameContext.Provider value={setFrame}>
     <Routes>
       <Route index element={<Navigate to={ADMIN_HOME} replace/>}/>
-      <Route path="inicio" element={<AdminSoon section="inicio"/>}/>
+      <Route path="inicio" element={<AdminInicio/>}/>
       <Route path="predictivo" element={<AdminPredictivo/>}/>
       <Route path="alertas" element={<AdminReports key="alertas" section="alertas"/>}/>
       <Route path="reportes" element={<AdminReports key="reportes" section="reportes"/>}/>

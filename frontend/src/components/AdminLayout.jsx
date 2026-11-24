@@ -1,33 +1,13 @@
 import { useContext, useEffect, useState } from 'react'
 import { NavLink } from 'react-router-dom'
-import { ADMIN_GROUPS, environmentLabel, epiWeekLabel, minutesLeft, visibleSections } from '../services/adminShell.mjs'
+import { ADMIN_GROUPS, environmentLabel, minutesLeft, visibleSections } from '../services/adminShell.mjs'
 import { adminSessionActive, endSession, readEmail, sessionRemaining } from '../services/adminSession.mjs'
-import { backtestCalendar } from '../services/backtestResults'
-import { lastEvaluableWeek } from '../services/predictiveView.mjs'
+import { loadDataWeek } from '../services/adminWeek'
 import { alertsRequest, listAdminReports } from '../services/citizenReports'
 import { demoMode } from '../services/demoMode'
 import { localResearchEnabled } from '../services/experimentalResults'
 import { AdminFrameContext } from './adminFrame'
 import './AdminLayout.css'
-
-// «Datos hasta» (never hand-written). Where the predictive viewer exists (local research with an
-// administrator session) it is the viewer's last evaluable week, read from the same /calendar the
-// viewer uses (shared cache), with the API's own SE/year. Elsewhere there is no viewer: the week of
-// the public weeks manifest (/data/available_weeks.json) is shown and the tooltip says so.
-let manifestWeek
-function loadManifestWeek() {
-  manifestWeek ||= fetch('/data/available_weeks.json', { cache: 'no-store' })
-    .then(response => response.ok ? response.json() : null)
-    .then(manifest => manifest?.default_cutoff_date ? { label: epiWeekLabel(manifest.default_cutoff_date), date: manifest.default_cutoff_date, source: 'manifiesto de semanas publicado' } : null)
-    .catch(() => null)
-  return manifestWeek
-}
-function loadViewerWeek() {
-  return backtestCalendar().then(catalog => {
-    const last = lastEvaluableWeek(catalog.weeks)
-    return last ? { label: `SE ${last.target_epi_week}/${last.target_year}`, date: last.target_end, source: 'última semana evaluable del visor predictivo' } : null
-  }).catch(() => null)
-}
 
 // Counters only from numbers the API already returns; any failure means "no number".
 function useCounters(token, refreshKey, mode) {
@@ -44,7 +24,7 @@ function useCounters(token, refreshKey, mode) {
   return counters
 }
 
-function Icon({ d, size = 18 }) {
+export function Icon({ d, size = 18 }) {
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false"><path d={d}/></svg>
 }
 
@@ -68,7 +48,7 @@ export default function AdminLayout({ active, token, onLogout, onExpire, childre
   const viewerWeek = mode.localResearch && adminSessionActive(token)
   useEffect(() => {
     let alive = true
-    ;(viewerWeek ? loadViewerWeek() : loadManifestWeek()).then(value => { if (alive) setWeek(value) })
+    ;loadDataWeek(viewerWeek).then(value => { if (alive) setWeek(value) })
     return () => { alive = false }
   }, [viewerWeek])
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 30000); return () => clearInterval(timer) }, [])

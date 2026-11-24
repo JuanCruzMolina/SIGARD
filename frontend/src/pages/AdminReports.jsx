@@ -11,6 +11,7 @@ import AdminPrevention from '../components/AdminPrevention'
 import DemoWorkspace from '../components/DemoWorkspace'
 import { demoMode } from '../services/demoMode'
 import { endSession, readSession } from '../services/adminSession.mjs'
+import { REPORT_CATEGORY_LABELS as categoryLabels } from '../services/citizenReportValidation.mjs'
 import {
   downloadAdminExport,
   getAdminReport,
@@ -21,7 +22,6 @@ import '../Prevention.css'
 
 const statuses = ['recibido', 'en_revision', 'pendiente_de_derivacion', 'derivado', 'resuelto', 'descartado']
 const statusLabels = { recibido: 'Recibido', en_revision: 'En revisión', pendiente_de_derivacion: 'Pendiente de derivación', derivado: 'Derivado', resuelto: 'Resuelto', descartado: 'Descartado' }
-const categoryLabels = { agua_acumulada: 'Agua acumulada', neumaticos_chatarra: 'Neumáticos o chatarra', microbasural: 'Microbasural', criadero_espacio_publico: 'Criadero en espacio público', alta_presencia_mosquitos: 'Alta presencia de mosquitos', evaluacion_control_vectorial: 'Evaluación de control vectorial', otro: 'Otro' }
 const privateIcon = L.divIcon({ className: '', html: '<span class="report-marker private"></span>', iconSize: [32, 38], iconAnchor: [16, 34] })
 const emptyFilters = { category: '', status: '', neighborhood: '', date_from: '', date_to: '' }
 const emptyListing = { items: [], total: 0, page: 1, page_size: 25 }
