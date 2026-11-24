@@ -109,3 +109,33 @@ Implementado en `entrenamiento-ML` (23/11/2026), sin rediseñar el contenido de 
   alerts, public-activity, backtest y admin-shell escriben sólo en una carpeta nueva por etiqueta
   (`--label`/`SIGARD_SHOTS_LABEL`, o fecha y hora) y no corren si existe; ninguno vacía, borra ni
   sobrescribe nada en `data/`. Contrato en `scripts/private-output.test.mjs` (`test:dev`).
+
+## F5 · Inicio
+
+Implementado en `entrenamiento-ML` (23/11/2026) según `Main.dc.html`, sin copiar su marcado.
+
+- **Ajustes de F4** (antes de F5): bajo 900 px la barra superior ocupa una línea (candado,
+  vencimiento y correo truncado) y «Cerrar sesión» pasa al final del menú desplegable; subtítulo
+  único para todas las pantallas (17 px, 15 px en móvil). Los filtros de `/admin/reportes` en
+  móvil ya estaban sin margen interior antes de F4 (captura `ux-admin-v2-f4/antes`): queda para F6.
+- **Pantalla** (`pages/AdminInicio.jsx`, `components/AdminInicio.css`, helpers puros en
+  `services/adminHome.mjs`). Sin endpoints nuevos ni cambios de contrato; fuentes:
+  - alertas: `GET /api/v1/admin/alerts/candidates?status=pending` (cantidad = largo de la lista;
+    no se consulta en la demo);
+  - reportes: `GET /api/v1/admin/citizen-reports?status=recibido&page_size=10` (`total`); para
+    los más antiguos se leen la última página y, si es corta, la anterior (la API ordena por
+    `created_at` descendente);
+  - contenido: `GET /api/v1/admin/prevention`, secciones con `has_pending_changes`;
+  - semana: `services/adminWeek.js`, la misma función que «Datos hasta» del menú;
+  - modelos e integridad: `/calendar` del visor (misma caché); 503 = paquete no verificado;
+  - mapa público: `loadActivity()`; 404 = desactivado. Desde F5 una falla de red, otro estado o
+    un paquete inválido devuelven además `unavailable: true` («No disponible» en Inicio; las
+    páginas públicas siguen tratándolo como desactivado).
+  Una fuente que no responde muestra «No disponible»; un 401/403 cierra la sesión.
+- **Destino tras el ingreso**: cada pantalla conserva su URL al ingresar; `/admin` y las rutas
+  desconocidas van a `/admin/inicio`. Los mensajes de `dev` y `dev:demo` apuntan a `/admin`.
+- **Pruebas**: `test:admin` (helpers y contratos de Inicio) y `test:admin:home:browser` (destino
+  tras el ingreso; API real descartable; fixtures generadas con datos, vacía y con una API
+  fallando; mapa activado/desactivado/no disponible; AA, teclado, 390 px). Capturas privadas en
+  `data/interim/official/ux-admin-v2-f5/<etiqueta>/`; la captura previa de Inicio es
+  `ux-admin-v2-f4/f5-ajustes-f4/inicio-*` (después de los ajustes F4, antes de F5).

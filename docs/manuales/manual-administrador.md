@@ -32,11 +32,33 @@ Dentro de Administración (diseño v2, F4) la pantalla tiene dos partes fijas:
   predictivo disponible (`npm run dev`), la última semana con datos del visor; sin visor, la semana
   del manifiesto de datos publicados. En el celular el menú se abre con **Menú**.
 - **Barra superior**: «Área con acceso restringido», minutos que le quedan a la sesión, el correo
-  con el que ingresaste y **Cerrar sesión**. Al cerrar o al vencer la sesión, el navegador borra la
-  sesión y ese correo.
+  con el que ingresaste y **Cerrar sesión**. En el celular la barra ocupa una sola línea (candado,
+  vencimiento y correo) y **Cerrar sesión** está al final del menú desplegable. Al cerrar o al
+  vencer la sesión, el navegador borra la sesión y ese correo.
 
-**Inicio** y **Auditoría** todavía no tienen pantalla propia y muestran «Próximamente». Las
-direcciones directas siguen funcionando (por ejemplo `/admin/reportes` o un enlace del visor).
+Al ingresar sin pedir una sección (`/admin`) se abre **Inicio**; si entraste por una dirección
+concreta (por ejemplo `/admin/reportes` o un enlace del visor), después del ingreso se abre esa.
+
+### Inicio
+
+**Inicio** (`/admin/inicio`) resume lo que requiere una decisión y el estado del sistema. Lleva la
+etiqueta «Prototipo experimental — reconstrucción histórica, no uso operativo».
+
+- **Requiere tu atención**: alertas candidatas pendientes, reportes ciudadanos en «Recibido» y
+  secciones preventivas con cambios sin publicar, cada una con su cantidad y un botón a la sección.
+  Las cantidades salen de la API; si una no responde, dice **No disponible** (nunca un número).
+  En la demo ficticia no hay alertas internas.
+- **Estado del sistema**: semana de los datos (la misma que «Datos hasta» del menú), modelos
+  (experimentales, no promovidos), integridad del paquete del visor (verificada por la API en la
+  consulta), divulgación protegida (valores menores a 5 ocultos), mapa público con datos reales
+  (activado o desactivado según la API de actividad pública) y entorno. Sin visor predictivo
+  (producción o demo), modelos e integridad dicen «No disponible».
+- **Pendientes**: lista única del más antiguo al más reciente, con el tipo (Alerta, Reporte,
+  Contenido) y **Revisar**. Muestra los 10 más antiguos; el resto está en cada sección.
+- **Accesos rápidos**: visor en la última semana evaluable, reglas de alerta, exportación de
+  reportes y nueva sección preventiva (llevan a la sección correspondiente).
+
+**Auditoría** todavía no tiene pantalla propia y muestra «Próximamente».
 
 ## 2. Cuentas administrativas
 
