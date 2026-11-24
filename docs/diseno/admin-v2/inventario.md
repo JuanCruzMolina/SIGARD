@@ -235,5 +235,78 @@ Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-2`.
   | panel de alertas | 174 / 267 | 141 / 428 | 3.677 / 385 | 1.750 / 505 | 143 / 293 |
 
   Panel de alertas: máximo 144 ms con 1 usuario y 844 ms con 5 (F6.1: 1.852 y 670).
-- **Observado, sin cambiar**: el contador del menú lateral se actualiza al cambiar de sección, no
-  tras decidir una candidata en la misma pantalla (comportamiento previo de F4).
+- **Observado en F6.2** (resuelto en F6.3): el contador del menú lateral se actualizaba al cambiar
+  de sección, no tras decidir una candidata en la misma pantalla.
+
+## F6.3 · Pendientes del visor y del menú; Reportes ciudadanos
+
+Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-3`.
+
+- **Pendientes**:
+  - Visor en 390 px: el selector de modelo usa nombres cortos (`METHOD_SHORT_NAMES`: «Bosque
+    aleatorio v2», …; la descripción debajo conserva el nombre completo y «Experimental, no
+    aprobado para uso operativo»); selector, descripción y «Datos usados / Semana previa» van
+    dentro de «Opciones avanzadas» (plegado); la (i) del clima queda junto a «… mm». Escritorio
+    sin cambios. `services/useMediaQuery.js` (≤ 700 px).
+  - Contador del menú lateral: se vuelve a consultar (mismos endpoints `/alerts/status` y
+    `citizen-reports?status=recibido&page_size=1`) en cuanto se decide o evalúa una alerta
+    (`AdminCountersContext`) o se guarda un reporte (`countersVersion` de `AdminLayout`).
+- **Pantalla Reportes** (`pages/AdminReports.jsx` + `AdminReports.css`, `Reportes.dc.html`), sólo
+  presentación con `AdminUI` (nuevo tono `info` en `Badge`): encabezado con ruta y «Exportar CSV»;
+  aviso «Información privada» como `Notice` dorado; filtros en tarjeta con margen interior;
+  listado en `UiTable` (Código en IBM Plex Mono, Tipo, Recibido, Estado con insignia e ícono) con
+  la fila entera como objetivo; «Anterior»/«Siguiente» de 44 px y contraste AA; detalle en tarjeta
+  lateral (≥ 1200 px) con ficha (Tipo, Barrio), descripción, ubicación exacta y mapa, formulario y
+  «Retención hasta». En pantallas apiladas (< 1200 px) el panel vacío «Seleccioná un reporte» no
+  se muestra y, al elegir un reporte, el detalle aparece debajo y se desplaza a la vista. En 390 px
+  las filas son tarjetas de dos líneas (la tabla conserva su semántica). Mismos estados,
+  transiciones, peticiones, CSV, auditoría, validaciones y textos.
+- **Diferencias deliberadas con la maqueta**:
+  - Filtros: se conservan los reales (Categoría, Estado, Barrio, Desde, Hasta, «Limpiar
+    filtros»), que se aplican al cambiar; la maqueta muestra «Código de seguimiento» y «Aplicar»,
+    que la API de listado no ofrece.
+  - Estados: se conservan los seis reales («Recibido», no «Nuevo»; también «Pendiente de
+    derivación» y «Derivado»).
+  - Detalle: no hay «Contacto» (los reportes son anónimos; el dato no existe). Se rotula
+    «Ubicación exacta» (la maqueta dice «aproximada», pero el detalle muestra la coordenada
+    exacta). No se agregan textos nuevos de la maqueta («su consulta queda auditada», que ya
+    cumple la API y explica el manual; «Los reportes vencidos se eliminan automáticamente»): se
+    conserva la fecha «Retención hasta» del reporte. Se mantienen «Mensaje
+    público» e «ID de posible duplicado» y el rótulo «Estado».
+  - Lista: no muestra barrio, descripción ni coordenadas (sólo código, tipo, fecha y estado);
+    la descripción y la ubicación exacta se cargan sólo en el detalle protegido.
+  - Se conserva el subtítulo actual («Operación interna. Estos registros no son casos de dengue
+    ni evidencia epidemiológica.»).
+- **Pruebas**: `test:citizen:browser`, `test:demo:browser` y `test:accounts:browser` pasan
+  actualizando sólo selectores (fila de la tabla, `h2 .report-code`, `.report-status`). Nuevo
+  `test:reports:layout:browser` (API SQLite descartable; sin reportes, con reportes en dos
+  páginas, filtros, detalle, cambio de estado con el contador 27 → 26 sin cambiar de sección,
+  CSV filtrado, error de API; 1440/390, AA, teclado, 44 px, textos ≥ 14 px, listado sin recortes y
+  sin datos privados; `--before` sólo captura). `test:predictive:layout:browser` comprueba el
+  visor en móvil y `test:alerts:layout:browser` el contador al decidir. Capturas en
+  `data/interim/official/ux-admin-v2-f6-3/<etiqueta>/` (Reportes) y
+  `ux-admin-v2-f6/<etiqueta>/` (visor); antes: `f6-3-antes`, después: `f6-3-regresion`.
+- **Rendimiento** (`performance.browser.mjs --target production`, completo, p95 en ms, 1 / 5
+  usuarios; F6.3 `f6-3-rendimiento`):
+
+  | Operación | F0 | F2 | F5 | F6.1 | F6.2 | F6.3 |
+  |---|---|---|---|---|---|---|
+  | actividad (fixture) | 604 / 1.146 | 344 / 1.297 | 314 / 1.313 | 390 / 1.281 | 353 / 931 | 305 / 802 |
+  | prevención | 350 / 1.415 | 426 / 1.359 | 326 / 1.312 | 403 / 1.312 | 335 / 1.202 | 307 / 1.065 |
+  | visor: carga | 815 / 2.949 | 1.083 / 3.828 | 1.079 / 4.069 | 1.075 / 3.675 | 917 / 2.905 | 946 / 2.783 |
+  | visor: cambio de semana | 180 / 569 | 190 / 826 | 190 / 685 | 171 / 741 | 148 / 514 | 192 / 534 |
+  | visor: consulta de radio | 81 / 279 | 100 / 350 | 89 / 260 | 82 / 261 | 69 / 221 | 71 / 208 |
+  | panel de alertas | 174 / 267 | 141 / 428 | 3.677 / 385 | 1.750 / 505 | 143 / 293 | 111 / 362 |
+
+  Panel de alertas: máximo 755 ms con 1 usuario y 492 ms con 5. Las subas frente a F6.2 (visor
+  con 1 usuario, cambio de semana, panel con 5 usuarios) están dentro de la variación entre
+  corridas: en la misma sesión, una repetición de F6.3 (`f6-3-rendimiento-2`) dio 955 / 3.864,
+  209 / 639, 88 / 291 y 144 / 394, y el código de `antes-f6-3` (`f6-3-diag-rendimiento-base`)
+  1.231 / 3.454, 180 / 684, 70 / 232 y 171 / 434 (visor carga, cambio de semana, consulta de
+  radio, panel de alertas). La vista Reportes no tiene operación propia en esta medición.
+- **Observado, sin cambiar**: `test:predictive:browser --real` falla de forma intermitente también
+  con el código de `antes-f6-3` (2 de 5 corridas instrumentadas, más 1 de 3 sin instrumentar): a
+  veces el `POST /api/v1/admin/session` del ingreso falla en el navegador (`net::ERR_FAILED`, sin
+  respuesta del servidor) justo después de su preflight, y a veces una petición del visor de la
+  página anterior se cuenta durante el paso a producción (línea 361). Causa raíz no determinada;
+  no depende de los archivos de F6.3.

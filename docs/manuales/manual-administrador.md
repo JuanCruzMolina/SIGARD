@@ -28,6 +28,8 @@ Dentro de Administración (diseño v2, F4) la pantalla tiene dos partes fijas:
   internas, Reportes ciudadanos) y **Gestión** (Contenido preventivo, Cuentas, Auditoría). La
   sección abierta se marca en verde claro. Los números naranjas salen de la API: alertas
   candidatas pendientes y reportes en estado «Recibido»; si la API no da un número, no se muestra.
+  Se actualizan en cuanto decidís una alerta o guardás el estado de un reporte, sin cambiar de
+  sección.
   Al pie, la caja de contexto indica el entorno, la divulgación y **Datos hasta**: con el visor
   predictivo disponible (`npm run dev`), la última semana con datos del visor; sin visor, la semana
   del manifiesto de datos publicados. En el celular el menú se abre con **Menú**.
@@ -85,16 +87,22 @@ La bandeja muestra los reportes anónimos que envía la ciudadanía.
 
 1. **Filtrá** por categoría, estado, barrio o rango de fechas. **Limpiar filtros** vuelve a la
    lista completa.
-2. **Abrí un reporte** de la lista para ver su detalle: código, categoría, ubicación exacta en el
-   mapa, referencia, descripción y fecha de eliminación prevista («Retención hasta»).
-3. **Actualizalo**:
+2. La lista es una tabla con **Código**, **Tipo**, **Recibido** y **Estado** (insignia con
+   ícono), de a 25 por página (**Anterior** / **Siguiente**). No muestra descripción, barrio ni
+   ubicación.
+3. **Abrí un reporte** (cualquier parte de la fila) para ver su detalle en el panel protegido:
+   código, estado, fecha de recepción, categoría, barrio, descripción, ubicación exacta con el
+   mapa, referencia y fecha de eliminación prevista («Retención hasta»). En la computadora el
+   panel está a la derecha; en el celular aparece debajo de la lista sólo cuando elegís un
+   reporte, y la pantalla se desplaza hasta él.
+4. **Actualizalo**:
    - **Estado**: Recibido → En revisión → Pendiente de derivación → Derivado → Resuelto, o
      Descartado;
    - **Mensaje público** (hasta 600 caracteres): es lo único que ve el ciudadano al consultar
      su código, así que no incluyas datos personales ni direcciones;
    - **Nota interna** (hasta 2000 caracteres): sólo la ve el equipo;
    - **ID de posible duplicado**: el identificador de otro reporte sobre el mismo problema.
-4. Tocá **Guardar cambios**.
+5. Tocá **Guardar cambios**.
 
 **Exportar CSV** descarga los reportes **con los filtros aplicados**. El archivo neutraliza las
 celdas que empiezan con `=`, `+`, `-` o `@`, para que no se ejecuten como fórmulas al abrirlo en
@@ -198,6 +206,10 @@ de un radio se ve «Priorizado (puesto N)».
 - **Método de referencia**: una regla estadística simple. Repite lo ocurrido la semana anterior
   (persistencia) o se basa en la estacionalidad.
 - **Comparar**: muestra los dos mapas lado a lado con el mismo encuadre.
+
+En el celular, el selector de modelo (con nombres cortos), su descripción y la línea **Datos
+usados hasta / Semana previa** están dentro de **Opciones avanzadas**, plegado. En la computadora
+siguen en la barra de controles.
 
 ![Comparación entre el modelo ML y el método de referencia (datos ficticios)](img/admin-visor-comparar.png)
 
