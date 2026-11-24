@@ -149,10 +149,10 @@ try {
   await page.waitForFunction(() => document.querySelector('.report-inbox')?.getAttribute('aria-busy') === 'false')
   assert.equal(await page.$$eval('.report-inbox > div button', elements => elements.length), 2)
   holdDetail = true
-  await page.click('.report-inbox > div button:first-child')
-  await page.click('.report-inbox > div button:last-child')
-  await page.waitForSelector('.report-detail h2')
-  assert.equal(await page.$eval('.report-detail h2', element => element.textContent), code)
+  await page.click('.report-inbox tbody tr:first-child button')
+  await page.click('.report-inbox tbody tr:last-child button')
+  await page.waitForSelector('.report-detail h2 .report-code')
+  assert.equal(await page.$eval('.report-detail h2 .report-code', element => element.textContent), code)
   if (heldDetail) await heldDetail.abort().catch(() => {})
   checkpoint('latest detail wins without stale private selection')
   await fill('.admin-filters input[placeholder="Buscar barrio"]', 'Ficticia Uno')
@@ -184,12 +184,12 @@ try {
   await click('Reintentar listado')
   await page.waitForFunction(() => document.querySelectorAll('.report-inbox > div button').length === 2)
   checkpoint('filtered CSV, empty list, reset and recovery after 503')
-  await page.click('.report-inbox > div button:first-child')
+  await page.click('.report-inbox tbody tr:first-child button')
   await page.waitForSelector('.admin-update select')
   await page.select('.admin-update select', 'en_revision')
   await fill('.admin-update textarea[maxlength="600"]', 'Revisión enteramente ficticia completada.')
   await page.click('.admin-update button')
-  await page.waitForFunction(() => document.querySelector('.report-detail .status-chip')?.textContent === 'En revisión')
+  await page.waitForFunction(() => document.querySelector('.report-detail .report-status')?.textContent === 'En revisión')
   for (const width of [1440, 390]) {
     await page.setViewport({ width, height: 1000 })
     await page.screenshot({ path: resolve(output, `admin-${width}.png`), fullPage: true })
@@ -198,7 +198,7 @@ try {
   }
   checkpoint('save to real SQLite API and desktop/mobile layout')
   holdDetail = true
-  await page.click('.report-inbox > div button:last-child')
+  await page.click('.report-inbox tbody tr:last-child button')
   await click('Cerrar sesión')
   if (heldDetail) await heldDetail.abort().catch(() => {})
   await page.waitForSelector('.admin-login')

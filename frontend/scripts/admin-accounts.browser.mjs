@@ -277,7 +277,7 @@ try {
     const saved=page.waitForResponse(r=>r.request().method()==='PATCH' && /admin\/citizen-reports\//.test(r.url()))
     await page.click('.admin-update button[type="submit"], .admin-update .primary-button')
     assert.equal((await saved).status(),200)
-    await page.waitForFunction(()=>document.querySelector('.report-detail > header .status-chip')?.textContent==='En revisión')
+    await page.waitForFunction(()=>document.querySelector('.report-detail > header .report-status')?.textContent==='En revisión')
     const publicStatus=await(await fetch(`${api}/api/v1/citizen-reports/status/${trackingCode}`)).json()
     assert.equal(publicStatus.status,'en_revision')
     assert.ok(!('description' in publicStatus) && !('latitude' in publicStatus))
