@@ -102,14 +102,16 @@ export default function AdminLayout({ active, token, onLogout, onExpire, childre
           <div><dt>Divulgación</dt><dd>Protegida</dd></div>
           <div><dt>Datos hasta</dt><dd className="mono" data-week={week?.date || ''} data-week-source={week?.source || ''} title={week ? `Hasta el ${week.date.split('-').reverse().join('/')} (${week.source})` : undefined}>{week ? week.label : '—'}</dd></div>
         </dl>
+        {/* Narrow screens: «Cerrar sesión» closes the drop-down menu (the top bar keeps one line). */}
+        <button type="button" className="admin-nav-logout" onClick={onLogout}>Cerrar sesión</button>
       </div>
     </div></nav>
     <div className="admin-frame">
       <header className="admin-topbar">
-        <span className="admin-restricted"><Icon d={LOCK} size={16}/>Área con acceso restringido</span>
+        <span className="admin-restricted"><Icon d={LOCK} size={16}/><span className="admin-compact-hide">Área con acceso restringido</span></span>
         <div className="admin-session">
-          <span>Sesión: vence en <span className="mono">{minutes}</span> min</span>
-          {email && <span className="admin-email">{email}</span>}
+          <span className="admin-expiry"><span className="admin-compact-hide">Sesión: </span>vence en <span className="mono">{minutes}</span> min</span>
+          {email && <span className="admin-email" title={email}>{email}</span>}
           <button type="button" className="admin-logout" onClick={onLogout}>Cerrar sesión</button>
         </div>
       </header>

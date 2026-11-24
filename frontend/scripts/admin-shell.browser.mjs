@@ -153,6 +153,8 @@ try {
     assert.match(bar, /Sesión: vence en \d+ min/)
     assert.ok(bar.includes(email), 'el correo del administrador aparece en la barra superior')
     const minutes = Number(/vence en (\d+) min/.exec(bar)[1]); assert.ok(minutes >= 55 && minutes <= 60, `vencimiento razonable: ${minutes}`)
+    assert.equal(await page.$eval('.admin-topbar .admin-logout', e => getComputedStyle(e).display !== 'none'), true, 'en escritorio «Cerrar sesión» sigue en la barra')
+    assert.equal(await page.$eval('.admin-nav-logout', e => getComputedStyle(e).display), 'none')
     checkpoint('barra superior: acceso restringido, vencimiento, correo y cerrar sesión')
 
     // Context box: environment, disclosure and «Datos hasta» = the viewer's last evaluable week.
@@ -182,6 +184,22 @@ try {
       await shoot(name)
     }
     checkpoint('navegación del menú, ítem activo (aria-current) y contraste AA en cada pantalla')
+
+    // One subtitle style on every screen (F4 adjustment): same size, ≥ 14 px at 390 px.
+    const subtitle = () => page.$eval('.admin-content .admin-header p, .admin-content .page-intro p:not(.pv-badge)', e => { const c = getComputedStyle(e); return `${c.fontSize} ${c.fontWeight} ${c.color}` })
+    for (const [width, kind] of [[1440, 'escritorio'], [390, 'móvil']]) {
+      await page.setViewport({ width, height: 1000 }); await settle()
+      const styles = new Map()
+      for (const [path, title] of SECTIONS) {
+        await page.goto(`${origin}${path}`, { waitUntil: 'domcontentloaded' }); await ready(path, title)
+        styles.set(path, await subtitle())
+      }
+      assert.equal(new Set(styles.values()).size, 1, `subtítulo uniforme en ${kind}: ${JSON.stringify([...styles])}`)
+      const size = parseFloat([...styles.values()][0])
+      if (width === 390) assert.ok(size >= 14, `subtítulo ≥ 14 px en móvil: ${size}`)
+    }
+    await page.setViewport({ width: 1440, height: 1000 })
+    checkpoint('subtítulo de las pantallas con el mismo estilo (≥ 14 px en móvil)')
 
     // Counters: only numbers the API returns (/alerts/status «pending», total of received reports).
     const token = await page.evaluate(() => sessionStorage.getItem('sigard_admin_token'))
@@ -232,12 +250,26 @@ try {
     assert.equal(await page.$eval(`${nav} .admin-nav-items`, e => getComputedStyle(e).display), 'none', 'menú plegado en móvil')
     await page.click(toggle)
     assert.equal(await page.$eval(toggle, e => e.getAttribute('aria-expanded')), 'true')
-    const sizes = await page.$$eval(`${nav} a.admin-nav-item, ${toggle}, .admin-topbar button`, e => e.map(x => [x.textContent.trim(), Math.round(x.getBoundingClientRect().height), Math.round(x.getBoundingClientRect().width)]))
+    const sizes = await page.$$eval(`${nav} a.admin-nav-item, ${toggle}, ${nav} .admin-nav-logout`, e => e.map(x => [x.textContent.trim(), Math.round(x.getBoundingClientRect().height), Math.round(x.getBoundingClientRect().width)]))
     for (const [name, height, width] of sizes) assert.ok(height >= 44 && width >= 44, `área táctil de 44 px: ${name} ${width}×${height}`)
     assert.ok(await noHorizontalScroll())
+    // Compact top bar (F4 adjustment): one line with lock, expiry and email; «Cerrar sesión» is the
+    // last control of the drop-down menu and the top-bar button is hidden.
+    const compact = await page.evaluate(() => {
+      const bar = document.querySelector('.admin-topbar'), visible = e => e && getComputedStyle(e).display !== 'none' && e.getBoundingClientRect().height > 0
+      const tops = [...bar.querySelectorAll('.admin-restricted svg, .admin-expiry, .admin-email')].map(e => Math.round(e.getBoundingClientRect().top + e.getBoundingClientRect().height / 2))
+      const controls = [...document.querySelectorAll('#admin-nav-items a, #admin-nav-items button')].filter(visible)
+      return { height: bar.getBoundingClientRect().height, centers: tops, barLogout: visible(bar.querySelector('.admin-logout')), last: controls.at(-1)?.textContent.trim(), text: bar.innerText }
+    })
+    assert.ok(compact.height <= 56, `barra superior compacta en 390 px: ${compact.height} px`)
+    assert.ok(Math.max(...compact.centers) - Math.min(...compact.centers) <= 4, `una sola línea: ${compact.centers}`)
+    assert.equal(compact.barLogout, false, 'en móvil «Cerrar sesión» no está en la barra')
+    assert.equal(compact.last, 'Cerrar sesión', '«Cerrar sesión» es el último control del menú desplegable')
+    assert.match(compact.text, /vence en \d+ min/)
     await page.screenshot({ path: resolve(output, 'menu-movil-abierto-mobile.private.png'), fullPage: true })
     await page.click(`${nav} a[href="/admin/contenido"]`); await ready('/admin/contenido', 'Contenido preventivo')
     assert.equal(await page.$eval(toggle, e => e.getAttribute('aria-expanded')), 'false', 'el menú se pliega al navegar')
+    await page.screenshot({ path: resolve(output, 'barra-compacta-mobile.private.png'), clip: { x: 0, y: 0, width: 390, height: 260 } })
     await page.setViewport({ width: 1440, height: 1000 })
     checkpoint('móvil 390 px: menú desplegable, áreas táctiles de 44 px y sin scroll horizontal')
 
