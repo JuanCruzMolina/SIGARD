@@ -1,16 +1,17 @@
 // Real read-only walkthrough only with --real; default transport is explicitly fictional.
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { resolve } from 'node:path'
 import { preview } from 'vite'
 import { fixtureResponse } from '../security/backtest.fixture.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const real = process.argv.includes('--real')
-const output = resolve('data/interim/official/historical-backtest-stage3-20261102-v1/browser', real ? 'real' : 'fictional')
-await mkdir(output, { recursive: true })
+// Private screenshots: a new folder per run label (SIGARD_SHOTS_LABEL, timestamp by default); never overwritten.
+const output = await newRunDirectory(resolve('data/interim/official/historical-backtest-stage3-20261102-v1/browser'), runLabel(), real ? 'real' : 'fictional')
 const browser = await puppeteer.launch({ headless: true })
 let production
 const errors = [], external = [], requests = []

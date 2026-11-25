@@ -14,6 +14,14 @@ function pause(ms, signal) {
   })
 }
 
+// A response whose body is not going to be read must be discarded: until its body is consumed or
+// cancelled, Chromium keeps the request open and its HTTP/1.1 connection busy (6 per host). Probes
+// that ignored the body of a 404 held connections to the local API until their 5 s timeout and
+// queued the alerts panel behind them (F6.1).
+export function discardBody(response) {
+  try { response?.body?.cancel?.()?.catch?.(() => {}) } catch { /* already consumed or locked */ }
+}
+
 const networkFailure = (error, signal) => error?.name === 'TypeError' && !signal?.aborted
 
 export async function fetchRead(url, options = {}, { fetcher = fetch, delay = RETRY_DELAY_MS } = {}) {
@@ -27,6 +35,7 @@ export async function fetchRead(url, options = {}, { fetcher = fetch, delay = RE
     return fetcher(url, options)
   }
   if (response.status < 500) return response
+  discardBody(response)
   await pause(delay, options.signal)
   return fetcher(url, options)
 }

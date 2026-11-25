@@ -1,0 +1,86 @@
+/* Contenido preventivo · Administración v2 (F6.4, docs/diseno/admin-v2/Contenido.dc.html). Presentation only.
+   Overrides the former editor rules of Prevention.css inside .admin-prevention; the public page is not affected. */
+.admin-prevention { max-width: 1240px; margin: 0; display: flex; flex-direction: column; gap: 20px; }
+.admin-prevention .ui-notice { margin: 0; }
+.admin-prevention .ui-card-title { margin: 0; color: var(--ink); font-size: 1.125rem; overflow-wrap: anywhere; }
+.admin-prevention .ui-screen-aside .ui-button { font-size: .94rem; }
+.prevention-admin-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.prevention-main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
+
+/* Section list (tabs that scroll sideways on narrow screens). */
+.admin-prevention .prevention-section-list { padding: 16px; }
+.admin-prevention .prevention-section-list .ui-card-head { margin-bottom: 8px; }
+.admin-prevention .prevention-section-list ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; }
+.admin-prevention .prevention-section-list li button { width: 100%; min-height: 44px; display: grid; gap: 6px; padding: 12px; border: 1px solid transparent; border-radius: 10px;
+  background: transparent; color: var(--ink); font: inherit; text-align: left; cursor: pointer; box-shadow: none; }
+.admin-prevention .prevention-section-list li button:hover:not(:disabled) { background: var(--canvas); }
+.admin-prevention .prevention-section-list li button.selected { border-color: var(--teal); background: var(--mint); color: var(--navy); box-shadow: none; }
+.admin-prevention .prevention-section-list li button:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.admin-prevention .prevention-section-list li strong { font-size: .94rem; overflow-wrap: anywhere; }
+.admin-prevention .prevention-section-list li small { color: var(--muted); font-size: .875rem; overflow-wrap: anywhere; }
+.admin-prevention .content-badge.ui-badge { justify-self: start; padding: 2px 8px; border-radius: 6px; font-size: .875rem; }
+
+/* Editor: fields and public preview side by side, actions below. */
+.admin-prevention .prevention-editor { padding: 22px; box-shadow: 0 5px 16px rgba(18, 58, 61, .08); }
+.admin-prevention .prevention-editor .ui-card-head { margin-bottom: 16px; }
+.prevention-state { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.prevention-state span { color: var(--muted); font-size: .875rem; }
+.admin-prevention .prevention-form { margin: 0; padding: 0; border: 0; display: block; }
+.admin-prevention .prevention-form fieldset { min-width: 0; margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
+.prevention-fields { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.prevention-row { display: grid; grid-template-columns: minmax(0, 1fr) 7.5rem; gap: 14px; }
+.admin-prevention .prevention-form label { display: flex; flex-direction: column; gap: 6px; color: var(--ink); font-size: .875rem; font-weight: 600; }
+.admin-prevention .prevention-form input, .admin-prevention .prevention-form textarea { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--line-strong);
+  border-radius: 8px; background: #fff; color: var(--ink); font: inherit; font-size: .94rem; font-weight: 400; }
+.admin-prevention .prevention-form textarea { min-height: 200px; line-height: 1.55; resize: vertical; }
+.admin-prevention .prevention-form input:focus, .admin-prevention .prevention-form textarea:focus { outline: 3px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+.admin-prevention .prevention-form small { color: var(--muted); font-size: .875rem; font-weight: 400; line-height: 1.5; }
+.admin-prevention .prevention-form .field-error { color: var(--red-deep); font-weight: 700; }
+.admin-prevention .prevention-preview { min-width: 0; display: flex; flex-direction: column; gap: 8px; margin: 0; }
+.admin-prevention .prevention-preview h3 { margin: 0; color: var(--muted); font-size: .875rem; font-weight: 600; }
+.admin-prevention .prevention-preview article { flex: 1; min-height: 260px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--canvas);
+  color: var(--ink-soft); font-size: .94rem; line-height: 1.6; overflow-wrap: anywhere; }
+.admin-prevention .prevention-preview h4 { margin: 0 0 10px; color: var(--ink); font-size: 1.125rem; }
+.admin-prevention .prevention-preview article p { margin: 0 0 10px; }
+.admin-prevention .prevention-preview article :is(p, ul, ol, li, li span, strong, em) { font-size: .94rem; }
+.admin-prevention .prevention-preview .section-source { display: block; margin-top: 12px; color: var(--muted); font-size: .875rem; }
+.admin-prevention .prevention-preview .section-source a { min-height: 44px; display: inline-flex; align-items: center; color: var(--teal-deep); font-weight: 600; }
+.admin-prevention .prevention-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid var(--line); }
+.admin-prevention .prevention-actions .ui-button { font-size: .94rem; }
+.admin-prevention .prevention-actions .ui-button:disabled { border-color: var(--line); background: var(--canvas); color: var(--muted); cursor: not-allowed; }
+.admin-prevention .prevention-unpublish { margin-left: auto; color: var(--red-deep); }
+.admin-prevention .prevention-actions small { flex-basis: 100%; color: var(--muted); font-size: .875rem; }
+
+/* Confirmation (gold notice palette) and history. */
+.admin-prevention .prevention-confirm { margin-top: 16px; padding: 18px; border: 1px solid #e8cf86; border-radius: 12px; background: #fbf1d2; box-shadow: none; color: #5c4210; }
+.admin-prevention .prevention-confirm h3 { margin: 0 0 8px; color: #4d3a10; font-size: 1rem; }
+.admin-prevention .prevention-confirm p { margin: 0 0 14px; color: #5c4210; font-size: .94rem; line-height: 1.6; }
+.admin-prevention .prevention-confirm div { display: flex; flex-wrap: wrap; gap: 10px; }
+.admin-prevention .prevention-history ol { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 10px; }
+.admin-prevention .prevention-history li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; padding-bottom: 10px; border-bottom: 1px solid var(--canvas-deep); font-size: .94rem; }
+.admin-prevention .prevention-history li:last-child { padding-bottom: 0; border-bottom: 0; }
+.admin-prevention .prevention-history li span { overflow-wrap: anywhere; }
+.admin-prevention .prevention-history time, .admin-prevention .prevention-history small { color: var(--muted); font-size: .875rem; }
+.admin-prevention .prevention-history p, .admin-prevention .prevention-empty p { margin: 0; color: var(--ink-soft); font-size: .94rem; line-height: 1.6; }
+
+@media (min-width: 1000px) {
+  .prevention-admin-grid { grid-template-columns: minmax(250px, 290px) minmax(0, 1fr); }
+}
+@media (min-width: 1200px) {
+  .admin-prevention .prevention-form fieldset { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  .admin-prevention .prevention-actions { grid-column: 1 / -1; }
+}
+/* Stacked layout: the sections become one row of tabs that scrolls sideways (never two lines). */
+@media (max-width: 999px) {
+  .admin-prevention .prevention-section-list ul { flex-direction: row; overflow-x: auto; gap: 8px; padding-bottom: 6px; scroll-snap-type: x proximity; }
+  .admin-prevention .prevention-section-list li { flex: 0 0 auto; width: 15rem; scroll-snap-align: start; }
+  .admin-prevention .prevention-section-list li button { height: 100%; border-color: var(--line); }
+}
+@media (max-width: 700px) {
+  .admin-prevention { gap: 16px; }
+  .admin-prevention .prevention-editor { padding: 16px; }
+  .prevention-row { grid-template-columns: minmax(0, 1fr) 6rem; }
+  .admin-prevention .prevention-preview article { min-height: 0; }
+  .admin-prevention .prevention-unpublish { margin-left: 0; }
+  .admin-prevention .prevention-actions .ui-button { flex: 1 1 auto; }
+}

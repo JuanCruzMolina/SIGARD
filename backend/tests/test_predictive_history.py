@@ -11,7 +11,7 @@ import pytest
 from test_backtest_results import bundle, TRUSTED  # noqa: F401
 from test_predictive_ml import RES1, RES2, RF1, RF2, install
 from app import predictive_history
-from app.experimental_api import create_research_app
+from predictive_admin_support import admin_app, client as admin_client
 from app.experimental_results import ArtifactBlocked, clear_verification_cache
 from app.predictive_history import HistoryStore, MODES, build, compare, year_bounds
 from app.predictive_service import PredictiveService
@@ -115,10 +115,10 @@ def test_build_is_create_only_private_and_always_computed(bundle):
 
 
 @pytest.mark.anyio
-async def test_api_serves_stored_history_and_answers_503_when_altered(bundle):
+async def test_api_serves_stored_history_and_answers_503_when_altered(bundle, tmp_path):
     _, stored, root = services(bundle)
-    app = create_research_app(predictive=stored, legacy=False)
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url='http://127.0.0.1:8765') as client:
+    app, TRUSTED, _ = admin_app(tmp_path, stored)
+    async with admin_client(app) as client:
         query = {'start': '2021-01-03', 'end': '2021-01-10', 'disclosure': 'presentation'}
         response = await client.get(f'{PREFIX}/history', params=query, headers=TRUSTED)
         assert response.status_code == 200 and response.json()['start'] == '2021-01-03'

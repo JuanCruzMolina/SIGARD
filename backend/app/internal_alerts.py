@@ -88,14 +88,14 @@ def status_of(source):
             source.week(status["weeks"][0]["target_week"])  # fills the common territory
         return status
     except SourceUnavailable:
-        raise invalid("API predictiva local no disponible. Iniciá el entorno con npm run dev:alerts.", 503) from None
+        raise invalid("API predictiva local no disponible. Iniciá el entorno con npm run dev.", 503) from None
 
 
 def week_values(source, target_week):
     try:
         return source.week(target_week)
     except SourceUnavailable:
-        raise invalid("API predictiva local no disponible. Iniciá el entorno con npm run dev:alerts.", 503) from None
+        raise invalid("API predictiva local no disponible. Iniciá el entorno con npm run dev.", 503) from None
 
 
 def model_of(status, model_id):

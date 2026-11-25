@@ -11,9 +11,9 @@ levantar el sistema, ver el [manual de instalación](manual-instalacion.md).
 
 ## 1. Acceso
 
-1. En el menú superior, elegí **Administración** (`/admin/reportes`).
+1. En el menú superior, elegí **Administración** (`/admin`, que abre `/admin/inicio`).
 2. Ingresá tu correo y tu contraseña, y tocá **Ingresar**.
-3. Al terminar, usá **Cerrar sesión**.
+3. Al terminar, usá **Cerrar sesión** en la barra superior.
 
 | Regla | Detalle |
 |---|---|
@@ -22,14 +22,51 @@ levantar el sistema, ver el [manual de instalación](manual-instalacion.md).
 | Recuperar la contraseña | **No hay recuperación por correo.** Otro administrador activo puede establecerte una nueva (§2) |
 | Rol | Todos los administradores tienen los mismos permisos. No existe registro público de cuentas |
 
-La franja superior oscura con el texto «Área administrativa» indica que estás en la zona
-protegida.
+Dentro de Administración (diseño v2, F4) la pantalla tiene dos partes fijas:
+
+- **Menú lateral** (verde oscuro): grupos **Operación** (Inicio, Módulo predictivo, Alertas
+  internas, Reportes ciudadanos) y **Gestión** (Contenido preventivo, Cuentas, Auditoría). La
+  sección abierta se marca en verde claro. Los números naranjas salen de la API: alertas
+  candidatas pendientes y reportes en estado «Recibido»; si la API no da un número, no se muestra.
+  Se actualizan en cuanto decidís una alerta o guardás el estado de un reporte, sin cambiar de
+  sección.
+  Al pie, la caja de contexto indica el entorno, la divulgación y **Datos hasta**: con el visor
+  predictivo disponible (`npm run dev`), la última semana con datos del visor; sin visor, la semana
+  del manifiesto de datos publicados. En el celular el menú se abre con **Menú**.
+- **Barra superior**: «Área con acceso restringido», minutos que le quedan a la sesión, el correo
+  con el que ingresaste y **Cerrar sesión**. En el celular la barra ocupa una sola línea (candado,
+  vencimiento y correo) y **Cerrar sesión** está al final del menú desplegable. Al cerrar o al
+  vencer la sesión, el navegador borra la sesión y ese correo.
+
+Al ingresar sin pedir una sección (`/admin`) se abre **Inicio**; si entraste por una dirección
+concreta (por ejemplo `/admin/reportes` o un enlace del visor), después del ingreso se abre esa.
+
+### Inicio
+
+**Inicio** (`/admin/inicio`) resume lo que requiere una decisión y el estado del sistema. Lleva la
+etiqueta «Prototipo experimental — reconstrucción histórica, no uso operativo».
+
+- **Requiere tu atención**: alertas candidatas pendientes, reportes ciudadanos en «Recibido» y
+  secciones preventivas con cambios sin publicar, cada una con su cantidad y un botón a la sección.
+  Las cantidades salen de la API; si una no responde, dice **No disponible** (nunca un número).
+  En la demo ficticia no hay alertas internas.
+- **Estado del sistema**: semana de los datos (la misma que «Datos hasta» del menú), modelos
+  (experimentales, no promovidos), integridad del paquete del visor (verificada por la API en la
+  consulta), divulgación protegida (valores menores a 5 ocultos), mapa público con datos reales
+  (activado o desactivado según la API de actividad pública) y entorno. Sin visor predictivo
+  (producción o demo), modelos e integridad dicen «No disponible».
+- **Pendientes**: lista única del más antiguo al más reciente, con el tipo (Alerta, Reporte,
+  Contenido) y **Revisar**. Muestra los 10 más antiguos; el resto está en cada sección.
+- **Accesos rápidos**: visor en la última semana evaluable, reglas de alerta, exportación de
+  reportes y nueva sección preventiva (llevan a la sección correspondiente).
+
+**Auditoría** todavía no tiene pantalla propia y muestra «Próximamente».
 
 ## 2. Cuentas administrativas
 
 ![Listado de cuentas administrativas (ficticias)](img/admin-cuentas.png)
 
-En **Reportes ciudadanos → Gestionar cuentas** podés:
+En **Cuentas** (`/admin/cuentas`) podés:
 
 - **Crear cuenta**: correo y contraseña inicial (8 a 200 caracteres). Entregá la contraseña por un
   medio seguro, nunca por chat ni correo.
@@ -37,6 +74,12 @@ En **Reportes ciudadanos → Gestionar cuentas** podés:
   Cierra todas las sesiones abiertas de esa cuenta.
 - **Desactivar**: bloquea el ingreso y cierra las sesiones de la cuenta. Se usa cuando alguien
   deja el equipo. Las cuentas no se borran.
+
+La tabla muestra cada cuenta con su correo (la tuya lleva **Tu cuenta**), su estado (**Activa** o
+**Inactiva**), la fecha de alta (**Creada**) y sus acciones. Las cuentas inactivas aparecen con
+**Sin acciones**: no se pueden reactivar desde el panel. **Crear cuenta** está arriba a la
+derecha; la operación elegida se completa en la tarjeta **Gestionar una cuenta**. En el celular,
+cada cuenta se muestra como una tarjeta.
 
 Cada acción pide **tu contraseña actual** y una confirmación. Siempre tiene que quedar **al menos
 una cuenta activa**, por lo que el sistema no te deja desactivar la última. Cada cambio queda
@@ -50,16 +93,22 @@ La bandeja muestra los reportes anónimos que envía la ciudadanía.
 
 1. **Filtrá** por categoría, estado, barrio o rango de fechas. **Limpiar filtros** vuelve a la
    lista completa.
-2. **Abrí un reporte** de la lista para ver su detalle: código, categoría, ubicación exacta en el
-   mapa, referencia, descripción y fecha de eliminación prevista («Retención hasta»).
-3. **Actualizalo**:
+2. La lista es una tabla con **Código**, **Tipo**, **Recibido** y **Estado** (insignia con
+   ícono), de a 25 por página (**Anterior** / **Siguiente**). No muestra descripción, barrio ni
+   ubicación.
+3. **Abrí un reporte** (cualquier parte de la fila) para ver su detalle en el panel protegido:
+   código, estado, fecha de recepción, categoría, barrio, descripción, ubicación exacta con el
+   mapa, referencia y fecha de eliminación prevista («Retención hasta»). En la computadora el
+   panel está a la derecha; en el celular aparece debajo de la lista sólo cuando elegís un
+   reporte, y la pantalla se desplaza hasta él.
+4. **Actualizalo**:
    - **Estado**: Recibido → En revisión → Pendiente de derivación → Derivado → Resuelto, o
      Descartado;
    - **Mensaje público** (hasta 600 caracteres): es lo único que ve el ciudadano al consultar
      su código, así que no incluyas datos personales ni direcciones;
    - **Nota interna** (hasta 2000 caracteres): sólo la ve el equipo;
    - **ID de posible duplicado**: el identificador de otro reporte sobre el mismo problema.
-4. Tocá **Guardar cambios**.
+5. Tocá **Guardar cambios**.
 
 **Exportar CSV** descarga los reportes **con los filtros aplicados**. El archivo neutraliza las
 celdas que empiezan con `=`, `+`, `-` o `@`, para que no se ejecuten como fórmulas al abrirlo en
@@ -76,7 +125,7 @@ usuario y la fecha.
 
 ![Editor de una sección preventiva](img/admin-prevencion-editor.png)
 
-En **Reportes ciudadanos → Contenido preventivo** se editan las secciones de la página pública
+En **Contenido preventivo** (`/admin/contenido`) se editan las secciones de la página pública
 **Prevención y ayuda**: prevención, control vectorial, síntomas, consejos médicos y signos de
 alarma.
 
@@ -89,6 +138,14 @@ alarma.
 | Despublicar | La sección deja de mostrarse. El texto y el historial se conservan |
 
 ![Confirmación antes de publicar](img/admin-prevencion-publicar.png)
+
+**La pantalla:** a la izquierda, la lista de secciones con su estado (insignia con ícono:
+«Publicada · v*N*», «Publicada · cambios sin publicar», «Borrador» o «Despublicada · borrador»).
+**Nueva sección** está arriba a la derecha. Al elegir una sección se abre el editor: los campos a
+la izquierda y, al lado, la **Vista previa del borrador**, con el mismo formato que la página
+pública. Abajo están **Publicar**, **Guardar borrador** y **Despublicar**, y debajo el
+**Historial**. En el celular, las secciones son una fila de pestañas que se desplaza hacia el
+costado.
 
 **Formato permitido:** texto, párrafos, listas que empiezan con `- `, `**negrita**` y enlaces
 `[texto](https://…)`. El sistema **rechaza** HTML, enlaces que no sean `https://`, correos y
@@ -105,10 +162,31 @@ archivos públicos revisados del sitio.
 
 ## 5. Visor predictivo
 
-El visor se abre en **Módulo predictivo** (`/mapa`) sólo en el entorno local de investigación
-(`npm run dev`). Es una **reconstrucción histórica 2021–2024**: muestra qué hubiera estimado cada
+El visor está dentro de **Administración**, en `/admin/predictivo`, y sólo funciona en el entorno
+local de investigación (`npm run dev`). Para abrirlo:
+
+1. Entrá a **Administración** e iniciá sesión con una cuenta de administrador.
+2. En el menú lateral, elegí **Módulo predictivo**.
+3. Si abrís `/admin/predictivo` (o un enlace compartido) sin sesión, primero aparece el formulario
+   de ingreso; al ingresar, el visor se abre en la misma dirección, con la semana y las opciones
+   del enlace.
+4. El menú lateral lleva a las demás secciones; **Cerrar sesión** (barra superior) sale de Administración.
+
+La sesión dura 60 minutos. Al vencer, el visor se cierra y vuelve el formulario de ingreso con el
+aviso «La sesión de Administración venció o fue cerrada…»; ingresá de nuevo para continuar.
+El menú público ya no tiene «Módulo predictivo»: **Mapa público** (`/mapa`) es siempre el mapa
+público. Los enlaces viejos a `/mapa` con semana u opciones del visor llevan al visor si hay
+sesión de administrador; sin sesión muestran el mapa público con el enlace «El módulo predictivo
+está en Administración».
+
+Es una **reconstrucción histórica 2021–2024**: muestra qué hubiera estimado cada
 método para la semana siguiente y lo compara con lo que ocurrió. **No es un pronóstico actual ni
 un sistema operativo.**
+
+La pantalla (diseño v2, F6.1) se lee de arriba hacia abajo: la ruta **Inicio / Módulo
+predictivo**, la tarjeta para elegir semana, pregunta y método, cuatro cifras de la semana, el
+aviso del modo protegido, el **mapa** con una columna a la derecha (en el celular, debajo), la
+**evolución de la ciudad** y las secciones desplegables (desempeño, tabla y guía).
 
 ### 5.1 Elegir la semana
 
@@ -143,6 +221,10 @@ de un radio se ve «Priorizado (puesto N)».
   (persistencia) o se basa en la estacionalidad.
 - **Comparar**: muestra los dos mapas lado a lado con el mismo encuadre.
 
+En el celular, el selector de modelo (con nombres cortos), su descripción y la línea **Datos
+usados hasta / Semana previa** están dentro de **Opciones avanzadas**, plegado. En la computadora
+siguen en la barra de controles.
+
 ![Comparación entre el modelo ML y el método de referencia (datos ficticios)](img/admin-visor-comparar.png)
 
 Las tarjetas resumen los radios visibles, lo esperado por cada método y lo observado. La sección
@@ -160,7 +242,7 @@ Las tarjetas resumen los radios visibles, lo esperado por cada método y lo obse
 
 ![Panel de un radio ficticio](img/admin-visor-panel-radio.png)
 
-Tocá un radio en el mapa o elegilo en el selector para ver:
+Tocá un radio en el mapa, elegilo en el selector o en la lista de la columna derecha para ver:
 
 - qué esperaba cada método;
 - qué ocurrió y si fue acierto;
@@ -168,6 +250,11 @@ Tocá un radio en el mapa o elegilo en el selector para ver:
 - **qué información usa el modelo** (sin mostrar los valores de cada variable).
 
 **Restablecer encuadre** vuelve al mapa completo.
+
+La columna derecha lista **Radios priorizados esta semana** (¿Dónde?) o **Radios con más registros
+esperados** (¿Cuántos?), según el método elegido. Sólo incluye radios que el mapa ya muestra: en
+modo protegido, los priorizados que tuvieron 5 o más registros; los radios protegidos nunca se
+listan. **Crear regla de alerta** lleva a Alertas internas.
 
 ### 5.5 Modo protegido
 
@@ -182,9 +269,17 @@ divulgación: protegido».
 
 ## 6. Alertas internas
 
-Se abren en **Reportes ciudadanos → Alertas internas**, en el entorno `npm run dev:alerts`. Son
+Se abren en **Alertas internas** (`/admin/alertas`), en el entorno `npm run dev`. Son
 **avisos internos para el equipo, con aprobación humana**. Ningún algoritmo publica alertas y no
 se envían correos, SMS ni avisos a la ciudadanía.
+
+La pantalla (diseño v2, F6.2) muestra arriba la franja **Ningún algoritmo publica alertas** con los
+cinco pasos del flujo y, debajo, las pestañas **Pendientes**, **Reglas**, **Historial** y **Cómo
+funciona**. En **Pendientes**, cada candidata es una tarjeta con su estado, la regla, la condición,
+la pregunta y el modelo, la semana epidemiológica, la evidencia por semana y los botones para
+decidir. **Ver en el mapa** abre el visor predictivo en esa semana. A la derecha (en el celular,
+debajo) están **Evaluar una semana** y las **Reglas activas**. **Nueva regla**, arriba a la
+derecha, abre el formulario en la pestaña Reglas.
 
 ### 6.1 Reglas
 
@@ -233,7 +328,28 @@ su fecha. La pestaña **Cómo funciona** resume el circuito para quien lo usa po
 - La publicación ciudadana está **bloqueada en el código y en la base de datos**: no existe el
   estado «publicada», y el intento de publicar se rechaza y queda auditado.
 
-## 7. Buenas prácticas de privacidad
+## 7. Auditoría
+
+En **Auditoría** (`/admin/auditoria`) se consulta, sólo para leer, quién hizo qué y cuándo:
+
+- altas, rotaciones y desactivaciones de cuentas;
+- consultas al detalle de reportes, exportaciones y cambios de estado;
+- borradores y publicaciones de contenido;
+- reglas, evaluaciones y decisiones de alertas;
+- consultas del visor con valores exactos.
+
+Se puede filtrar por categoría, acción, usuario y rango de fechas (en hora de Argentina; «Hasta»
+incluye el día completo). Los filtros y la página quedan en la dirección, así que se puede
+recargar o compartir la vista.
+
+- Nunca muestra contraseñas, notas, comentarios, descripciones ni valores del visor. De un cambio
+  se ve qué campos cambiaron, no su texto.
+- Cada consulta a esta pantalla también queda registrada (categoría «Auditoría», que sólo aparece
+  si se la elige).
+- Sólo está disponible en el entorno local de administración (`npm run dev`). En la demo y en
+  producción la pantalla lo indica.
+
+## 8. Buenas prácticas de privacidad
 
 1. **Nunca copies** ubicaciones exactas, descripciones ni exportaciones a mapas públicos, redes,
    chats o servicios de terceros.

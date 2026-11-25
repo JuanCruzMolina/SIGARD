@@ -88,7 +88,7 @@ try {
   await fill('.admin-login input[type="email"]', service.credentials.email)
   await fill('.admin-login input[type="password"]', service.credentials.password)
   await clickText('Ingresar')
-  await clickText('Contenido preventivo')
+  await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()
   await page.waitForSelector('.prevention-section-list li button')
   assert.equal(await page.$$eval('.prevention-section-list li button', nodes => nodes.length), 5)
   await page.click('.prevention-section-list li button')
@@ -116,7 +116,7 @@ try {
   for (let i = 0; i < ' <script>'.length; i += 1) await page.keyboard.press('Backspace')
   await clickText('Guardar borrador')
   await page.waitForFunction(() => document.querySelector('.admin-prevention .account-notice')?.textContent.includes('Borrador guardado'))
-  assert.match(await page.$eval('.prevention-editor p.content-status', node => node.textContent), /cambios sin publicar/)
+  assert.match(await page.$eval('.prevention-editor .prevention-state', node => node.textContent), /cambios sin publicar/)
   await shoot('admin-editor')
   checkpoint('Admin saved a draft with preview; HTML was rejected client-side')
 
@@ -149,7 +149,7 @@ try {
   checkpoint('Public page shows the newly published version')
 
   await page.goto(origin + '/admin/reportes', { waitUntil: 'networkidle0' })
-  await clickText('Contenido preventivo')
+  await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()
   await page.waitForSelector('.prevention-section-list li button')
   await page.click('.prevention-section-list li button')
   await clickText('Despublicar')

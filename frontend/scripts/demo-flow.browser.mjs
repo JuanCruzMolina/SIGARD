@@ -39,18 +39,20 @@ try {
   await mkdir(output, { recursive: true })
   session = await startDemo()
   await access(resolve(service.directory, 'demo.sqlite3'))
-  browser = await puppeteer.launch({ headless: true })
+  // No DevTools request interception (CDP Fetch): while it is on, Chromium sometimes cancels a
+  // CORS-preflighted POST (the demo login or the CSV ingestion) as its preflight completes
+  // (net::ERR_FAILED; see the stability note in docs/diseno/admin-v2/inventario.md). Requests are
+  // only observed; anything outside 127.0.0.1 is blocked by the browser's resolver.
+  browser = await puppeteer.launch({ headless: true, args: ['--host-resolver-rules=MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'] })
   const page = await browser.newPage()
   page.setDefaultTimeout(15000)
   page.on('pageerror', error => errors.push(error.message))
   let demoRequests = true
-  await page.setRequestInterception(true)
   page.on('request', request => {
     const url = new URL(request.url())
     if (['data:', 'blob:'].includes(url.protocol)
-      || url.hostname === '127.0.0.1' && ['5173', '5174', '8766'].includes(url.port)) return request.continue()
+      || url.hostname === '127.0.0.1' && ['5173', '5174', '8766'].includes(url.port)) return
     if (demoRequests) unexpectedRequests.push(`${url.protocol}//${url.hostname}:${url.port}`)
-    return request.abort()
   })
   const fill = async (selector, value) => {
     await page.click(selector)
@@ -123,17 +125,17 @@ try {
   assert.equal(await page.$$eval('.report-inbox > div button', nodes => nodes.length), 1)
   await page.click('.report-inbox > div button')
   await page.waitForSelector('.private-details')
-  assert.ok(await page.$eval('.report-detail h2', (node, expected) => node.textContent === expected, code))
+  assert.ok(await page.$eval('.report-detail h2 .report-code', (node, expected) => node.textContent === expected, code))
   await page.select('.admin-update select', 'en_revision')
   await fill('.admin-update textarea[maxlength="600"]', 'Revisión ficticia de demostración completada.')
   await fill('.admin-update textarea[maxlength="2000"]', 'Nota interna ficticia que no debe aparecer en seguimiento.')
   await page.click('.admin-update button')
-  await page.waitForFunction(() => document.querySelector('.report-detail .status-chip')?.textContent === 'En revisión')
+  await page.waitForFunction(() => document.querySelector('.report-detail .report-status')?.textContent === 'En revisión')
   // Reload the real UI to ensure the update is stored, rather than UI-only state.
   await page.reload({ waitUntil: 'networkidle0' })
   await page.waitForSelector('.report-inbox > div button')
   await page.click('.report-inbox > div button')
-  await page.waitForFunction(() => document.querySelector('.report-detail .status-chip')?.textContent === 'En revisión')
+  await page.waitForFunction(() => document.querySelector('.report-detail .report-status')?.textContent === 'En revisión')
   const token = await page.evaluate(() => sessionStorage.getItem('sigard_admin_token'))
   await clickText('Cerrar sesión')
   await page.waitForSelector('.admin-login')

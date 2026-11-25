@@ -82,7 +82,7 @@ function week(w, mode) {
   return protect(doc, mode)
 }
 export function finalFixtureResponse(path) {
-  const url = new URL(path, 'http://127.0.0.1:8765'), name = url.pathname.split('/').at(-1), mode = url.searchParams.get('disclosure') || 'presentation'
+  const url = new URL(path, 'http://127.0.0.1:8767'), name = url.pathname.split('/').at(-1), mode = url.searchParams.get('disclosure') || 'presentation'
   if (name === 'calendar') return catalog
   if (name === 'geometry') return geometry
   if (name === 'metadata') return { ...previousMetadata, module_version: catalog.module_version, climate_usage: 'context_only_not_used_by_selected_methods',

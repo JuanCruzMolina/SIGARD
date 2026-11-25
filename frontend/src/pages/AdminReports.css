@@ -1,0 +1,107 @@
+/* Reportes ciudadanos · Administración v2 (F6.3, docs/diseno/admin-v2/Reportes.dc.html). Presentation only.
+   Overrides the former inbox rules of Prevention.css inside .admin-reports. */
+.admin-reports { max-width: 1240px; margin: 0; display: flex; flex-direction: column; gap: 20px; }
+.admin-reports .ui-notice { margin: 0; }
+.admin-reports .ui-notice.admin-error { flex-wrap: wrap; align-items: center; }
+.admin-reports .reports-private strong { font-weight: 700; }
+
+/* Filters: a card with inner margin; fields wrap on narrow screens. */
+.admin-reports .reports-filters { padding: 16px 20px; }
+.admin-reports .admin-filters { min-width: 0; margin: 0; padding: 0; display: flex; flex-wrap: wrap; align-items: flex-end; gap: 14px;
+  border: 0; border-radius: 0; background: transparent; box-shadow: none; }
+.admin-reports .admin-filters label { flex: 1 1 160px; min-width: 0; display: flex; flex-direction: column; gap: 6px; color: var(--ink); font-size: .875rem; font-weight: 600; }
+.admin-reports .admin-filters .reports-filter-wide { flex: 2 1 220px; }
+.admin-reports .admin-filters input, .admin-reports .admin-filters select { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong);
+  border-radius: 8px; background: #fff; font: inherit; font-size: .94rem; font-weight: 400; }
+.admin-reports .admin-filters input:focus, .admin-reports .admin-filters select:focus { outline: 3px solid var(--teal); outline-offset: 2px; border-color: var(--teal); }
+.admin-reports .reports-clear { flex: none; }
+
+/* List and detail: two columns on wide screens, stacked otherwise. */
+.reports-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+.admin-reports .report-inbox { min-width: 0; max-height: none; display: flex; flex-direction: column; padding: 8px 16px 16px; border: 1px solid var(--line); }
+.admin-reports .report-inbox > header, .admin-reports .report-inbox > footer { padding: 10px 0; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px;
+  border: 0; background: transparent; }
+.admin-reports .report-inbox > header strong { color: var(--ink); font-size: .94rem; }
+.admin-reports .report-inbox > header span, .admin-reports .report-inbox > footer > span { color: var(--muted); font-size: .875rem; }
+.admin-reports .report-inbox > div { flex: none; overflow: visible; }
+.admin-reports .report-inbox > footer { padding-top: 14px; }
+.admin-reports .report-inbox > footer .ui-button { min-width: 112px; padding: 0 16px; border: 1px solid var(--line-strong); border-radius: 8px; background: var(--paper);
+  color: var(--teal-deep); font-size: .94rem; }
+.admin-reports .report-inbox > footer .ui-button:hover:not(:disabled) { border-color: var(--teal); background: var(--mint); color: var(--navy); }
+.admin-reports .report-inbox > footer .ui-button:disabled { border-color: var(--line); background: var(--canvas); color: var(--muted); cursor: not-allowed; }
+.admin-reports .inbox-empty { margin: 0; padding: 20px 0; color: var(--ink-soft); font-size: .94rem; }
+
+/* Table: the whole row opens the report (the code button is stretched over it). */
+.reports-table { font-size: .94rem; }
+.reports-table tbody tr { position: relative; }
+.reports-table tbody tr:hover { background: var(--canvas); }
+.reports-table tbody tr.selected { background: var(--mint); }
+.reports-table td { vertical-align: middle; }
+.reports-table time { color: var(--ink-soft); white-space: nowrap; }
+.admin-reports .report-inbox .report-open { width: auto; min-height: 44px; display: inline-flex; align-items: center; padding: 0; border: 0; border-radius: 4px;
+  background: transparent; color: var(--teal-deep); font-family: var(--font-mono); font-size: .94rem; font-weight: 600; text-align: left; text-decoration: underline;
+  text-underline-offset: 3px; cursor: pointer; }
+.admin-reports .report-inbox .report-open::after { content: ''; position: absolute; inset: 0; }
+.admin-reports .report-inbox .report-open:hover, .admin-reports .report-inbox .report-open.selected { background: transparent; color: var(--navy); }
+.admin-reports .report-inbox .report-open:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.admin-reports .report-inbox .report-open:disabled { cursor: wait; }
+.admin-reports .report-status.ui-badge { padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+
+/* Detail card. */
+.admin-reports .report-detail { min-width: 0; padding: 20px; box-shadow: 0 5px 16px rgba(18, 58, 61, .08); }
+.admin-reports .report-detail:not(.report-detail-empty) { display: flex; flex-direction: column; gap: 14px; }
+.admin-reports .report-detail > header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 12px; }
+.admin-reports .report-detail > header h2 { margin: 0; color: var(--ink); font-size: 1.125rem; overflow-wrap: anywhere; }
+.admin-reports .report-detail > header p { width: 100%; margin: 0; color: var(--muted); font-size: .875rem; }
+.report-facts { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.report-facts dt, .admin-reports .private-details dt { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: .875rem; font-weight: 400; }
+.report-facts dd { margin: 2px 0 0; color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.admin-reports .private-details { margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+.admin-reports .private-details div { padding: 0; border: 0; }
+.admin-reports .private-details dd { margin: 4px 0 0; color: var(--ink); font-size: .94rem; line-height: 1.55; overflow-wrap: anywhere; }
+.admin-reports .report-description dd { padding: 12px; border-radius: 8px; background: var(--canvas); }
+.admin-reports .private-details dd.mono { display: flex; align-items: center; gap: 6px; font-size: .875rem; }
+.admin-reports .private-map, .admin-reports .private-map .leaflet-container { min-height: 220px; }
+.admin-reports .private-map { border: 1px solid var(--line); border-radius: 10px; }
+.admin-reports .private-map > small { font-size: .875rem; }
+.admin-reports .admin-update { padding-top: 14px; }
+.admin-reports .report-edit-fields { grid-template-columns: minmax(0, 1fr); }
+.admin-reports .admin-update label { color: var(--ink); font-size: .875rem; font-weight: 600; }
+.admin-reports .admin-update input, .admin-reports .admin-update select, .admin-reports .admin-update textarea { min-height: 44px; font-size: .94rem; font-weight: 400; }
+.admin-reports .admin-update textarea { min-height: 70px; }
+.admin-reports .admin-update .primary-button { justify-self: stretch; font-size: .94rem; }
+.admin-reports .report-retention { padding-top: 12px; border-top: 1px solid var(--line); }
+.admin-reports .empty-admin { min-height: 320px; padding: 0 12px; }
+.admin-reports .empty-admin h2 { font-size: 1.125rem; }
+.admin-reports .empty-admin p { font-size: .94rem; }
+.admin-reports .ui-screen-aside .ui-button { font-size: .94rem; }
+
+@media (min-width: 1200px) {
+  .reports-layout { grid-template-columns: minmax(0, 1fr) minmax(340px, 400px); }
+  .admin-reports .report-detail { position: sticky; top: 16px; }
+}
+/* Stacked: the empty «Seleccioná un reporte» panel only appears once a report is chosen. */
+@media (max-width: 1199px) {
+  .admin-reports .report-detail-empty { display: none; }
+  .admin-reports .report-detail { scroll-margin-top: 12px; }
+}
+@media (max-width: 700px) {
+  .admin-reports { gap: 16px; }
+  .admin-reports .reports-filters { padding: 14px 16px; }
+  .admin-reports .admin-filters label, .admin-reports .admin-filters .reports-filter-wide { flex: 1 1 100%; }
+  .admin-reports .reports-clear { width: 100%; }
+  .admin-reports .report-inbox { padding: 6px 14px 14px; }
+  /* Rows as two-line cards: code + status, type + date (the table keeps its semantics). */
+  .reports-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .reports-table, .reports-table tbody { display: block; }
+  .reports-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; padding: 6px 4px; border-bottom: 1px solid var(--canvas-deep); }
+  .reports-table td { display: block; padding: 0; border: 0; }
+  .reports-table td:nth-child(2), .reports-table td:nth-child(3) { color: var(--ink-soft); font-size: .875rem; }
+  .reports-table td:nth-child(3) { grid-column: 1 / -1; padding-bottom: 6px; }
+  .reports-table td:nth-child(2) { grid-column: 1 / -1; }
+  .reports-table td:nth-child(4) { grid-row: 1; grid-column: 2; align-self: center; }
+  .admin-reports .report-inbox > footer .ui-button { flex: 1 1 0; min-width: 0; }
+  .admin-reports .report-inbox > footer > span { order: -1; width: 100%; text-align: center; }
+  .admin-reports .report-detail { padding: 16px; }
+  .report-facts { grid-template-columns: minmax(0, 1fr); }
+}

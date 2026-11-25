@@ -280,20 +280,16 @@ def test_without_a_prediction_source_rules_cannot_be_created(client):
     assert client.post(API + "/evaluations", headers=auth(admin), json={"target_week": "2021-01-03"}).status_code == 503
 
 
-class FakeResponse:
-    def __init__(self, status, body): self.status_code, self._body = status, body
-    def json(self): return self._body
+class FakeService:
+    """Records calls; mimics the in-process predictive service contract with fictional rows."""
+    def __init__(self, fail=False):
+        self.fail, self.calls = fail, []
 
-
-class FakeClient:
-    """Records requests; mimics the local predictive API contract with fictional rows."""
-    def __init__(self, status=200):
-        self.status, self.calls = status, []
-
-    def get(self, path, params=None):
-        self.calls.append((path, params))
-        if path == "/calendar":
-            return FakeResponse(self.status, dict(
+    def catalog(self):
+        self.calls.append(("catalog",))
+        if self.fail:
+            raise OSError("fictional unavailable bundle")
+        return dict(
                 training_enabled=False, operational_enabled=False, default_candidates={"presence": "rf_v2_city_propensity", "quantity": "residual_v2"},
                 active_methods={"presence": "presence_seasonal", "quantity": "count_latest"},
                 experimental_candidates=[
@@ -308,18 +304,21 @@ class FakeClient:
                        dict(target_year=2025, target_epi_week=1, target_week="2025-01-05", availability_status="blocked",
                             ml_availability={})],
                 **{k: "FICTIONAL" for k in ("dataset_version", "data_policy_version", "campaign_version", "territory_version",
-                                            "calendar_version", "module_version")}))
+                                            "calendar_version", "module_version")})
+
+    def week(self, year, week, radio=None, mode="presentation"):
+        self.calls.append(("week", year, week, radio, mode))
         row = lambda radio, mask: dict(radio_id=radio, common_mask=mask, observed={"quantity": 3}, predicted={"quantity": 2},
                                        ml={"rf_v2_city_propensity": {"topk_rank": 1, "quantity": None},
                                            "residual_v2": {"topk_rank": None, "quantity": 9}},
                                        ml_availability={"rf_v2_city_propensity": "available", "residual_v2": "not_available"})
-        return FakeResponse(self.status, dict(target_week="2021-01-03", dataset_version="FICTIONAL",
-                                              rows=[row("FX0000001", True), row("FX0000002", False)]))
+        return dict(target_week="2021-01-03", dataset_version="FICTIONAL",
+                    rows=[row("FX0000001", True), row("FX0000002", False)])
 
 
 def test_local_research_source_reads_private_mode_and_keeps_only_top_k_and_count_models():
-    fake = FakeClient()
-    source = LocalResearchSource(client=fake)
+    fake = FakeService()
+    source = LocalResearchSource(fake)
     status = source.status()
     assert [m["id"] for m in status["models"]] == ["rf_v2_city_propensity", "residual_v2", "count_latest"]
     assert [m["default"] for m in status["models"]] == [True, True, False]  # v2 by default, as in the viewer
@@ -328,12 +327,14 @@ def test_local_research_source_reads_private_mode_and_keeps_only_top_k_and_count
     values = source.week("2021-01-03")
     assert list(values) == ["FX0000001"]  # outside the common mask never enters
     assert values["FX0000001"]["residual_v2"] == {"rank": None, "quantity": None}  # unavailable stays unknown
-    assert fake.calls[-1] == ("/comparison", {"year": 2021, "week": 1, "disclosure": "private"})
+    assert fake.calls[-1] == ("week", "2021", "1", None, "private")  # in process, never over HTTP
     source.week("2021-01-03")
     assert len(fake.calls) == 2  # compact process cache
-    assert source.HEADERS == {"Origin": "http://127.0.0.1:5173", "X-Sigard-Research": "local-read"}
+    assert source.kind == "local_predictive_service" and not hasattr(source, "HEADERS")
     with pytest.raises(SourceUnavailable):
-        LocalResearchSource(client=FakeClient(status=503)).status()
+        LocalResearchSource(FakeService(fail=True)).status()
+    with pytest.raises(SourceUnavailable):
+        LocalResearchSource(None).status()  # predictive service not attached
 
 
 def test_migration_up_down_on_isolated_sqlite(tmp_path):

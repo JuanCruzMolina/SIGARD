@@ -1,5 +1,6 @@
 import { useId, useState } from 'react'
 import { summaryCards } from '../services/predictiveView.mjs'
+import { Notice } from './AdminUI'
 
 export function InfoTip({ label, children }) {
   const [open, setOpen] = useState(false); const id = useId()
@@ -20,6 +21,7 @@ export default function SummaryCards({ result, view, primary, other, mode, onMos
       <h3>{card.label}{card.help && <InfoTip label={`Qué es ${other?.label?.toLowerCase()}`}>{card.help}</InfoTip>}</h3>
       <p className="pv-card-value">{card.value}</p><p className="pv-card-detail">{card.detail}</p>
     </article>)}</div>
-    <p className={`pv-note${mode === 'presentation' ? ' pv-note-protected' : ''}`}>{summary.note}</p>
+    {mode === 'presentation' ? <Notice className="pv-note pv-note-protected"><p>{summary.note}</p></Notice>
+      : <p className="pv-note">{summary.note}</p>}
   </section>
 }

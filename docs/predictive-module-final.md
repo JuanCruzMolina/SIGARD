@@ -39,9 +39,11 @@ capacidad sanitaria operativa ni validación externa independiente.
 5. `backend/app/predictive_service.py` unifica disponibilidad, métodos, privacidad,
    semana/origen, métricas y contexto. El snapshot de integridad dura una petición;
    no hay caché persistente que oculte alteraciones de archivos.
-6. `app.research_local` instala sólo el módulo final en loopback 8765. React/Vite
-   en loopback 5173 reutiliza el panel histórico, ambos mapas y el gráfico. La
-   API pública y la demo ficticia siguen separadas.
+6. Desde F2 (22/11/2026), `predictive_admin.mount` instala el módulo final sólo en la
+   API administrativa local (`alerts_local`, loopback 8767), detrás del guard local y de
+   una sesión de administrador; el antiguo lanzador sin autenticación de 8765
+   (`app.research_local`) fue retirado. React/Vite en loopback 5173 reutiliza el panel
+   histórico, ambos mapas y el gráfico. La API pública y la demo ficticia siguen separadas.
 
 Contrato de módulo: `sigard-predictive-experimental/2` desde el 14/11/2026 (las
 capas ML se indexan por candidato; ver «Integración de candidatos v2»). La versión
@@ -102,10 +104,12 @@ como reconstrucción por fechas de eventos, no simulación perfecta de disponibi
 
 ## Privacidad y acceso
 
-El módulo final no es público. Sólo responde en 127.0.0.1:8765 al origen exacto
-127.0.0.1:5173 con cabecera de lectura, controles de Host/cliente, rechazo de
-proxies y respuestas `no-store, private`. No se instala en `app.main`, no hay
-uploads ni montajes de archivos, cookies o rutas de entrenamiento. Build/preview
+El módulo final no es público. Sólo responde en la API administrativa local
+127.0.0.1:8767 al origen exacto 127.0.0.1:5173, con cabecera de lectura, controles de
+Host/cliente, rechazo de proxies, sólo GET y respuestas `no-store, private` (guard local),
+**y además** con un JWT de administrador verificado contra la base administrativa (F2).
+No se instala en `app.main`, no hay uploads ni montajes de archivos, cookies o rutas de
+entrenamiento. Build/preview
 y producción no consultan el paquete. Un clonado del código no incluye datos ni
 autorizaciones privadas transferibles.
 
@@ -129,6 +133,58 @@ El filtro de cinco es una salvaguarda del prototipo, no una certificación de
 anonimización ni una autorización de publicación. No se ofrece exportación pública
 del paquete. Un despliegue futuro exigiría control institucional de divulgación,
 autenticación/roles y auditoría propios del alcance sanitario.
+
+### Decisión F2: el visor exige un administrador autenticado (22/11/2026)
+
+Opción aprobada por el responsable: montar las rutas predictivas dentro de la API
+administrativa local en lugar de mantener una API separada.
+
+- **Quién abre los artefactos.** La API administrativa local (`backend/app/alerts_local.py`,
+  modos `serve` y `session`) construye el `PredictiveService` con los mismos registros
+  fijados que el antiguo lanzador (`predictive_admin.build_service`) y monta
+  `/api/v1/research/predictive/*` con `predictive_admin.mount`. **`app.main` y cualquier
+  despliegue nunca lo hacen**: no importan `predictive_admin` ni `predictive_service`, no
+  contienen esas rutas (con o sin autenticación) y no abren los artefactos. La API demo
+  (8766) tampoco. Pruebas: `backend/tests/test_predictive_access.py`.
+- **No hay otra forma de servirlas.** `app.research_local` (8765, sin autenticación) fue
+  retirado; `experimental_api.create_research_app` queda sólo para las pruebas de regresión
+  de los flujos A/B y de backtest archivados y nunca instala el módulo final.
+- **Acceso.** Orden de controles: guard local (cliente loopback, Host `127.0.0.1:8767`,
+  `Origin` exacto `http://127.0.0.1:5173`, `Sec-Fetch-Site` local, sin cabeceras
+  `Forwarded`/`X-Forwarded-*`/`X-Real-IP`, sólo GET/OPTIONS, `X-Sigard-Research: local-read`)
+  → JWT de administrador (`security.get_current_admin`: rol, cuenta activa y
+  `token_version`). Sin token o inválido/vencido: 401; rol distinto: 403; sesión revocada
+  (rotación de contraseña, desactivación): 401. CORS: sólo `http://127.0.0.1:5173`, método
+  GET y cabeceras `Authorization` y `X-Sigard-Research`; sin comodines ni credenciales.
+- **Auditoría.** Cada consulta autenticada en modo privado (`disclosure=private`, valores
+  exactos) inserta una fila en `predictive_view_audit` (tabla local del SQLite
+  administrativo, metadatos propios como `demo_workspace`; fuera de `app.main` y de la cadena
+  Alembic gestionada) con usuario, fecha, ruta (`comparison`, `history`, …), semana o período
+  consultado y radio, **nunca los valores devueltos**. Si la fila no puede escribirse, la
+  consulta falla (cerrada). Las consultas en modo protegido no se auditan.
+- **Sin cambios de contrato.** Mismas respuestas `sigard-predictive-experimental/2`, misma
+  protección de celdas < 5, misma verificación de integridad por petición y caché por
+  proceso del servicio.
+- **Alertas internas.** Leen el mismo servicio dentro del proceso (`LocalResearchSource`,
+  sin HTTP ni token); no se expone nada nuevo al navegador.
+- **Frontend.** Sólo cambió la capa de servicios (`backtestResults.js`, `adminSession.mjs`):
+  envía el token que `/admin/reportes` guarda en `sessionStorage`; sin sesión o con el token
+  vencido no envía la consulta; ante 401 borra la sesión y explica cómo volver a ingresar.
+  La mudanza del visor a `/admin/predictivo` es F3 (el prefijo de la API no cambia; ver abajo).
+- **`dev:demo`** no cambia: no inicia ni consulta el módulo predictivo.
+- **Proceso compartido.** El guard (`predictive_admin.PredictiveGate`, ASGI puro) despacha el
+  prefijo a una subaplicación propia, sin atravesar los demás middlewares administrativos, y admite
+  a lo sumo 6 consultas simultáneas del visor (`VIEWER_CONCURRENCY`): las restantes esperan sin
+  ocupar hilos, así login, reportes y alertas no quedan detrás del trabajo del visor (sin el límite,
+  la primera apertura del panel de alertas tras 5 visores cargados llegaba a ~20 s).
+  `/health/alerts` informa `warm` cuando terminó la precarga de alertas (~25–30 s tras iniciar).
+- **Rendimiento (22/11/2026, producción, p95, `performance.browser.mjs --target production`).**
+  Todas las operaciones < 5 s con 1 y 5 usuarios. Carga del visor con 5 usuarios: F0 2,95 s
+  (16/11) y 2,56 s (mismo código F0 medido el 22/11); F2 2,54 s en la misma sesión de esa medición
+  y 3,30–3,83 s en dos corridas posteriores, en las que las páginas públicas no modificadas también
+  fueron ~35 % más lentas (variación del equipo). Arranque de `dev` 2,1–2,6 s (antes 3,5–4,0 s);
+  memoria de 8767 tras la precarga ≈152 MB, igual que antes, sin el proceso 8765 (≈57 MB en
+  reposo, ≈103 MB tras usar el visor).
 
 ## Registro de componentes activos y archivados
 
@@ -167,12 +223,31 @@ Con los paquetes privados previamente autorizados y las dependencias existentes:
 npm.cmd --prefix frontend run dev
 ```
 
-Abrir `http://127.0.0.1:5173/mapa`. El módulo es la entrada local por defecto,
-sin cargar primero el dataset de demostración ni estimadores A/B. PostgreSQL
-puede permanecer apagado. El coordinador comprueba el contrato final antes de
-reutilizar 8765 y sólo cierra los procesos propios.
+Abrir `http://127.0.0.1:5173/admin/predictivo` (F3; desde F4 `/` es la portada pública también en desarrollo y el visor se abre desde el menú lateral de Administración) e
+iniciar sesión con una cuenta de administrador en ese mismo formulario. El módulo es la entrada
+local por defecto, sin cargar primero el dataset de demostración ni estimadores A/B. PostgreSQL
+puede permanecer apagado. Sin sesión (o con la sesión vencida o revocada) no se muestra el visor
+ni se envían consultas: aparece el ingreso de Administración y, al ingresar, el visor se abre en
+la misma URL. El coordinador sólo cierra los procesos propios.
 
-Prefijo único activo: `/api/v1/research/predictive`:
+### Visor en Administración (F3)
+
+- **Ruta.** `/admin/predictivo` (`pages/AdminPredictivo.jsx`) muestra el mismo
+  `HistoricalBacktest`, sin cambios de aspecto (capturas antes/después idénticas salvo las
+  pantallas de sesión). El menú público ya no ofrece «Módulo predictivo»; el acceso está en el
+  menú lateral de Administración (F4; antes, un botón de la bandeja). `/mapa` es siempre el mapa público, también en `dev`.
+- **Sesión.** Sólo un token vigente con rol `admin` muestra el visor (compuerta de interfaz; la
+  API sigue validando cada consulta). Al vencer (60 min) un temporizador vuelve al ingreso sin
+  enviar consultas; un 401 del servidor hace lo mismo. El ingreso es el mismo formulario de
+  `/admin/*` (`components/AdminLoginForm.jsx`), con la misma clave de `sessionStorage`.
+- **Estado en la URL.** `anio`, `se`, `vista`, `metodo`, `capa`, `radio` y `modelo` se conservan
+  bajo la nueva ruta; el modo de divulgación nunca va en la URL. `/mapa?…` con alguno de esos
+  parámetros redirige (replace) a `/admin/predictivo?…` sólo con sesión de administrador; si no,
+  muestra el mapa público con el enlace «El módulo predictivo está en Administración».
+- **Sin cambios** en la API, su prefijo `/api/v1/research/predictive`, `SIGARD_PRIVATE_VIEW`
+  ni el modo protegido por defecto.
+
+Prefijo único activo, en 127.0.0.1:8767 (F2): `/api/v1/research/predictive`:
 
 - `GET /calendar`, `/geometry`, `/metadata`.
 - `GET /comparison?year=2024&week=12` y proyecciones `/predicted`, `/observed`,
@@ -216,7 +291,7 @@ cd backend
   registro de candidatos ML y del código que produce la historia (`predictive_service.py`,
   `backtest_results.py`, `predictive_ml.py`, `predictive_history.py`). Si cualquiera cambia,
   la historia anual responde 503 hasta reconstruir el paquete.
-- `app.research_local` instala el paquete si existe. Con el paquete instalado la API **sólo lee
+- La API administrativa local (`predictive_admin.build_service`, antes `app.research_local`) instala el paquete si existe. Con el paquete instalado la API **sólo lee
   y verifica** la historia anual, con el mismo mecanismo de verificación y caché por proceso
   (`local_bytes`): nunca la recalcula. Un archivo, manifiesto o registro alterado bloquea (503);
   un año del catálogo ausente del manifiesto también bloquea.
@@ -352,7 +427,7 @@ Compilado el 14/11/2026 en
 `data/interim/official/ml-integration-v2-20261114-v1/` (`bundle-v2/`, 208 semanas,
 manifiesto `e9752119…`; `registry.private.json` es el puntero que lee el arranque).
 
-**Backend.** `app.research_local` fija al iniciar los punteros v1 y v2 instalados;
+**Backend.** `predictive_admin.build_service` (antes `app.research_local`) fija al iniciar los punteros v1 y v2 instalados;
 cada petición vuelve a verificar manifiestos, semanas y bytes de artefactos.
 `predictive_ml.MLProjection` lee ambos esquemas y expone candidatos desde cada
 manifiesto (varios por capacidad). Contrato `/2`:

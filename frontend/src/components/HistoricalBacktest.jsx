@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { backtestHistory, backtestSetup, backtestWeek, clearBacktestCache, prefetchWeek } from '../services/backtestResults'
 import { experimentalView, formatValue } from '../services/backtestContract.mjs'
-import { candidateName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
+import { candidateName, candidateShortName, candidatesFor, dateLabel, decisionText, latestEvaluableYear, methodSources, mostActiveWeek, PRIVATE_WARNING, priorityList, readUrlState, selectedCandidate, writeUrlState } from '../services/predictiveView.mjs'
 import WeekTimeline from './WeekTimeline'
 import SummaryCards, { InfoTip } from './SummaryCards'
 import BacktestMaps from './BacktestMaps'
@@ -12,6 +12,9 @@ import ModelPerformance from './ModelPerformance'
 import DataTable from './DataTable'
 import './HistoricalBacktest.css'
 import { privateViewEnabled } from '../services/privateView'
+import { demoMode } from '../services/demoMode'
+import { Badge, Card, UiButton } from './AdminUI'
+import { NARROW_SCREEN, useMediaQuery } from '../services/useMediaQuery'
 
 function Segmented({ label, options, value, onChange, name }) {
   return <div className="pv-segmented" role="group" aria-label={label} data-control={name}>
@@ -43,29 +46,57 @@ function Guide() {
   </div>
 }
 
+// F6.1: list beside the map (docs/diseno/admin-v2/Predictivo.dc.html). Only radios the map
+// already shows (priorityList); choosing one opens the existing radio panel.
+function PriorityList({ rows, view, mode, source, radio, onRadio }) {
+  const { items, total } = priorityList(rows, view)
+  const title = view === 'presence' ? 'Radios priorizados esta semana' : 'Radios con más registros esperados'
+  return <Card as="aside" className="pv-priority" title={title} titleId="pv-priority-title">
+    <p className="pv-caption">{source} · {mode === 'presentation'
+      ? 'sólo radios visibles (5 o más registros); los protegidos no se listan.'
+      : view === 'presence' ? 'incluye radios priorizados sin registros (falsas alarmas).' : 'todos los radios comparables.'}</p>
+    {items.length ? <ol className="pv-priority-list">{items.map((item, index) => <li key={item.radio_id}>
+      <button type="button" aria-pressed={radio === item.radio_id} onClick={() => onRadio(item.radio_id)}>
+        <span className="mono pv-priority-rank">{String(item.rank ?? index + 1).padStart(2, '0')}</span>
+        <span className="mono">{item.radio_id}</span>
+        <Badge tone={item.tone} className="pv-priority-status">{item.status}</Badge>
+      </button></li>)}</ol>
+      : <p className="pv-caption" role="status">{view === 'presence' ? 'Ningún radio priorizado es visible esta semana.' : 'Ningún radio tiene un valor visible esta semana.'}</p>}
+    {total > items.length && <p className="pv-caption">Se muestran {items.length} de {total}. Elegí un radio para ver su historia.</p>}
+    {!demoMode && <div className="pv-priority-foot">
+      <span>¿Querés seguir estos radios las próximas semanas?</span>
+      <UiButton to="/admin/alertas" variant="primary">Crear regla de alerta</UiButton>
+    </div>}
+  </Card>
+}
+
 function Skeleton() {
   return <div className="pv-loading" aria-hidden="true"><div className="pv-cards">{[0, 1, 2, 3].map(i => <div key={i} className="pv-card pv-skeleton" />)}</div><div className="pv-map pv-skeleton" /></div>
 }
 
-export default function HistoricalBacktest() {
+// onSessionError: the page in Administración takes over when the session is missing, expired or rejected.
+export default function HistoricalBacktest({ onSessionError }) {
   const [params, setParams] = useSearchParams()
   const url = useMemo(() => readUrlState(params), [params])
   const [initialUrl] = useState(url)
   const [disclosure, setDisclosure] = useState('presentation')
+  const narrow = useMediaQuery(NARROW_SCREEN)
   const [attempt, setAttempt] = useState(0)
   const [setup, setSetup] = useState(null)
   const [setupError, setSetupError] = useState('')
   const [histories, setHistories] = useState({})
   const [weekState, setWeekState] = useState(null)
+  // Session errors leave the viewer (back to the login); other errors stay here with a retry.
+  const failed = useCallback((error, show) => error.session && onSessionError ? onSessionError(error.message) : show(error.message), [onSessionError])
 
   // Calendar, geometry, metadata and (when the URL names it) the week start together.
   useEffect(() => {
     const controller = new AbortController()
     if (initialUrl.year && initialUrl.week) prefetchWeek(initialUrl.year, initialUrl.week, 'presentation')
     backtestSetup(controller.signal).then(value => { setSetup(value); setSetupError('') })
-      .catch(error => { if (!controller.signal.aborted) setSetupError(error.message) })
+      .catch(error => { if (!controller.signal.aborted) failed(error, setSetupError) })
     return () => controller.abort()
-  }, [attempt, initialUrl])
+  }, [attempt, initialUrl, failed])
 
   const weeks = setup?.catalog.weeks
   const selected = weeks && url.year && url.week ? weeks.find(w => w.target_year === url.year && w.target_epi_week === url.week) || null : null
@@ -89,8 +120,8 @@ export default function HistoricalBacktest() {
     const list = setup.catalog.weeks.filter(w => w.target_year === year); const key = `${disclosure}/${year}`
     return backtestHistory(setup.catalog, list[0].target_week, list.at(-1).target_week, '', signal, disclosure)
       .then(value => setHistories(h => ({ ...h, [key]: { value } })))
-      .catch(error => { if (!signal?.aborted) setHistories(h => ({ ...h, [key]: { error: error.message } })) })
-  }, [setup, disclosure])
+      .catch(error => { if (!signal?.aborted) failed(error, message => setHistories(h => ({ ...h, [key]: { error: message } }))) })
+  }, [setup, disclosure, failed])
 
   // Year history: immediately when it decides the default week; otherwise after the map is painted.
   const weekReady = Boolean(current?.value)
@@ -113,9 +144,9 @@ export default function HistoricalBacktest() {
     const controller = new AbortController()
     backtestWeek(setup.catalog, selected, controller.signal, disclosure)
       .then(value => setWeekState({ key: weekKey, value }))
-      .catch(error => { if (!controller.signal.aborted) setWeekState({ key: weekKey, error: error.message }) })
+      .catch(error => { if (!controller.signal.aborted) failed(error, message => setWeekState({ key: weekKey, error: message })) })
     return () => controller.abort()
-  }, [setup, selected, weekKey, disclosure])
+  }, [setup, selected, weekKey, disclosure, failed])
 
   // Other evaluable years load one at a time in the background, after the first paint.
   useEffect(() => {
@@ -165,8 +196,26 @@ export default function HistoricalBacktest() {
   // Weeks with nothing disclosable get one explanation only, not a map of protected cells.
   const hasCells = shown?.availability_status === 'available' && shown.metrics.n_comparable > 0
 
+  // Model selector, its description and the data context. On narrow screens (390 px) they move
+  // into «Opciones avanzadas» (folded) and the selector shows only short names (the description below
+  // it keeps the full name and «Experimental, no aprobado para uso operativo»); desktop is unchanged.
+  const modelControl = hasML && method !== 'reference' && <label className="pv-model" data-control="model">Modelo ML
+    <select value={model} onChange={e => update({ model: e.target.value })}>
+      {modelOptions.map(c => <option key={c.id} value={c.id}>{narrow ? candidateShortName(c.id) : `${candidateName(c.id)} · ${c.state === 'experimental_not_promoted' ? 'no promovido' : 'evaluado, no promovido'}`}</option>)}
+    </select></label>
+  const modelDetails = <>
+    {hasML && method !== 'reference' && mlSource && <p className="pv-caption pv-model-rule">{candidateName(model)}: {decisionText(mlSource.candidate)} Experimental, no aprobado para uso operativo.</p>}
+    {selected && <p className="pv-context">
+      <span>Datos usados hasta: <strong>{dateLabel(selected.origin_end)}</strong></span>
+      {climate?.availability_status === 'available'
+        ? <span>Semana previa: {formatValue(climate.temperature_mean, 1)} °C · {formatValue(climate.humidity_mean, 0)} % humedad · <span className="pv-nowrap">{formatValue(climate.precipitation_total, 1)} mm
+          <InfoTip label="Sobre el clima">Un único punto de referencia para toda la ciudad, de la semana anterior a la elegida. El modelo ML lo usa; el método de referencia no.</InfoTip></span></span>
+        : shown && <span>Clima de la semana previa no disponible.</span>}
+    </p>}
+  </>
+
   return <section className="historical-backtest pv" aria-label="Predicción semanal" data-state={current?.value ? 'ready' : current?.error ? 'error' : 'loading'} data-week={shown?.target_week || ''}>
-    <div className="pv-controls">
+    <div className="pv-controls ui-card">
       {selected ? <WeekTimeline weeks={weeks} selected={selected} series={historyFor(selected.target_year)?.value?.series} onSelect={select}
         onMostActive={goMostActive} mostActive={globalBest} mode={disclosure} /> : <p role="status">Buscando la semana con más actividad…</p>}
       <div className="pv-toggles">
@@ -174,22 +223,13 @@ export default function HistoricalBacktest() {
         <Segmented name="method" label="Método" value={method} onChange={v => update({ method: v })} options={hasML
           ? [{ value: 'ml', label: 'Modelo ML' }, { value: 'reference', label: 'Método de referencia' }, { value: 'compare', label: 'Comparar' }]
           : [{ value: 'reference', label: 'Método de referencia' }]} />
-        {hasML && method !== 'reference' && <label className="pv-model" data-control="model">Modelo ML
-          <select value={model} onChange={e => update({ model: e.target.value })}>
-            {modelOptions.map(c => <option key={c.id} value={c.id}>{candidateName(c.id)} · {c.state === 'experimental_not_promoted' ? 'no promovido' : 'evaluado, no promovido'}</option>)}
-          </select></label>}
+        {!narrow && modelControl}
         {view === 'quantity' && method !== 'compare' && <Segmented name="layer" label="Capa del mapa" value={url.layer} onChange={v => update({ layer: v })} options={[{ value: 'expected', label: 'Esperados' }, { value: 'observed', label: 'Observados' }]} />}
       </div>
-      {hasML && method !== 'reference' && mlSource && <p className="pv-caption pv-model-rule">{candidateName(model)}: {decisionText(mlSource.candidate)} Experimental, no aprobado para uso operativo.</p>}
-      {selected && <p className="pv-context">
-        <span>Datos usados hasta: <strong>{dateLabel(selected.origin_end)}</strong></span>
-        {climate?.availability_status === 'available'
-          ? <span>Semana previa: {formatValue(climate.temperature_mean, 1)} °C · {formatValue(climate.humidity_mean, 0)} % humedad · {formatValue(climate.precipitation_total, 1)} mm
-            <InfoTip label="Sobre el clima">Un único punto de referencia para toda la ciudad, de la semana anterior a la elegida. El modelo ML lo usa; el método de referencia no.</InfoTip></span>
-          : shown && <span>Clima de la semana previa no disponible.</span>}
-      </p>}
+      {!narrow && modelDetails}
       <details className="pv-advanced"><summary>Opciones avanzadas</summary>
         <div className="pv-advanced-body">
+          {narrow && <div className="pv-advanced-model">{modelControl}{modelDetails}</div>}
           {privateViewEnabled ? <><label htmlFor="bt-disclosure">Modo de divulgación</label>
             <select id="bt-disclosure" value={disclosure} onChange={e => setDisclosure(e.target.value)}>
               <option value="presentation">Protegido (por defecto)</option><option value="private">Investigación privada · valores exactos</option></select></>
@@ -209,9 +249,14 @@ export default function HistoricalBacktest() {
       : <div className={current ? 'pv-body' : 'pv-body pv-updating'} aria-busy={!current}>
         {mlMissing && hasCells && <p className="pv-notice" role="status">El modelo ML no tiene predicción guardada para esta semana. <button type="button" onClick={() => update({ method: 'reference' })}>Ver método de referencia</button></p>}
         <SummaryCards result={shown} view={view} primary={primary} other={other} mode={disclosure} onMostActive={goMostActive} mostActive={globalBest && globalBest !== shown.target_week} />
-        {hasCells && <div className={radioRow ? 'pv-main pv-main-panel' : 'pv-main'}>
-          <BacktestMaps geometry={setup.geometry} panels={panels} view={view} layer={method === 'compare' ? 'expected' : url.layer} mode={disclosure} radio={url.radio} onRadio={id => update({ radio: id })} />
-          {radioRow?.reference && <RadioPanel radio={url.radio} rows={radioRow} sources={ordered} view={view} mode={disclosure} result={shown} catalog={setup.catalog} selected={selected} onClose={() => update({ radio: '' })} />}
+        {hasCells && <div className={radioRow ? 'pv-main pv-layout pv-main-panel' : 'pv-main pv-layout'}>
+          <Card className="pv-map-card" title="Mapa de radios censales" titleId="pv-map-title">
+            <BacktestMaps geometry={setup.geometry} panels={panels} view={view} layer={method === 'compare' ? 'expected' : url.layer} mode={disclosure} radio={url.radio} onRadio={id => update({ radio: id })} />
+          </Card>
+          <div className="pv-side">
+            {radioRow?.reference && <RadioPanel radio={url.radio} rows={radioRow} sources={ordered} view={view} mode={disclosure} result={shown} catalog={setup.catalog} selected={selected} onClose={() => update({ radio: '' })} />}
+            <PriorityList rows={display[primary.source].rows} view={view} mode={disclosure} source={primary.label} radio={url.radio} onRadio={id => update({ radio: id })} />
+          </div>
         </div>}
       </div>}
 

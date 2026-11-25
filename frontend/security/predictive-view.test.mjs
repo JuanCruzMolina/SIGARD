@@ -8,7 +8,7 @@ import {
 } from '../src/services/predictiveView.mjs'
 
 // Generated fictional transport only; no project observations, cartography or predictions.
-const api = path => finalFixtureResponse(`http://127.0.0.1:8765/api/v1/research/predictive${path}`)
+const api = path => finalFixtureResponse(`http://127.0.0.1:8767/api/v1/research/predictive${path}`)
 const catalog = validateBacktestCatalog(api('/calendar'))
 const metadata = api('/metadata')
 const find = (year, week) => catalog.weeks.find(w => w.target_year === year && w.target_epi_week === week)
@@ -134,4 +134,27 @@ test('top-k recall is delivered only in private mode; protected mode keeps the s
 test('model inputs are described as families without values', () => {
   assert.deepEqual(featureGroups(['count_lag_1', 'neighbor_count_mean', 'temperature_origin', 'seno', 'superficie_km2', 'presence_lag_2']),
     ['Historia reciente de registros del radio', 'Actividad reciente de los radios vecinos', 'Clima de la ciudad (un único punto de referencia)', 'Época del año', 'Características fijas del radio (superficie, vecinos)'])
+})
+
+test('F6.1 side list: only radios the map shows, by the decision rank; protected radios never listed', async () => {
+  const { priorityList } = await import('../src/services/predictiveView.mjs')
+  const row = (radio_id, extra) => ({ radio_id, common_mask: true, availability_status: 'available', predicted: { presence_score: null, quantity: null }, topk_rank: null, confusion: null, ...extra })
+  const rows = [
+    row('FX03', { confusion: 'TP', topk_rank: 3 }), row('FX01', { confusion: 'FP', topk_rank: 1 }), row('FX02', { confusion: 'TP', topk_rank: 2 }),
+    row('FX04', { confusion: 'FN' }), row('FX05', { confusion: 'TN' }),
+    row('FX06', { availability_status: 'privacy_suppressed', confusion: 'TP', topk_rank: 4 }),
+    row('FX07', { common_mask: false, availability_status: 'outside_common_territory', confusion: 'TP' }),
+  ]
+  const presence = priorityList(rows, 'presence')
+  assert.deepEqual(presence.items.map(i => [i.radio_id, i.rank, i.status]), [['FX01', 1, 'Sin registros'], ['FX02', 2, 'Con registros'], ['FX03', 3, 'Con registros']])
+  assert.equal(presence.total, 3)
+  // Without a top-k rank (threshold decision) the score orders the list.
+  const scored = priorityList([row('A', { confusion: 'TP', predicted: { presence_score: .2 } }), row('B', { confusion: 'TP', predicted: { presence_score: .9 } })], 'presence')
+  assert.deepEqual(scored.items.map(i => i.radio_id), ['B', 'A'])
+  // ¿Cuántos?: visible values only, highest expected first, limited to 10.
+  const many = Array.from({ length: 12 }, (_, i) => row(`Q${String(i).padStart(2, '0')}`, { predicted: { quantity: i / 2 } }))
+  const quantity = priorityList([...many, row('QP', { availability_status: 'privacy_suppressed', predicted: { quantity: 99 } })], 'quantity')
+  assert.equal(quantity.total, 12); assert.equal(quantity.items.length, 10)
+  assert.deepEqual(quantity.items.slice(0, 2).map(i => [i.radio_id, i.status]), [['Q11', '5,5 esperados'], ['Q10', '5 esperados']])
+  assert.deepEqual(priorityList(undefined, 'presence'), { items: [], total: 0 })
 })

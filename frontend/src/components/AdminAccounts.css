@@ -1,0 +1,65 @@
+/* Cuentas · Administración v2 (F6.5, docs/diseno/admin-v2/Cuentas.dc.html). Presentation only.
+   Overrides the former rules of Prevention.css inside .admin-accounts. */
+.admin-accounts { max-width: 1240px; margin: 0; display: flex; flex-direction: column; gap: 20px; }
+.admin-accounts .ui-notice { margin: 0; }
+.admin-accounts .ui-notice p { line-height: 1.5; }
+.admin-accounts .ui-card-title { margin: 0 0 12px; color: var(--ink); font-size: 1.125rem; }
+.admin-accounts .ui-screen-aside .ui-button { font-size: .94rem; }
+.admin-accounts-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; align-items: start; }
+/* Disabled controls keep AA text (no opacity), e.g. «Desactivar» on the last active administrator. */
+.admin-accounts .ui-button:disabled { border-color: var(--line); background: var(--canvas); color: var(--muted); opacity: 1; cursor: not-allowed; }
+
+/* Account list. */
+.admin-accounts .account-list { padding: 18px 20px; }
+.admin-accounts .account-count { margin: 0 0 8px; color: var(--ink-soft); font-size: .94rem; }
+.accounts-table { font-size: .94rem; }
+.accounts-table tbody th { color: var(--ink); font-size: .94rem; font-weight: 600; text-transform: none; letter-spacing: normal; overflow-wrap: normal; }
+.accounts-table td, .accounts-table th { vertical-align: middle; }
+.accounts-table time { color: var(--ink-soft); white-space: nowrap; }
+.account-email { margin-right: 8px; }
+.admin-accounts .account-self.ui-badge { padding: 2px 8px; border-radius: 6px; font-size: .875rem; font-weight: 600; vertical-align: middle; }
+.admin-accounts .account-state.ui-badge { padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+.admin-accounts .account-state-label { display: none; }
+.admin-accounts .account-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.accounts-table .account-actions { flex-wrap: nowrap; }
+.accounts-table .account-actions .ui-button { white-space: nowrap; }
+.admin-accounts .account-actions .ui-button { padding: 0 14px; font-size: .94rem; }
+.admin-accounts .account-danger:not(:disabled) { color: var(--red-deep); }
+.admin-accounts .account-danger:not(:disabled):hover { border-color: var(--red-deep); background: #f9e1dd; color: #6e221c; }
+.account-none { color: var(--muted); font-size: .94rem; }
+.admin-accounts .account-pagination { margin-top: 16px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: .94rem; }
+
+/* Operation card (create, rotate, deactivate): current password + explicit confirmation. */
+.admin-accounts .account-operation { padding: 20px; box-shadow: 0 5px 16px rgba(18, 58, 61, .08); }
+.admin-accounts .account-operation > p { margin: 0; color: var(--ink-soft); font-size: .94rem; line-height: 1.6; }
+.admin-accounts .account-operation h2:focus-visible { outline: 3px solid var(--teal); outline-offset: 4px; }
+.admin-accounts .account-operation .admin-update { margin: 0; padding: 0; border: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.admin-accounts .account-operation .admin-update label { display: flex; flex-direction: column; gap: 6px; color: var(--ink); font-size: .875rem; font-weight: 600; }
+.admin-accounts .account-operation .admin-update input:not([type="checkbox"]) { width: 100%; min-height: 44px; padding: 0 12px; border: 1px solid var(--line-strong); border-radius: 8px;
+  background: #fff; font: inherit; font-size: .94rem; font-weight: 400; }
+.admin-accounts .account-operation .admin-update input:not([type="checkbox"]):focus { outline: 3px solid var(--teal); outline-offset: 1px; border-color: var(--teal); }
+.admin-accounts .account-operation .admin-update small { color: var(--muted); font-size: .875rem; font-weight: 400; line-height: 1.5; }
+.admin-accounts .account-target { margin: 0; color: var(--ink); font-size: .94rem; }
+.admin-accounts .account-target span { display: block; margin-top: 4px; color: var(--red-deep); font-weight: 600; }
+.admin-accounts .account-warning p { margin: 0; }
+/* The whole confirmation line is the target (44 px), not only the 20 px box. */
+.admin-accounts .account-operation .admin-update label.account-confirm { min-height: 44px; display: flex; flex-direction: row; align-items: center; gap: 12px; padding: 6px 0; font-weight: 400; line-height: 1.5; cursor: pointer; }
+.admin-accounts .account-confirm input { width: 20px; height: 20px; min-height: 20px; flex: 0 0 20px; margin: 0; accent-color: var(--teal-deep); }
+.admin-accounts .account-confirm input:focus-visible { outline: 3px solid var(--teal); outline-offset: 2px; }
+.admin-accounts .account-submit-danger:not(:disabled) { border-color: var(--red-deep); background: var(--red-deep); color: #fff; }
+
+@media (min-width: 1100px) {
+  .admin-accounts-grid { grid-template-columns: minmax(0, 1fr) minmax(320px, 340px); }
+}
+/* Narrow screens: each account is a card (the table keeps its semantics). */
+@media (max-width: 760px) {
+  .admin-accounts { gap: 16px; }
+  .admin-accounts .account-list, .admin-accounts .account-operation { padding: 16px; }
+  .accounts-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .accounts-table, .accounts-table tbody { display: block; width: 100%; }
+  .accounts-table tbody tr { display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; padding: 14px 0; border-bottom: 1px solid var(--canvas-deep); }
+  .accounts-table tbody tr > * { padding: 0; border: 0; white-space: normal; }
+  .admin-accounts .account-state-label { display: inline; color: var(--muted); font-size: .875rem; }
+  .accounts-table .account-actions { flex-wrap: wrap; }
+  .admin-accounts .account-actions .ui-button { flex: 1 1 auto; }
+}

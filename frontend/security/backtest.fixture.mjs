@@ -40,7 +40,7 @@ export function comparison(w) {
     department: { observed_total: covered ? rows[0].observed.quantity : null, assigned_common_total: covered ? rows[0].observed.quantity : null, assigned_masked_total: covered ? 0 : null, unassigned_total: covered ? 0 : null, reconciled: covered ? true : null } }
 }
 export function fixtureResponse(path) {
-  const url = new URL(path, 'http://127.0.0.1:8765'); const name = url.pathname.split('/').at(-1)
+  const url = new URL(path, 'http://127.0.0.1:8767'); const name = url.pathname.split('/').at(-1)
   if (name === 'calendar') return catalog
   if (name === 'geometry') return geometry
   if (name === 'metadata') return metadata

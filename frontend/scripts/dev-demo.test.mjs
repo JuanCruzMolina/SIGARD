@@ -87,11 +87,13 @@ test('real occupied demo port is rejected without connecting, spawning or killin
   assert.ok(listener.listening)
 })
 
-test('demo readiness failure cleans both owned APIs before any frontend is served', async () => {
+// F2: the coordinator never starts or stops a separate predictive API (8765); apiStart/apiStop
+// stay 0 in every scenario below.
+test('demo readiness failure cleans the owned demo API before any frontend is served', async () => {
   const { runtime, calls, companion } = fixture()
   companion.ready = Promise.reject(new Error('SQLite startup failed'))
   await assert.rejects(startDevelopment(runtime), /SQLite startup failed/)
-  assert.deepEqual([calls.apiStop, calls.companionStop, calls.listen], [1, 1, 0])
+  assert.deepEqual([calls.apiStart, calls.apiStop, calls.companionStop, calls.listen], [0, 0, 1, 0])
 })
 
 test('Ctrl+C during companion startup waits then cleans late resources once', async () => {
@@ -102,10 +104,10 @@ test('Ctrl+C during companion startup waits then cleans late resources once', as
   })()
   const session = await startDevelopment(runtime)
   assert.equal(await session.closed, 0)
-  assert.deepEqual([calls.apiStop, calls.companionStop, calls.listen], [1, 1, 0])
+  assert.deepEqual([calls.apiStart, calls.apiStop, calls.companionStop, calls.listen], [0, 0, 1, 0])
 })
 
-test('companion crash stops Vite and own API, leaving a reused research API alone', async () => {
+test('companion crash stops Vite and the demo API; a service on 8765 is never touched', async () => {
   const { runtime, calls, resolveReady, resolveExit } = fixture()
   runtime.portAvailable = async port => port !== 8765
   resolveReady()
@@ -115,12 +117,12 @@ test('companion crash stops Vite and own API, leaving a reused research API alon
   assert.deepEqual([calls.apiStart, calls.apiStop, calls.companionStop, calls.close], [0, 0, 1, 1])
 })
 
-test('Vite failure removes companion and owned research API', async () => {
+test('Vite failure removes the companion demo API', async () => {
   const { runtime, calls, resolveReady } = fixture()
   resolveReady()
   runtime.createVite = async () => { throw new Error('Vite failed') }
   await assert.rejects(startDevelopment(runtime), /Vite failed/)
-  assert.deepEqual([calls.apiStop, calls.companionStop], [1, 1])
+  assert.deepEqual([calls.apiStart, calls.apiStop, calls.companionStop], [0, 0, 1])
 })
 
 test('real SQLite persists reports in-session, deletes on stop and starts empty with fresh credentials', async t => {

@@ -27,6 +27,15 @@ Estas reglas se aplican a todo el repositorio.
   Seleccionar pruebas revisadas sin entrenamiento ni lectura de fuentes privadas.
 - Seguridad: `.\backend\.venv\Scripts\python.exe -B tools/check_repository_security.py`
   (auditoría estática, no inicia Docker) y `git diff --check`.
+- Nunca enlazar (junction, symlink, hardlink) carpetas reales del repositorio —data/, .venv,
+  node_modules— dentro de worktrees o directorios temporales. Nunca usar git worktree remove
+  --force ni borrados recursivos sobre rutas que puedan contener enlaces. Para comparar
+  versiones, usar un clon separado con sus propias dependencias.
+- `.claude/settings.json` activa el hook `.claude/hooks/guard-destructive.mjs`: deniega borrados o
+  movimientos sobre `data/` y pide confirmación ante otros borrados, worktrees, enlaces y git
+  destructivo. No desactivarlo, modificarlo ni esquivarlo (p. ej. escribiendo y ejecutando un
+  script que borre). Si un borrado es necesario, pedírselo al responsable explicando qué y por qué.
+  Prueba: `npm.cmd --prefix frontend run test:guard`.
 
 ## Alcance conceptual
 

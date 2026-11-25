@@ -8,6 +8,11 @@ from pathlib import Path
 import re
 import subprocess
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 PRIVATE_PATHS = [
     ".env.local", "backend/.env.production", "frontend/nested/.env.backup", "ml/configs/official.research.private.json",
     "ml/configs/settings.private.toml", "backend/app/config_private.ini", "config/private.yaml",
@@ -46,7 +51,7 @@ DOCKER_PRIVATE_PATHS += ["data/interim/official/internal-alerts-v1/alerts.privat
 
 def git_ignored(root, path):
     result = subprocess.run(["git", "check-ignore", "--no-index", "-v", "--", path],
-                            cwd=root, capture_output=True, text=True, check=False)
+                            cwd=root, capture_output=True, text=True, check=False, creationflags=NO_WINDOW)
     if result.returncode not in (0, 1):
         raise ValueError("Git ignore check failed")
     if not result.stdout:
@@ -181,14 +186,14 @@ def audit(root):
             if docker_ignored(path, rules):
                 raise ValueError("Legitimate Docker source/resource excluded: " + context + ":" + path)
             checks.append({"engine": "Docker static subset", "context": context, "path": path, "excluded": False})
-    tracked = [name for name in subprocess.check_output(["git", "ls-files", "-z"], cwd=root).decode().split("\0") if name]
+    tracked = [name for name in subprocess.check_output(["git", "ls-files", "-z"], cwd=root, creationflags=NO_WINDOW).decode().split("\0") if name]
     # Ignores are tested with --no-index: tracked status does not bypass this check.
     tracked_suspects = [name for name in tracked if git_ignored(root, name)]
     if tracked_suspects:
         raise ValueError("Tracked excluded file found; stop and report without untracking or deleting")
     signatures = [re.compile(r"-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----"),
         re.compile(r"\b(?:AKIA|ASIA)[A-Z0-9]{16}\b"), re.compile(r"\bgh[pousr]_[A-Za-z0-9]{30,}\b")]
-    untracked = [name for name in subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=root).decode().split("\0") if name]
+    untracked = [name for name in subprocess.check_output(["git", "ls-files", "--others", "--exclude-standard", "-z"], cwd=root, creationflags=NO_WINDOW).decode().split("\0") if name]
     for name in sorted(set(tracked + untracked)):
         path = root / name
         if path.is_file() and path.stat().st_size <= 2 * 1024 * 1024:

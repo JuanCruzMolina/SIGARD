@@ -1,4 +1,8 @@
-"""Read-only aggregate API, installed exclusively by the loopback launcher."""
+"""Archived A/B spatial and stage-3 backtest routes (read-only), kept for their regression tests.
+
+No launcher serves this application since F2 (`research_local` was retired). It never
+installs `/api/v1/research/predictive/*`: the final predictive module exists only behind
+administrator authentication in `predictive_admin` (local administrative API, 8767)."""
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,7 +16,7 @@ AUTHORITY = "127.0.0.1:8765"
 READ_HEADER = "x-sigard-research"
 
 
-def create_research_app(adapter=None, backtest=None, *, predictive=None, legacy=True):
+def create_research_app(adapter=None, backtest=None):
     # No database, admin/report routes, credentials, sessions or static file mounts.
     application = FastAPI(title="SIGARD · Investigación local", docs_url=None,
                           redoc_url=None, openapi_url=None)
@@ -83,11 +87,8 @@ def create_research_app(adapter=None, backtest=None, *, predictive=None, legacy=
         return call(lambda: adapter.history(radio))
 
     from .backtest_api import router_for
-    if legacy:
-        application.include_router(router)
-        application.include_router(router_for(backtest))
-    else:
-        application.include_router(router_for(predictive, prefix='/api/v1/research/predictive', unified=True))
+    application.include_router(router)
+    application.include_router(router_for(backtest))
 
     @application.get("/health")
     def health():

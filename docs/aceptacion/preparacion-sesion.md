@@ -5,15 +5,18 @@ Todos los comandos se ejecutan en PowerShell desde la raíz del repositorio.
 Reglas generales:
 - Docker Desktop permanece **apagado**.
 - No se usa el PostgreSQL de `127.0.0.1:5432`.
-- Los entornos `dev`, `dev:demo` y `dev:alerts` comparten el puerto 5173: **nunca se ejecutan
-  en paralelo**. Se detiene uno con Ctrl+C antes de iniciar el siguiente.
+- Los entornos `dev` y `dev:demo` comparten el puerto 5173: **nunca se ejecutan en paralelo**.
+  Se detiene uno con Ctrl+C antes de iniciar el siguiente. `dev:alerts` es un alias obsoleto de
+  `dev`.
+- `dev` levanta el visor predictivo y la Administración completa (8767) a la vez: B y D son la
+  misma sesión de `dev`; C es `dev` reiniciado con la fixture de actividad.
 
 | Entorno | Tareas | Comando | Puertos |
 |---|---|---|---|
 | A | E1–E5 | `npm.cmd --prefix frontend run dev:demo` | 5173 · 8766 (API demo ficticia, SQLite temporal) |
-| B | E6–E7 | `npm.cmd --prefix frontend run dev` | 5173 · 8765 (API predictiva, sólo lectura) |
-| C | E8 | `dev` (como B) **+** API pública con fixture en otra terminal | 5173 · 8765 · 8000 |
-| D | E9–E10 | `npm.cmd --prefix frontend run dev:alerts` | 5173 · 8765 · 8767 (API de alertas) |
+| B | E6–E7 | `npm.cmd --prefix frontend run dev` | 5173 · 8767 (API administrativa; incluye el visor predictivo con sesión de administrador) |
+| C | E8 | `dev` iniciado con `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` | 5173 · 8767 |
+| D | E9–E10 | `npm.cmd --prefix frontend run dev` (la misma sesión que B) | 5173 · 8767 |
 
 Abrir siempre `http://127.0.0.1:5173/`, en una ventana privada nueva por participante.
 
@@ -37,7 +40,7 @@ Test-Path data\interim\official\public-activity-authorization.private.json
 Get-NetTCPConnection -LocalPort 5173,8000,8765,8766,8767 -State Listen -ErrorAction SilentlyContinue
 ```
 
-Con Vite activo (entorno B) también se pueden correr las pruebas de navegador. Si Puppeteer no
+Con `dev` activo (entorno B) también se pueden correr las pruebas de navegador. Si Puppeteer no
 está en el proyecto, se indica su ruta con `$env:SIGARD_BROWSER_MODULE`:
 - `npm.cmd --prefix frontend run test:accounts:browser`
 - `npm.cmd --prefix frontend run test:public-activity:browser`
@@ -51,8 +54,9 @@ Guardar las salidas como anexos del acta, en la carpeta privada
   **una sola vez** en la terminal. El moderador los copia a mano en un papel para la persona
   participante y lo destruye al terminar. No se fotografían ni se guardan, y la terminal no debe
   quedar a la vista ni en grabaciones.
-- **Entorno D (`dev:alerts`):** cuenta persistente en el almacén privado de alertas. Se crea
-  **una vez** en forma interactiva; la contraseña no se muestra:
+- **Entornos B–D (`dev`):** cuenta persistente en el almacén privado de la Administración local.
+  `dev` arranca aunque no exista y muestra este comando en la terminal. Se crea **una vez**, en
+  otra terminal y en forma interactiva (la contraseña no se muestra), sin reiniciar `dev`:
   ```powershell
   .\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin
   ```
@@ -71,39 +75,32 @@ Esperar a la línea de «listo» y a las credenciales. Base SQLite temporal; Ctr
 ```powershell
 npm.cmd --prefix frontend run dev
 ```
-Abrir `/mapa`. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
+Abrir `/admin/predictivo` (o **Administración → Módulo predictivo**) e ingresar con la cuenta
+de administrador de la sesión; `/mapa` es el mapa público y ya no muestra el visor. Comprobar
+que sin sesión la ruta muestra el formulario de ingreso y no el visor. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
 existir selector de valores exactos. Ese control sólo aparece si `dev` se inicia con
 `SIGARD_PRIVATE_VIEW=1`, y **nunca se usa en la sesión**: verificar que la variable no está
 definida (`$env:SIGARD_PRIVATE_VIEW` vacío). Tener lista la semana asignada para E6.
 
 ### Entorno C — «Actividad registrada» con fixture ficticia
-Con el entorno B en marcha, abrir **otra** terminal. Desde una carpeta temporal propia, para no
-leer ningún `.env`:
+Detener `dev` (Ctrl+C) y volver a iniciarlo con la opción explícita de fixture:
 ```powershell
-$root = (Get-Location).Path
-New-Item -ItemType Directory -Force backend\.tmp\aceptacion-actividad | Out-Null
-Set-Location backend\.tmp\aceptacion-actividad
-$env:SECRET_KEY = -join ((48..57)+(97..122) | Get-Random -Count 36 | ForEach-Object {[char]$_})
-$env:DATABASE_URL = 'sqlite:///./aceptacion.sqlite3'
-$env:AUTO_CREATE_SCHEMA = 'true'
 $env:SIGARD_PUBLIC_ACTIVITY = 'fixture'
-$env:CORS_ORIGINS = 'http://127.0.0.1:5173'
-& "$root\backend\.venv\Scripts\python.exe" -B -m uvicorn app.main:app --app-dir "$root\backend" --host 127.0.0.1 --port 8000
+npm.cmd --prefix frontend run dev
 ```
-- Recargar el navegador: aparece «Actividad registrada» en el menú. Comprobar el aviso «Datos
-  ficticios de prueba».
-- Para cerrar: Ctrl+C, luego `Set-Location $root`,
-  `Remove-Item -Recurse -Force backend\.tmp\aceptacion-actividad` y cerrar esa terminal, para que
-  las variables no queden activas.
+- Aparece «Actividad registrada» en el menú. Comprobar el aviso «Datos ficticios de prueba».
+- Para cerrar: Ctrl+C y `Remove-Item Env:SIGARD_PUBLIC_ACTIVITY`, para que la variable no quede
+  activa en los entornos siguientes.
 - **Paquete real:** sólo con la autorización institucional formal. Entonces se omite
   `SIGARD_PUBLIC_ACTIVITY` y la API valida autorización, manifiesto e informe. Sin autorización
   responde 404 y la vista no aparece.
 
 ### Entorno D — alertas internas
 ```powershell
-npm.cmd --prefix frontend run dev:alerts
+npm.cmd --prefix frontend run dev
 ```
-La precarga de predicciones tarda unos 25 s. Iniciar sesión en «Administración» con la cuenta
+Es la misma sesión de `dev` del entorno B (sin la variable del entorno C). La precarga de
+predicciones tarda unos 25 s. Iniciar sesión en «Administración» con la cuenta
 del punto 2 y abrir «Alertas internas». Tener listos el umbral y la semana de E9.
 
 ## 4. Orden sugerido por participante
@@ -120,7 +117,7 @@ agrupar participantes por entorno para reducir los cambios.
 | A | Ctrl+C (elimina la SQLite y la cuenta) y volver a iniciar `dev:demo`: base vacía y credenciales nuevas |
 | B | Sin estado propio: cerrar la ventana privada y abrir otra |
 | C | Sin estado: la fixture es fija. Cerrar la ventana privada |
-| D | Reglas y decisiones **persisten**. Para empezar en limpio: detener `dev:alerts`, renombrar el almacén privado con el código del participante y volver a crear la cuenta (comandos debajo) |
+| D | Reglas, decisiones, reportes y contenido **persisten**. Para empezar en limpio: detener `dev`, renombrar el almacén privado con el código del participante y volver a crear la cuenta (comandos debajo) |
 
 Comandos del entorno D (no borra nada; conserva la evidencia de cada participante):
 ```powershell
@@ -139,7 +136,8 @@ administrativa abierta y destruir el papel con las credenciales de `dev:demo`.
 - [ ] Verificación previa aprobada y salidas guardadas en la carpeta privada.
 - [ ] Docker apagado; puertos 5173/8000/8765/8766/8767 libres antes de empezar.
 - [ ] `$env:SIGARD_PRIVATE_VIEW` vacío: el visor sólo ofrece modo protegido.
-- [ ] Cuenta de `dev:alerts` creada y probada.
+- [ ] Cuenta local de `dev` creada y probada (login en «Administración»).
+- [ ] `$env:SIGARD_PUBLIC_ACTIVITY` vacío salvo durante el entorno C.
 - [ ] Sin archivo de autorización real (o, si existe, número y SHA anotados en el acta).
 - [ ] Tarjetas E1–E10 impresas con la semana y el umbral asignados.
 - [ ] Consentimientos impresos; cuestionarios impresos (`cuestionario-sus.md`).

@@ -10,6 +10,11 @@ from pathlib import Path
 import httpx
 import pytest
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 pa = pytest.importorskip("pyarrow", reason="Instalar requirements.research.txt para las pruebas locales A/B")
 import pyarrow.parquet as pq
 
@@ -405,7 +410,7 @@ let blocked=false; try {validateScores(scores,catalog.models[0],scores.target_we
 if(!blocked) throw Error('invalid null accepted');
 """
     run = subprocess.run([shutil.which("node"), "--input-type=module", "-e", script], cwd=ROOT,
-        input=json.dumps({"catalog": adapter.list_experiments(), "scores": result}), text=True, capture_output=True)
+        input=json.dumps({"catalog": adapter.list_experiments(), "scores": result}), text=True, capture_output=True, creationflags=NO_WINDOW)
     assert run.returncode == 0, run.stderr
 
 
@@ -472,7 +477,7 @@ validateEvaluation(evaluation,catalog); validateHistory(history,catalog,'000002'
 """
     result = subprocess.run([shutil.which("node"), "--input-type=module", "-e", script], cwd=ROOT,
         input=json.dumps({"catalog": adapter.list_experiments(), "evaluation": adapter.get_evaluation(), "history": adapter.history("000002")}),
-        text=True, capture_output=True)
+        text=True, capture_output=True, creationflags=NO_WINDOW)
     assert result.returncode == 0, result.stderr
 
 
@@ -601,21 +606,10 @@ async def test_integrity_failure_has_no_private_details_or_fallback(artifacts):
             assert str(artifacts[0]) not in response.text
 
 
-def test_launcher_fixed_socket_without_credentials(monkeypatch, artifacts):
-    import app.research_local as launcher
-    import uvicorn
-    monkeypatch.delenv("SECRET_KEY", raising=False)
-    monkeypatch.delenv("DATABASE_URL", raising=False)
-    monkeypatch.setattr(launcher, "local_bytes", lambda *args: b"fictional registry")
-    captured = {}
-    monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: captured.update(kwargs))
-    launcher.main()
-    assert captured["host"] == "127.0.0.1" and captured["port"] == 8765
-    assert captured["proxy_headers"] is False and captured["access_log"] is False
-    assert captured["server_header"] is False
-    for environment in ("VERCEL", "RENDER", "RAILWAY_ENVIRONMENT", "WEBSITE_INSTANCE_ID", "K_SERVICE"):
-        monkeypatch.setenv(environment, "1")
-        with pytest.raises(SystemExit): launcher.main()
-        monkeypatch.delenv(environment)
-    monkeypatch.setattr(launcher, "Path", lambda path: type("Container", (), {"exists": lambda self: True})())
-    with pytest.raises(SystemExit): launcher.main()
+def test_unauthenticated_research_launcher_was_retired():
+    # F2: no launcher serves research routes without authentication; the archived factory
+    # used by these tests never installs the final predictive module.
+    import importlib.util
+    assert importlib.util.find_spec("app.research_local") is None
+    paths = {getattr(r, "path", "") for r in create_research_app(None, None).routes}
+    assert not any(p.startswith("/api/v1/research/predictive") for p in paths)

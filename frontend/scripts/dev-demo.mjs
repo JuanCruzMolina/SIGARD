@@ -134,7 +134,7 @@ export function demoRuntime() {
       })
     },
     announce() {
-      developmentRuntime.log('DEMO FICTICIA Y TEMPORAL: prevención/seguimiento en /prevencion · análisis, ingestión y alertas en /admin/reportes.')
+      developmentRuntime.log('DEMO FICTICIA Y TEMPORAL: prevención/seguimiento en /prevencion · Administración en /admin (Inicio); análisis, ingestión y alertas demo en /admin/reportes.')
       developmentRuntime.log('SQLite se elimina al salir; usá sólo contenido inventado y ubicación manual. Las cuentas no corresponden a personas reales.')
       // Display once, only in the local terminal. Never put these in a file/URL.
       developmentRuntime.log(`Cuenta de esta sesión: ${service.credentials.email}\nContraseña temporal: ${service.credentials.password}`)

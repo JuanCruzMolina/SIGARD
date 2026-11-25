@@ -14,6 +14,11 @@ import subprocess
 import sys
 import time
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 ROOT=Path(__file__).resolve().parents[2]
 sys.path.insert(0,str(ROOT/"backend"))
 from postgis_support import SCHEMA_DB,ADMIN_DB,USER,PORT,validate_url
@@ -24,7 +29,7 @@ OUTPUT=ROOT/"backend/.tmp/postgis-integration"
 
 
 def docker(*args,check=True,env=None):
-    return subprocess.run(["docker",*args],capture_output=True,text=True,check=check,env=env)
+    return subprocess.run(["docker",*args],capture_output=True,text=True,check=check,env=env, creationflags=NO_WINDOW)
 
 
 def install_connection_guard():
@@ -69,7 +74,7 @@ def main():
     container_id=None
     vite=None
     try:
-        if subprocess.check_output(["git","branch","--show-current"],cwd=ROOT,text=True).strip()!="entrenamiento-ML":
+        if subprocess.check_output(["git","branch","--show-current"],cwd=ROOT,text=True, creationflags=NO_WINDOW).strip()!="entrenamiento-ML":
             raise RuntimeError("Wrong branch")
         with socket.socket() as probe:
             probe.bind(("127.0.0.1",PORT))
@@ -139,7 +144,7 @@ def main():
                 except OSError:
                     if time.monotonic()>deadline: raise RuntimeError("Owned test Vite did not start")
                     time.sleep(.2)
-            receipt["browser_exit_code"]=subprocess.run(["node","frontend/scripts/admin-accounts.browser.mjs"],cwd=ROOT,env=browser_env).returncode
+            receipt["browser_exit_code"]=subprocess.run(["node","frontend/scripts/admin-accounts.browser.mjs"],cwd=ROOT,env=browser_env, creationflags=NO_WINDOW).returncode
     except Exception as exc:
         # Never print subprocess stderr/args or exception strings containing credentials.
         receipt["blocked_or_failed"]=type(exc).__name__

@@ -4,17 +4,21 @@
 import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { createRequire } from 'node:module'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { proxyRequest } from './browser-proxy.mjs'
+import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
+import { newRunDirectory, runLabel } from './private-output.mjs'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { blockLabel, blockRange, periodBanner, periodText } from '../src/services/publicActivity.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const output = resolve(root, 'data/interim/official/public-activity-review-v1')
+// Private screenshots: a new folder per run label (SIGARD_SHOTS_LABEL, timestamp by default); never overwritten.
+const outputBase = resolve(root, 'data/interim/official/public-activity-review-v1')
+const label = runLabel()
+let output
 const origin = 'http://127.0.0.1:5173'
 const delay = ms => new Promise(r => setTimeout(r, ms))
 const report = { checks: [], timings: {}, pageErrors: [], external: [], accessibility: [], fixture: 'generated fictional package' }
@@ -42,11 +46,11 @@ async function openPage(browser, port, { failActivity = 0 } = {}) {
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url = new URL(request.url())
-    if (url.port === '8000' && url.pathname === '/api/v1/public/activity' && failActivity > 0 && request.method() === 'GET') {
+    if (ADMIN_API_PORTS.includes(url.port) && url.pathname === '/api/v1/public/activity' && failActivity > 0 && request.method() === 'GET') {
       failActivity -= 1; report.injected503 = (report.injected503 || 0) + 1
       return request.respond({ status: 503, headers: { 'access-control-allow-origin': origin }, body: '' })
     }
-    if (url.port === '8000' && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
+    if (ADMIN_API_PORTS.includes(url.port) && url.pathname.startsWith('/api/v1/')) return proxyRequest(request, `http://127.0.0.1:${port}${url.pathname}${url.search}`)
     if (!['127.0.0.1', 'localhost'].includes(url.hostname) && url.protocol.startsWith('http')) { report.external.push(url.origin); return request.abort() }
     return request.continue()
   })
@@ -177,7 +181,7 @@ try {
     assert.ok(report.external.every(o => /tile.openstreetmap.org|fonts.(googleapis|gstatic).com/.test(o)), [...new Set(report.external)].join(', '))
   })
 
-  await mkdir(output, { recursive: true })
+  output = await newRunDirectory(outputBase, label)
   await check('escritorio y móvil sin desborde, banner fijo al desplazarse, accesibilidad', async () => {
     for (const width of [1440, 390]) {
       await page.setViewport({ width, height: 1000 })

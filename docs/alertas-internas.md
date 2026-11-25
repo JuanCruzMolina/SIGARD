@@ -9,7 +9,7 @@ sistema operativo ni de vigilancia, y **ningún algoritmo publica alertas**.
 
 | Punto | Definición |
 |---|---|
-| **Canal** | Notificaciones **internas** en el panel del administrador (`/admin/reportes` → «Alertas internas»). Sin correo, SMS, webhooks ni publicación ciudadana automática. |
+| **Canal** | Notificaciones **internas** en el panel del administrador (`/admin/alertas`, ítem «Alertas internas» del menú lateral). Sin correo, SMS, webhooks ni publicación ciudadana automática. |
 | **Periodicidad** | Semanal y manual: **el administrador ejecuta la evaluación al recibir la entrega semanal de datos; la automatización queda fuera del alcance del prototipo.** («Evaluar semana X».) |
 | **Origen del umbral** | Lo elige el administrador al crear la regla. En ¿Cuántos? el mínimo es **5 registros esperados** (protección de celdas pequeñas). Antes de guardar, la pantalla muestra la «Frecuencia de activación en 2021–2024 (reconstrucción retrospectiva; 2024 ya observado)»; sin ese cálculo para la regla actual no se puede guardar. En ¿Dónde? la condición es fija: el radio queda dentro del top-k del modelo (k=10). |
 | **Responsable de aprobación** | Un administrador autenticado (rol `admin`, sesión verificada en base). Aprueba con comentario obligatorio o descarta con motivo (`false_alarm`, `insufficient_context`, `duplicate`, `other`) y detalle. Queda registrado quién y cuándo. |
@@ -49,15 +49,16 @@ permitido en este panel interno autenticado.
   todas las rutas con `get_current_admin` (401 sin sesión, 403 sin rol). Tablas
   `internal_alert_rules`, `internal_alert_evaluations`, `internal_alert_candidates`,
   `internal_alert_audit` (migración `20261114_06_internal_alerts`).
-- **Fuente de predicciones** (`backend/app/alert_source.py`): cliente HTTP de sólo lectura
-  a la API predictiva local `127.0.0.1:8765` (modo privado, sin redirecciones ni proxies),
-  con caché compacto por proceso. La API administrativa nunca abre artefactos privados.
-  Sólo `alerts_local` adjunta la fuente; en un despliegue el módulo responde
+- **Fuente de predicciones** (`backend/app/alert_source.py`): desde F2 lee, dentro del mismo
+  proceso y sin HTTP ni token, el servicio predictivo que la API administrativa local
+  (`alerts_local`) abre y sirve al visor sólo con sesión de administrador (modo privado),
+  con caché compacto por proceso. `app.main` y los despliegues nunca abren artefactos
+  privados: sólo `alerts_local` adjunta la fuente; en un despliegue el módulo responde
   «fuente no disponible» y no evalúa.
 - **Lógica compartida** (`backend/app/alert_rules.py`): umbral, ventana de semanas
   consecutivas, protección y bloqueo de publicación. La demo ficticia
   (`demo_workspace.py`) la reutiliza con su contrato sin cambios (ventana de 1 semana).
-- **Almacenamiento local**: `npm run dev:alerts` usa un SQLite privado persistente en
+- **Almacenamiento local**: `npm run dev` usa un SQLite privado persistente en
   `data/interim/official/internal-alerts-v1/alerts.private.sqlite3` (ignorado por Git y
   verificado por `tools/check_repository_security.py`). Usa el esquema ORM, como la demo,
   porque la cadena Alembic completa requiere PostGIS; la migración 06 es el camino para
@@ -65,20 +66,22 @@ permitido en este panel interno autenticado.
 
 ## Ejecución local
 
-Crear la cuenta una vez (interactivo; la contraseña no se muestra ni se guarda en texto):
+`npm run dev` levanta las alertas junto con el resto de la Administración. Arranca aunque no
+exista la cuenta y muestra en la terminal el comando para crearla una vez (interactivo; la
+contraseña no se muestra ni se guarda en texto), sin reiniciar `dev`:
 
 ```powershell
-.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin
-npm.cmd --prefix frontend run dev:alerts
+npm.cmd --prefix frontend run dev
+.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin   # otra terminal
 ```
 
 | Comando | Puertos |
 |---|---|
-| `dev` | 5173 (Vite) · 8765 (API predictiva) |
+| `dev` | 5173 (Vite) · 8767 (API administrativa con alertas y visor predictivo autenticado; desde F2 no hay 8765) |
 | `dev:demo` | 5173 · 8766 (API demo ficticia) |
-| `dev:alerts` | 5173 · 8765 (iniciada o reutilizada, sólo lectura) · 8767 (API de alertas) |
+| `dev:alerts` | Obsoleto: alias de `dev` |
 
-`dev:alerts` comparte 5173 con `dev` y `dev:demo`: **no se ejecutan en paralelo**. Los tokens
+`dev` comparte 5173 con `dev:demo`: **no se ejecutan en paralelo**. Los tokens
 caducan al detener la API (secreto nuevo por proceso). Al iniciar se precarga el caché de
 predicciones (~25 s para 2021–2024).
 
@@ -92,7 +95,8 @@ predicciones (~25 s para 2021–2024).
 - `frontend/security/internal-alerts.test.mjs` (`npm run test:alerts`).
 - `npm run test:alerts:browser`: flujo completo con fuente ficticia y SQLite desechable;
   `--real` repite el flujo con la API predictiva local (valores protegidos) sólo para
-  capturas privadas en `data/interim/official/ux-internal-alerts-20261114/`.
+  capturas privadas en `data/interim/official/ux-internal-alerts-20261114/<etiqueta>/` (carpeta nueva
+  por corrida: `SIGARD_SHOTS_LABEL` o fecha y hora; nunca sobrescribe corridas anteriores).
 
 ## Límites
 

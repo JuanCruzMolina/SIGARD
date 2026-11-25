@@ -5,6 +5,11 @@ Never reads .env, Docker, API settings or port 5432. Init refuses existing data.
 import argparse,json,secrets,subprocess,sys
 from pathlib import Path
 
+# Windows: a child of a process without a console would open its own console window; then
+# hide it. With a console (visible or hidden) children keep sharing it, as before.
+NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) and (
+    0 if __import__("ctypes").windll.kernel32.GetConsoleWindow() else subprocess.CREATE_NO_WINDOW)
+
 ROOT=Path(__file__).resolve().parents[1]
 SCRIPT=ROOT/'backend/database/epidemiology/local-cluster.sh'
 
@@ -29,10 +34,10 @@ def main():
             pw=config.parent/'admin-password.private'
             if pw.exists():raise ValueError('Do not overwrite password file')
             pw.write_text(password,encoding='ascii');extra=[linux(pw)]
-        result=subprocess.run(['wsl.exe','bash',linux(SCRIPT),args.action,*extra],capture_output=True)
+        result=subprocess.run(['wsl.exe','bash',linux(SCRIPT),args.action,*extra],capture_output=True, creationflags=NO_WINDOW)
         if result.returncode:raise ValueError('Owned cluster action failed')
         if args.action=='init':
-            result=subprocess.run(['wsl.exe','bash',linux(SCRIPT),'start'],capture_output=True)
+            result=subprocess.run(['wsl.exe','bash',linux(SCRIPT),'start'],capture_output=True, creationflags=NO_WINDOW)
             if result.returncode:raise ValueError('Owned cluster start failed')
             import psycopg2
             conn=psycopg2.connect(host='127.0.0.1',port=55439,dbname='postgres',user='sigard_epi_owner',password=password,connect_timeout=5)

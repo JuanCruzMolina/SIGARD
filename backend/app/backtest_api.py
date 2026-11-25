@@ -1,26 +1,46 @@
-"""Installed only on the existing guarded loopback research listener."""
+"""Read-only result routes. The final predictive module is installed only by
+`predictive_admin.mount` (guarded local administrative API); never by `app.main`."""
+import json
+
 from fastapi import APIRouter, HTTPException, Request
+from fastapi.encoders import jsonable_encoder
+from starlette.responses import Response
 from .experimental_results import ArtifactBlocked, InvalidDate, NotAvailable
 
 PREFIX = '/api/v1/research/backtest'
 
 
-def router_for(adapter, *, prefix=PREFIX, unified=False):
-    router = APIRouter(prefix=prefix, include_in_schema=False)
+def encoded(value):
+    """The response FastAPI would build for `value` (jsonable_encoder + JSONResponse.render)."""
+    body = json.dumps(jsonable_encoder(value), ensure_ascii=False, allow_nan=False, indent=None, separators=(',', ':')).encode('utf-8')
+    return Response(content=body, media_type='application/json')
+
+
+def router_for(adapter, *, prefix=PREFIX, unified=False, dependencies=()):
+    # `dependencies` run before every route (the administrative mount passes the admin check).
+    router = APIRouter(prefix=prefix, include_in_schema=False, dependencies=list(dependencies))
     allowed_mode = {'disclosure'} if unified else set()
 
     def week_result(year, week, radio, disclosure):
         return adapter.week(year, week, radio, mode=disclosure) if unified else adapter.week(year, week, radio)
 
-    def call(request, allowed, operation):
+    def value_of(request, allowed, operation):
+        # Runs in the threadpool (sync route). The JSON is encoded HERE, byte for byte as
+        # FastAPI + JSONResponse would, because without a response_model FastAPI encodes the
+        # returned value on the event loop: large viewer payloads (geometry, history) then froze
+        # every other route of the shared local process (alerts, accounts, login) for seconds.
         if any(k not in allowed or len(request.query_params.getlist(k)) != 1 for k in request.query_params):
             raise HTTPException(400, 'invalid_query')
         if adapter is None: raise HTTPException(503, 'backtest_bundle_unavailable')
-        try: return operation()
+        try: value = operation()
         except InvalidDate: raise HTTPException(400, 'invalid_epi_period') from None
         except NotAvailable: raise HTTPException(404, 'territory_not_available') from None
         except (ArtifactBlocked, KeyError, ValueError, TypeError, OSError):
             raise HTTPException(503, 'backtest_artifacts_blocked') from None
+        return value
+
+    def call(request, allowed, operation):
+        return encoded(value_of(request, allowed, operation))
 
     @router.get('/calendar')
     def calendar(request: Request): return call(request, set(), adapter.catalog if adapter else None)
@@ -37,20 +57,20 @@ def router_for(adapter, *, prefix=PREFIX, unified=False):
 
     @router.get('/predicted')
     def predicted(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
         result['rows'] = [{k: row[k] for k in ('radio_id', 'predicted', 'baseline', 'availability_status', 'territorial_quality', 'ml', 'ml_availability') if k in row} for row in result['rows']]
-        result.pop('department'); result.pop('metrics'); return result
+        result.pop('department'); result.pop('metrics'); return encoded(result)
 
     @router.get('/observed')
     def observed(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
         result['rows'] = [{k: row[k] for k in ('radio_id', 'observed', 'coverage_status', 'zero_provenance', 'territorial_quality')} for row in result['rows']]
-        result.pop('metrics'); return result
+        result.pop('metrics'); return encoded(result)
 
     @router.get('/metrics')
     def metrics(request: Request, year: str, week: str, radio: str | None = None, disclosure: str = 'presentation'):
-        result = call(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
-        result.pop('rows'); return result
+        result = value_of(request, {'year', 'week', 'radio'} | allowed_mode, lambda: week_result(year, week, radio, disclosure))
+        result.pop('rows'); return encoded(result)
 
     @router.get('/history')
     def history(request: Request, start: str, end: str, radio: str | None = None, disclosure: str = 'presentation'):

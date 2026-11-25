@@ -74,7 +74,7 @@ test('public activity: a transient failure still shows the data; 404 stays disab
   assert.equal(transient.calls.length, 2)
   resetActivityCache()
   const twice = script(status(503), status(503))
-  assert.deepEqual(await loadActivity(twice.fetcher), { enabled: false })
+  assert.deepEqual(await loadActivity(twice.fetcher), { enabled: false, unavailable: true })
   assert.equal(twice.calls.length, 2)
   resetActivityCache()
   const disabled = script(status(404), ok(valid))
@@ -86,7 +86,7 @@ test('public activity: a transient failure still shows the data; 404 stays disab
 test('every initial read goes through fetchRead; citizen writes keep their own method', () => {
   const source = name => readFileSync(new URL(`../src/services/${name}`, import.meta.url), 'utf8')
   const backtest = source('backtestResults.js')
-  assert.match(backtest, /fetchRead\(`http:\/\/127\.0\.0\.1:8765/)
+  assert.match(backtest, /fetchRead\(`\$\{PREDICTIVE_API\}\$\{path\}`/)
   assert.doesNotMatch(backtest, /[^.\w]fetch\(/)
   assert.match(source('publicActivity.mjs'), /fetchRead\(`\$\{API_URL\}\/api\/v1\/public\/activity`/)
   assert.match(source('preventionData.js'), /await fetchRead\(path/)
@@ -97,4 +97,21 @@ test('every initial read goes through fetchRead; citizen writes keep their own m
   for (const write of ['createCitizenReport', 'updateAdminReport', 'createAdminAccount', 'deactivateAdminAccount', 'rotateAdminPassword']) {
     assert.match(citizen, new RegExp(`export function ${write}[\\s\\S]*?method: '(POST|PATCH)'`), `${write} declares its write method`)
   }
+})
+
+test('unread bodies are discarded so the browser frees the connection (F6.1)', async () => {
+  const { discardBody } = await import('../src/services/readRetry.mjs')
+  const cancelled = []
+  const withBody = (status, name) => ({ ok: status < 400, status, body: { cancel: async () => { cancelled.push(name) } }, json: async () => ({}) })
+  // 5xx: the first answer is discarded before the retry.
+  const answers = [withBody(503, 'first'), withBody(200, 'second')]
+  const response = await fetchRead('http://example.test/x', {}, { fetcher: async () => answers.shift(), delay: 1 })
+  assert.equal(response.status, 200); assert.deepEqual(cancelled, ['first'])
+  // The disabled activity probe (404) discards its body instead of keeping it open until the timeout.
+  cancelled.length = 0; resetActivityCache()
+  assert.deepEqual(await loadActivity(async () => withBody(404, 'activity-404')), { enabled: false })
+  assert.deepEqual(cancelled, ['activity-404'])
+  resetActivityCache()
+  // Responses without a body (or already consumed) are ignored.
+  for (const value of [undefined, null, {}, { body: null }, { body: { cancel: () => { throw new Error('locked') } } }]) discardBody(value)
 })

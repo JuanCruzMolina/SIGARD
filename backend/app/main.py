@@ -85,6 +85,17 @@ def create_app(database_url: str | None = None, auto_create_schema: bool | None 
     application.include_router(prevention_public_router)
     application.include_router(internal_alerts_router)
 
+    # Unhandled errors are answered by Starlette's outermost ServerErrorMiddleware, outside
+    # CORSMiddleware: without these headers the browser hides the 500 and the page only sees a
+    # network failure. Same allowlist as CORSMiddleware; never echoes an unknown origin.
+    @application.exception_handler(Exception)
+    async def unexpected_error(request, exc):
+        headers = {"Vary": "Origin", "X-Content-Type-Options": "nosniff", "Cache-Control": "no-store"}
+        origin = request.headers.get("origin")
+        if origin and origin in settings.allowed_origins:
+            headers["Access-Control-Allow-Origin"] = origin
+        return JSONResponse(status_code=500, content={"detail": "Error interno del servidor. Intentá nuevamente."}, headers=headers)
+
     @application.exception_handler(RequestValidationError)
     async def safe_admin_validation(request, exc):
         if request.url.path.startswith("/api/v1/admin/"):

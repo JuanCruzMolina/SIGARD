@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Módulo predictivo · Administración SIGARD</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f2f5f0}
+a{color:#06625e}a:hover{color:#123a3d}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #183033; background: #f2f5f0; min-height: 100vh; display: flex; flex-wrap: wrap">
+  <nav aria-label="Área de administración" style="flex: 1 1 248px; background: #123a3d; color: #d9e9e6; padding: 22px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: #ffffff; padding: 0 8px">
+      <span style="width: 38px; height: 38px; border-radius: 10px; background: #087b75; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px">S</span>
+      <span style="display: flex; flex-direction: column; line-height: 1.2"><strong style="letter-spacing: 0.1em">SIGARD</strong><small style="color: #a9c7c2">Administración</small></span>
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a9c7c2; padding: 0 12px 6px">Operación</span>
+      <sc-for list="{{navMain}}" as="item" hint-placeholder-count="4">
+        <sc-if value="{{item.active}}" hint-placeholder-val="{{false}}">
+          <a href="{{item.href}}" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #dceee7; color: #123a3d; font-weight: 600; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span><sc-if value="{{item.hasBadge}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; background: #a64a12; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px">{{item.badge}}</span></sc-if></a>
+        </sc-if>
+        <sc-if value="{{item.inactive}}" hint-placeholder-val="{{true}}">
+          <a href="{{item.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #d9e9e6; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span><sc-if value="{{item.hasBadge}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; background: #a64a12; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px">{{item.badge}}</span></sc-if></a>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a9c7c2; padding: 0 12px 6px">Gestión</span>
+      <sc-for list="{{navAdmin}}" as="item" hint-placeholder-count="3">
+        <sc-if value="{{item.active}}" hint-placeholder-val="{{false}}">
+          <a href="{{item.href}}" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #dceee7; color: #123a3d; font-weight: 600; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span></a>
+        </sc-if>
+        <sc-if value="{{item.inactive}}" hint-placeholder-val="{{true}}">
+          <a href="{{item.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #d9e9e6; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span></a>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="margin-top: auto; border: 1px solid #2c5a5d; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Entorno</span><span>Local</span></span>
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Divulgación</span><span>Protegida</span></span>
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Datos hasta</span><span style="font-family: 'IBM Plex Mono', monospace">SE 24/2024</span></span>
+    </div>
+  </nav>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="background: #fffefa; border-bottom: 1px solid #d6e1de; padding: 10px 32px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+      <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #405b5d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Área con acceso restringido</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+        <span style="font-size: 14px; color: #405b5d">Sesión: vence en <span style="font-family: 'IBM Plex Mono', monospace">[N]</span> min</span>
+        <span style="font-size: 14px; font-weight: 600; background: #e7eeea; border-radius: 999px; padding: 6px 12px">[correo del administrador]</span>
+        <a href="Ingreso.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #b9cbc7; border-radius: 8px; font-weight: 600; text-decoration: none">Cerrar sesión</a>
+      </div>
+    </header>
+    <main style="padding: 28px 40px 48px; box-sizing: border-box; width: 100%; max-width: 1240px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <nav aria-label="Ruta" style="font-size: 14px; color: #52676a"><a href="Main.dc.html">Inicio</a> / Módulo predictivo</nav>
+          <h1 style="margin: 0; font-size: 32px; line-height: 1.15">Predicción semanal por radio censal</h1>
+          <p style="margin: 0; color: #405b5d; font-size: 17px">Dónde y cuántos registros se esperaban, comparados con lo que ocurrió.</p>
+        </div>
+        <span style="background: #fbf1d2; color: #6b4e10; border: 1px solid #e8cf86; border-radius: 999px; padding: 6px 14px; font-size: 14px; font-weight: 600">Reconstrucción histórica · no uso operativo</span>
+      </div>
+      <section aria-label="Semana y vista" style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 16px">
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+          <div style="display: inline-flex; align-items: center; gap: 8px">
+            <button type="button" aria-label="Semana anterior" style="width: 44px; height: 44px; border: 1px solid #b9cbc7; border-radius: 8px; background: #ffffff; color: #123a3d; display: inline-flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M15 18l-6-6 6-6"></path></svg></button>
+            <span style="display: flex; flex-direction: column; min-width: 170px; padding: 0 6px"><strong style="font-family: 'IBM Plex Mono', monospace; font-size: 20px">SE [N] / [año]</strong><span style="font-size: 13px; color: #52676a">[fecha de inicio] al [fecha de fin]</span></span>
+            <button type="button" aria-label="Semana siguiente" style="width: 44px; height: 44px; border: 1px solid #b9cbc7; border-radius: 8px; background: #ffffff; color: #123a3d; display: inline-flex; align-items: center; justify-content: center"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M9 18l6-6-6-6"></path></svg></button>
+          </div>
+          <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 600">Año
+            <select style="min-height: 44px; border: 1px solid #b9cbc7; border-radius: 8px; padding: 0 12px; font: inherit; background: #ffffff"><option>2024</option><option>2023</option><option>2022</option><option>2021</option></select>
+          </label>
+          <a href="#" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #b9cbc7; border-radius: 8px; font-weight: 600; text-decoration: none">Ir a la semana con más actividad</a>
+        </div>
+        <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+          <div role="group" aria-label="Pregunta" style="display: inline-flex; background: #e7eeea; border-radius: 10px; padding: 4px; gap: 4px">
+            <button type="button" aria-pressed="true" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 7px; background: #123a3d; color: #ffffff; font: inherit; font-weight: 600">¿Dónde?</button>
+            <button type="button" aria-pressed="false" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 7px; background: transparent; color: #183033; font: inherit; font-weight: 600">¿Cuántos?</button>
+          </div>
+          <div role="group" aria-label="Fuente" style="display: inline-flex; background: #e7eeea; border-radius: 10px; padding: 4px; gap: 4px">
+            <button type="button" aria-pressed="true" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 7px; background: #123a3d; color: #ffffff; font: inherit; font-weight: 600">Modelo</button>
+            <button type="button" aria-pressed="false" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 7px; background: transparent; color: #183033; font: inherit; font-weight: 600">Método de referencia</button>
+            <button type="button" aria-pressed="false" style="min-height: 40px; padding: 0 16px; border: 0; border-radius: 7px; background: transparent; color: #183033; font: inherit; font-weight: 600">Comparar</button>
+          </div>
+          <span style="font-size: 14px; color: #405b5d">Marca los 10 radios con mayor prioridad cada semana · Datos usados hasta [fecha]</span>
+        </div>
+        <div aria-hidden="true" style="display: flex; align-items: flex-end; gap: 3px; height: 40px; border-bottom: 2px solid #d6e1de">
+          <span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 8px; background: #8fbfb5"></span><span style="flex: 1; height: 16px; background: #8fbfb5"></span><span style="flex: 1; height: 26px; background: #8fbfb5"></span><span style="flex: 1; height: 38px; background: #123a3d"></span><span style="flex: 1; height: 22px; background: #8fbfb5"></span><span style="flex: 1; height: 14px; background: #8fbfb5"></span><span style="flex: 1; height: 8px; background: #8fbfb5"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span><span style="flex: 1; height: 3px; background: #b9cbc7"></span>
+        </div>
+        <p style="margin: 0; font-size: 13px; color: #52676a">Barras: registros visibles por semana del año elegido. La barra oscura es la semana seleccionada.</p>
+      </section>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px">
+        <div style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; color: #52676a; font-weight: 600">Radios visibles</span><strong style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">[N] de 256</strong><span style="font-size: 13px; color: #52676a">Con 5 o más registros</span></div>
+        <div style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; color: #52676a; font-weight: 600">Priorizados por el modelo</span><strong style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">[N]</strong><span style="font-size: 13px; color: #52676a">Entre los radios visibles</span></div>
+        <div style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; color: #52676a; font-weight: 600">Registros visibles</span><strong style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">[N]</strong><span style="font-size: 13px; color: #52676a">Suma de los radios visibles</span></div>
+        <div style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 4px"><span style="font-size: 14px; color: #52676a; font-weight: 600">Método de referencia</span><strong style="font-family: 'IBM Plex Mono', monospace; font-size: 28px">[N]</strong><span style="font-size: 13px; color: #52676a">Priorizados entre los mismos radios</span></div>
+      </div>
+      <div role="note" style="display: flex; gap: 10px; align-items: flex-start; background: #fbf1d2; border: 1px solid #e8cf86; color: #5c4210; border-radius: 10px; padding: 12px 16px; font-size: 15px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>
+        <span>En modo protegido sólo se ven los radios con 5 o más registros. Por eso no aparecen falsas alarmas y estas cifras no miden el desempeño del modelo.</span>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: stretch">
+        <section aria-labelledby="mapa" style="flex: 999 1 520px; min-width: 0; background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 16px; display: flex; flex-direction: column; gap: 12px">
+          <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: space-between; align-items: center">
+            <h2 id="mapa" style="margin: 0; font-size: 18px">Mapa de radios censales</h2>
+            <label style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; min-height: 44px"><input type="checkbox" checked style="width: 18px; height: 18px"> Mostrar calles</label>
+          </div>
+          <div style="height: 440px; border-radius: 10px; background: #e7eeea; border: 1px dashed #b9cbc7; display: flex; align-items: center; justify-content: center; text-align: center; color: #405b5d; padding: 24px; box-sizing: border-box">
+            <span>[Mapa: radios censales de La Rioja Capital sobre calles atenuadas]</span>
+          </div>
+          <div style="display: flex; flex-wrap: wrap; gap: 16px; font-size: 13px; color: #405b5d">
+            <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 16px; background: #087b75; border: 2px solid #123a3d; box-sizing: border-box"></span>Priorizado y con registros</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 16px; background: repeating-linear-gradient(45deg, #ffffff 0 3px, #405b5d 3px 5px); border: 2px solid #405b5d; box-sizing: border-box"></span>Con registros, no priorizado</span>
+            <span style="display: inline-flex; align-items: center; gap: 6px"><span style="width: 16px; height: 16px; background: #f2f5f0; border: 2px dotted #52676a; box-sizing: border-box"></span>Protegido (no significa cero)</span>
+          </div>
+        </section>
+        <aside aria-labelledby="top10" style="flex: 1 1 300px; min-width: 0; background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="top10" style="margin: 0; font-size: 18px">Radios priorizados esta semana</h2>
+          <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 6px">
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: #f2f5f0"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 22px">01</span><span style="font-family: 'IBM Plex Mono', monospace">[código]</span><span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #06625e">Con registros</span></li>
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: #f2f5f0"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 22px">02</span><span style="font-family: 'IBM Plex Mono', monospace">[código]</span><span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #06625e">Con registros</span></li>
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: #f2f5f0"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 22px">03</span><span style="font-family: 'IBM Plex Mono', monospace">[código]</span><span style="margin-left: auto; font-size: 13px; color: #52676a">Protegido</span></li>
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: #f2f5f0"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 22px">04</span><span style="font-family: 'IBM Plex Mono', monospace">[código]</span><span style="margin-left: auto; font-size: 13px; font-weight: 600; color: #06625e">Con registros</span></li>
+            <li style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 10px; border-radius: 8px; background: #f2f5f0"><span style="font-family: 'IBM Plex Mono', monospace; font-weight: 600; width: 22px">05</span><span style="font-family: 'IBM Plex Mono', monospace">[código]</span><span style="margin-left: auto; font-size: 13px; color: #52676a">Protegido</span></li>
+          </ol>
+          <a href="#" style="font-size: 14px; font-weight: 600">Ver los 10 con su historial</a>
+          <div style="margin-top: auto; border-top: 1px solid #d6e1de; padding-top: 14px; display: flex; flex-direction: column; gap: 8px">
+            <span style="font-size: 14px; color: #405b5d">¿Querés seguir estos radios las próximas semanas?</span>
+            <a href="Alertas.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; justify-content: center; border-radius: 8px; background: #087b75; color: #ffffff; font-weight: 600; text-decoration: none">Crear regla de alerta</a>
+          </div>
+        </aside>
+      </div>
+      <section aria-labelledby="ciudad" style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="ciudad" style="margin: 0; font-size: 18px">Evolución de la ciudad en [año]</h2>
+        <div style="height: 180px; border-radius: 10px; background: #f2f5f0; border: 1px dashed #b9cbc7; display: flex; align-items: center; justify-content: center; color: #405b5d; text-align: center; padding: 16px; box-sizing: border-box">[Gráfico semanal: registros observados, esperados por el modelo y por el método de referencia. Clic en una semana para ir a ella]</div>
+      </section>
+      <section aria-labelledby="desempeno" style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 18px 20px; display: flex; flex-direction: column; gap: 12px">
+        <h2 id="desempeno" style="margin: 0; font-size: 18px">¿Qué tan bien funciona el modelo?</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px">
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 10px; background: #f2f5f0"><strong>¿Dónde?</strong><span style="color: #405b5d">Resultado similar a repetir lo de la semana anterior. Mejor que los modelos anteriores.</span></div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 10px; background: #f2f5f0"><strong>¿Cuántos?</strong><span style="color: #405b5d">13,6 % menos error que repetir lo de la semana anterior. Tiende a quedarse corto en semanas con muchos casos.</span></div>
+        </div>
+        <details style="border-top: 1px solid #d6e1de; padding-top: 10px">
+          <summary style="cursor: pointer; font-weight: 600; min-height: 32px">Ver métricas técnicas (recall@10, MAE, intervalos de confianza)</summary>
+          <p style="margin: 8px 0 0; color: #405b5d">[Tabla técnica actual del visor]</p>
+        </details>
+      </section>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var active = 'predictivo';
+    var main = [
+      { key: 'inicio', label: 'Inicio', href: 'Main.dc.html', d: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
+      { key: 'predictivo', label: 'Módulo predictivo', href: 'Predictivo.dc.html', d: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14' },
+      { key: 'alertas', label: 'Alertas internas', href: 'Alertas.dc.html', d: 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0', badge: '[N]' },
+      { key: 'reportes', label: 'Reportes ciudadanos', href: 'Reportes.dc.html', d: 'M4 4h16v12H5.2L4 17.2zM8 9h8M8 12h5', badge: '[N]' }
+    ];
+    var admin = [
+      { key: 'contenido', label: 'Contenido preventivo', href: 'Contenido.dc.html', d: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z' },
+      { key: 'cuentas', label: 'Cuentas', href: 'Cuentas.dc.html', d: 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M17 11h5M19.5 8.5v5' },
+      { key: 'auditoria', label: 'Auditoría', href: 'Auditoria.dc.html', d: 'M9 4h6l1 3h4v13H4V7h4zM8 13l3 3 5-5' }
+    ];
+    var mark = function (n) { return Object.assign({}, n, { active: n.key === active, inactive: n.key !== active, hasBadge: !!n.badge }); };
+    return { navMain: main.map(mark), navAdmin: admin.map(mark) };
+  }
+}
+</script>
+</body>
+</html>

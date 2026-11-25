@@ -6,7 +6,7 @@ import { createRequire } from 'node:module'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { proxyRequest } from './browser-proxy.mjs'
+import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -58,7 +58,7 @@ try {
   await page.setRequestInterception(true)
   page.on('request', request => {
     const url=new URL(request.url())
-    if (url.pathname.startsWith('/api/v1/') && url.port==='8000') {
+    if (url.pathname.startsWith('/api/v1/') && ADMIN_API_PORTS.includes(url.port)) {
       if(rejectReportOperation && (rejectReportOperation==='export' ? url.pathname.endsWith('/citizen-reports/export.csv') && request.method()==='GET' : /^\/api\/v1\/admin\/citizen-reports\/[^/]+$/.test(url.pathname) && request.method()===(rejectReportOperation==='save'?'PATCH':'GET'))) {
         return request.respond({status:rejectReportOperation==='export'?403:401,contentType:'application/json',headers:{'access-control-allow-origin':'http://127.0.0.1:5173'},body:JSON.stringify({detail:'Sesión ficticia revocada.'})})
       }
@@ -86,6 +86,8 @@ try {
   }
   const click = text => page.evaluate(text=>[...document.querySelectorAll('button')].find(b=>b.textContent===text).click(),text)
   const fill = async (selector,value) => {await page.click(selector);await page.keyboard.down('Control');await page.keyboard.press('KeyA');await page.keyboard.up('Control');await page.keyboard.press('Backspace');if(value) await page.type(selector,value)}
+  // F4: Administración sections are opened from the side menu (AdminLayout).
+  const menu = async section => (await page.waitForSelector(`.admin-nav a[href="/admin/${section}"]`)).click()
   const accountLoaded = () => page.waitForFunction(()=>document.querySelector('.account-list')?.getAttribute('aria-busy')==='false')
   const login = async (email,password,success=true) => {
     await page.waitForSelector('.admin-login')
@@ -155,32 +157,26 @@ try {
     assert.equal(geometry.body.features[0].geometry.type,'Polygon')
   })
   if(integral) {
-    // Since 8e3c545/409ee85, /mapa in local development is the redesigned predictive module;
-    // the temporary public API is exercised through the dashboard, which reads it first.
-    await check('API pública temporal en el tablero y módulo predictivo rediseñado accesible',async()=>{
+    // F3: /mapa is always the public map (it reads the temporary public API too); the
+    // predictive viewer is in Administración and is covered by test:predictive:browser.
+    await check('API pública temporal en el tablero y mapa público también en desarrollo',async()=>{
       await page.goto(frontendOrigin+'/dashboard',{waitUntil:'networkidle0'})
       await page.waitForSelector('.page-intro h1')
       assert.match(await page.$eval('.site-footer',e=>e.textContent),/API stage15-test-publication/)
       await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
-      await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
-      assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
-      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
-      // Keyboard: the year control is reachable and changes the selected week.
-      const before=await page.evaluate(()=>location.search)
-      const index=await page.$eval('#pv-year',e=>e.selectedIndex)
-      await page.focus('#pv-year')
-      await page.keyboard.press(index>0?'ArrowUp':'ArrowDown')
-      await page.waitForFunction(previous=>location.search!==previous,{},before)
-      await page.waitForFunction(()=>document.querySelector('.pv')?.dataset.state==='ready',{timeout:30000})
-      await accessibility('predictive-module-keyboard')
+      await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Mapa público agregado')
+      assert.equal(await page.$('.pv'),null)
+      assert.equal(await page.$eval('.predictive-moved a',e=>e.getAttribute('href')),'/admin/predictivo')
+      await accessibility('public-map-dev')
       await mkdir(output,{recursive:true})
       for(const width of [1440,390]) {
         await page.setViewport({width,height:1000})
         assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-        await page.screenshot({path:resolve(output,`stage15-predictive-${width}.png`),fullPage:false})
+        await page.screenshot({path:resolve(output,`stage15-public-map-${width}.png`),fullPage:false})
       }
       await page.setViewport({width:1440,height:1000})
-      for(const route of ['/dashboard','/validacion','/metodologia','/mapa']) {
+      // F3: «Situación actual» in the main menu points to / (/dashboard stays a local alias, visited above).
+      for(const route of ['/','/validacion','/metodologia','/mapa']) {
         await page.click(`.main-nav a[href="${route}"]`)
         await page.waitForFunction(route=>location.pathname===route,{},route)
         await page.waitForSelector('.page-intro h1')
@@ -233,24 +229,43 @@ try {
       await page.setViewport({width:1440,height:1000})
     })
   }
-  // Desde 8e3c545/409ee85, /mapa en desarrollo local muestra el módulo predictivo
-  // rediseñado; el panel A/B se prueba aislado en research-panel.browser.mjs.
-  if(!postgis) await check('módulo predictivo local sin tokens administrativos',async()=>{
-    await page.goto(frontendOrigin+'/mapa',{waitUntil:'domcontentloaded'})
-    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Predicción semanal de dengue por radio censal')
-    assert.equal(await page.$eval('.pv-badge',e=>e.textContent),'Prototipo experimental — reconstrucción histórica, no uso operativo')
+  // F3: el visor predictivo está en /admin/predictivo y exige sesión de administrador;
+  // /mapa vuelve a ser el mapa público y el menú público ya no ofrece el módulo.
+  if(!postgis) await check('módulo predictivo sólo en Administración y sin sesión muestra el ingreso',async()=>{
+    await page.goto(frontendOrigin+'/admin/predictivo',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.admin-login h1')?.textContent==='Módulo predictivo')
+    assert.equal(await page.$('.pv'),null)
     assert.equal(await page.evaluate(()=>sessionStorage.getItem('sigard_admin_token')),null)
+    assert.doesNotMatch(await page.$eval('.main-nav',e=>e.textContent),/Módulo predictivo/)
+    await page.goto(frontendOrigin+'/mapa?anio=2024&se=12',{waitUntil:'domcontentloaded'})
+    await page.waitForFunction(()=>document.querySelector('.page-intro h1')?.textContent==='Mapa público agregado')
+    assert.equal(await page.$eval('.predictive-moved a',e=>e.getAttribute('href')),'/admin/predictivo?anio=2024&se=12')
+    assert.equal(await page.$('.pv'),null)
   })
   await check('login protegido, estado inicial y último administrador',async()=>{
     await page.goto(frontendOrigin+'/admin/reportes',{waitUntil:'networkidle0'})
     assert.equal(await page.$('.admin-accounts'),null)
     await login('stage14-admin@example.test','fictitious-initial-password')
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     assert.equal(await page.$$eval('.account-list tbody tr',n=>n.length),1)
     assert.equal(await page.$eval('button[aria-label="Desactivar stage14-admin@example.test"]',e=>e.disabled),true)
   })
+  // F3: acceso al visor desde Administración con la misma sesión (los datos del visor los cubre
+  // test:predictive:browser; la API ficticia usa app.main, sin rutas predictivas).
+  if(!postgis) await check('acceso al módulo predictivo desde Administración con la sesión activa',async()=>{
+    await menu('reportes')
+    await page.waitForSelector('.admin-nav a[href="/admin/predictivo"]')
+    assert.equal(await page.$('.admin-header a[href="/admin/predictivo"]'),null)
+    await menu('predictivo')
+    await page.waitForFunction(()=>location.pathname==='/admin/predictivo' && document.querySelector('.pv'))
+    assert.equal(await page.$('.admin-login'),null)
+    await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Predicción semanal de dengue por radio censal')
+    await menu('reportes')
+    await page.waitForFunction(()=>location.pathname==='/admin/reportes' && document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
+    await menu('cuentas');await accountLoaded()
+  })
   if(integral || postgis) await check('revisión administrativa del reporte, privacidad y sesión revocada',async()=>{
-    await click('Volver a reportes')
+    await menu('reportes')
     await page.waitForFunction(code=>[...document.querySelectorAll('.report-inbox button')].some(b=>b.textContent.includes(code)),{},trackingCode)
     await fill('.admin-filters input[placeholder="Buscar barrio"]','FICTICIO SIN RESULTADOS')
     await page.waitForFunction(()=>document.querySelector('.report-inbox > header strong')?.textContent==='0 reportes')
@@ -263,7 +278,7 @@ try {
     const saved=page.waitForResponse(r=>r.request().method()==='PATCH' && /admin\/citizen-reports\//.test(r.url()))
     await page.click('.admin-update button[type="submit"], .admin-update .primary-button')
     assert.equal((await saved).status(),200)
-    await page.waitForFunction(()=>document.querySelector('.report-detail > header .status-chip')?.textContent==='En revisión')
+    await page.waitForFunction(()=>document.querySelector('.report-detail > header .report-status')?.textContent==='En revisión')
     const publicStatus=await(await fetch(`${api}/api/v1/citizen-reports/status/${trackingCode}`)).json()
     assert.equal(publicStatus.status,'en_revision')
     assert.ok(!('description' in publicStatus) && !('latitude' in publicStatus))
@@ -294,7 +309,7 @@ try {
         await page.waitForSelector('.admin-update')
       }
     }
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
   })
   await check('creación rechazada sin confirmación correcta y alta autorizada',async()=>{
     await click('Crear cuenta')
@@ -317,7 +332,7 @@ try {
     await login('stage14-second@example.test','fictitious-rotated-password')
   })
   await check('rotación propia cierra sesión y exige credencial nueva',async()=>{
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     await page.click('button[aria-label="Rotar contraseña de stage14-second@example.test"]')
     await submitAction('fictitious-rotated-password','fictitious-final-password')
     await page.waitForSelector('.admin-login [role="status"]')
@@ -326,7 +341,7 @@ try {
     await login('stage14-second@example.test','fictitious-final-password')
   })
   await check('desactivación propia cierra sesión y bloquea login',async()=>{
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
     await page.click('button[aria-label="Desactivar stage14-second@example.test"]')
     await submitAction('fictitious-final-password')
     await page.waitForSelector('.admin-login [role="status"]')
@@ -335,22 +350,25 @@ try {
     await login('stage14-admin@example.test','fictitious-initial-password')
   })
   await check('error de carga, reintento, lista de estados y retorno a reportes',async()=>{
+    // After the re-login the route is already /admin/cuentas: leave it so the next visit reloads the list.
+    await menu('reportes')
+    await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
     failListing=true
-    await click('Gestionar cuentas')
+    await menu('cuentas')
     await page.waitForSelector('.admin-accounts [role="alert"]')
     failListing=false
     await click('Reintentar carga');await accountLoaded()
     assert.ok((await page.$eval('.account-list tbody',e=>e.textContent)).includes('Inactiva'))
-    await click('Volver a reportes')
+    await menu('reportes')
     await page.waitForFunction(()=>document.querySelector('.admin-header h1')?.textContent==='Reportes ciudadanos')
-    await click('Gestionar cuentas');await accountLoaded()
+    await menu('cuentas');await accountLoaded()
   })
   await check('escritorio, móvil y formularios sin credenciales visibles',async()=>{
     await mkdir(output,{recursive:true})
     for(const width of [1440,390]) {
       await page.setViewport({width,height:1000})
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-      assert.ok(await page.$eval('.account-list .table-scroll',e=>e.scrollWidth<=e.clientWidth+1))
+      assert.ok(await page.$eval('.account-list .ui-table-scroll',e=>e.scrollWidth<=e.clientWidth+1))
       if(integral) await accessibility('accounts-'+width)
       await page.screenshot({path:resolve(output,`stage${stage}-accounts-${width}.png`),fullPage:true})
     }

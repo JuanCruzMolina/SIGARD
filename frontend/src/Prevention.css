@@ -348,3 +348,4 @@ p.content-status { margin: 0 0 12px; }
   .prevention-admin-grid, .prevention-form fieldset { grid-template-columns: 1fr; }
   .prevention-history li { grid-template-columns: 1fr; }
 }
+/* F3: navigation above the predictive viewer in Administración (the viewer keeps its own look). */

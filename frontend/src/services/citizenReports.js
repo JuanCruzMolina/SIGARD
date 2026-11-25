@@ -81,6 +81,11 @@ export function updateAdminReport(token, reportId, changes, options = {}) {
   })
 }
 
+// Auditoría (F6.6): read-only, local administrative API only. `query` comes from adminAudit.apiQuery.
+export function listAdminAudit(token, query, options = {}) {
+  return apiRequest(`/api/v1/admin/audit?${query}`, { ...options, headers: adminHeaders(token) })
+}
+
 export function listAdminAccounts(token, page = 1) {
   return apiRequest(`/api/v1/admin/users?page=${page}`, { headers: adminHeaders(token) })
 }

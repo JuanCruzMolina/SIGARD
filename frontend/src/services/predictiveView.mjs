@@ -76,6 +76,14 @@ export function globalVerdict(metadata, candidate) {
   return GLOBAL_VERDICTS.find(v => v.candidates.includes(candidate)) || null
 }
 export const candidateName = id => METHOD_NAMES[id] || id
+// Shorter names for the model selector on narrow screens (390 px); the full name stays in the description.
+export const METHOD_SHORT_NAMES = {
+  rf_A_epi_climate: 'Bosque aleatorio v1',
+  residual_h1: 'Corrección v1',
+  rf_v2_city_propensity: 'Bosque aleatorio v2',
+  residual_v2: 'Corrección v2',
+}
+export const candidateShortName = id => METHOD_SHORT_NAMES[id] || candidateName(id)
 export function decisionText(candidate) {
   const rule = candidate?.decision_rule
   if (rule?.type === 'top_k') return `Marca los ${rule.k} radios con mayor prioridad cada semana.`
@@ -112,6 +120,10 @@ export function yearOptions(weeks) {
     const status = available ? null : list[0].availability_status
     return { year, available, label: available ? String(year) : `${year} · ${status === 'outside_coverage' ? 'sin datos' : 'sin predicción'}` }
   })
+}
+// Last week the viewer can show with data (the latest 'available' week of the calendar).
+export function lastEvaluableWeek(weeks) {
+  return (weeks || []).filter(w => w.availability_status === 'available').reduce((last, w) => !last || w.target_week > last.target_week ? w : last, null)
 }
 export const latestEvaluableYear = weeks => Math.max(...weeks.filter(w => w.availability_status === 'available').map(w => w.target_year))
 
@@ -251,4 +263,23 @@ export function featureGroups(features) {
     if (!groups.includes(label)) groups.push(label)
   }
   return groups
+}
+
+// F6.1 «Radios priorizados» list beside the map. Presentation of rows the map already shows:
+// the same categories as the polygons (cellCategory), so protected radios never appear (in
+// protected mode only visible hits; false alarms only in private mode). presence: prioritized
+// radios by the decision's own rank (top-k), else by score; quantity: highest expected counts.
+export function priorityList(rows, view, limit = 10) {
+  if (!Array.isArray(rows)) return { items: [], total: 0 }
+  if (view === 'presence') {
+    const rank = r => r.topk_rank ?? Infinity, score = r => r.predicted?.presence_score ?? -Infinity
+    const listed = rows.filter(r => ['TP', 'FP'].includes(cellCategory(r, view)))
+      .sort((a, b) => rank(a) - rank(b) || score(b) - score(a) || a.radio_id.localeCompare(b.radio_id))
+    return { total: listed.length, items: listed.slice(0, limit).map(r => ({ radio_id: r.radio_id, rank: r.topk_rank ?? null,
+      status: r.confusion === 'TP' ? 'Con registros' : 'Sin registros', tone: r.confusion === 'TP' ? 'ok' : 'neutral' })) }
+  }
+  const listed = rows.filter(r => cellCategory(r, view) === 'value')
+    .sort((a, b) => b.predicted.quantity - a.predicted.quantity || a.radio_id.localeCompare(b.radio_id))
+  return { total: listed.length, items: listed.slice(0, limit).map(r => ({ radio_id: r.radio_id, rank: null,
+    status: `${formatPlain(r.predicted.quantity, 1)} esperados`, tone: 'neutral' })) }
 }

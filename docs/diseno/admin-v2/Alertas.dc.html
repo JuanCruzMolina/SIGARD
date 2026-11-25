@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Alertas internas · Administración SIGARD</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&amp;family=IBM+Plex+Sans:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#f2f5f0}
+a{color:#06625e}a:hover{color:#123a3d}
+</style>
+</helmet>
+<div style="font-family: 'IBM Plex Sans', system-ui, sans-serif; color: #183033; background: #f2f5f0; min-height: 100vh; display: flex; flex-wrap: wrap">
+  <nav aria-label="Área de administración" style="flex: 1 1 248px; background: #123a3d; color: #d9e9e6; padding: 22px 14px; box-sizing: border-box; display: flex; flex-direction: column; gap: 22px">
+    <a href="Main.dc.html" style="display: flex; align-items: center; gap: 12px; text-decoration: none; color: #ffffff; padding: 0 8px">
+      <span style="width: 38px; height: 38px; border-radius: 10px; background: #087b75; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 20px">S</span>
+      <span style="display: flex; flex-direction: column; line-height: 1.2"><strong style="letter-spacing: 0.1em">SIGARD</strong><small style="color: #a9c7c2">Administración</small></span>
+    </a>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a9c7c2; padding: 0 12px 6px">Operación</span>
+      <sc-for list="{{navMain}}" as="item" hint-placeholder-count="4">
+        <sc-if value="{{item.active}}" hint-placeholder-val="{{false}}">
+          <a href="{{item.href}}" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #dceee7; color: #123a3d; font-weight: 600; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span><sc-if value="{{item.hasBadge}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; background: #a64a12; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px">{{item.badge}}</span></sc-if></a>
+        </sc-if>
+        <sc-if value="{{item.inactive}}" hint-placeholder-val="{{true}}">
+          <a href="{{item.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #d9e9e6; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span><sc-if value="{{item.hasBadge}}" hint-placeholder-val="{{false}}"><span style="margin-left: auto; background: #a64a12; color: #ffffff; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 8px">{{item.badge}}</span></sc-if></a>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 2px">
+      <span style="font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: #a9c7c2; padding: 0 12px 6px">Gestión</span>
+      <sc-for list="{{navAdmin}}" as="item" hint-placeholder-count="3">
+        <sc-if value="{{item.active}}" hint-placeholder-val="{{false}}">
+          <a href="{{item.href}}" aria-current="page" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; background: #dceee7; color: #123a3d; font-weight: 600; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span></a>
+        </sc-if>
+        <sc-if value="{{item.inactive}}" hint-placeholder-val="{{true}}">
+          <a href="{{item.href}}" style="display: flex; align-items: center; gap: 10px; min-height: 44px; padding: 0 12px; border-radius: 8px; color: #d9e9e6; text-decoration: none"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="{{item.d}}"></path></svg><span>{{item.label}}</span></a>
+        </sc-if>
+      </sc-for>
+    </div>
+    <div style="margin-top: auto; border: 1px solid #2c5a5d; border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 6px; font-size: 13px">
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Entorno</span><span>Local</span></span>
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Divulgación</span><span>Protegida</span></span>
+      <span style="display: flex; justify-content: space-between; gap: 8px"><span style="color: #a9c7c2">Datos hasta</span><span style="font-family: 'IBM Plex Mono', monospace">SE 24/2024</span></span>
+    </div>
+  </nav>
+  <div style="flex: 999 1 560px; min-width: 0; display: flex; flex-direction: column">
+    <header style="background: #fffefa; border-bottom: 1px solid #d6e1de; padding: 10px 32px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+      <span style="display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: #405b5d"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="4" y="10" width="16" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path></svg>Área con acceso restringido</span>
+      <div style="display: flex; flex-wrap: wrap; gap: 12px; align-items: center">
+        <span style="font-size: 14px; color: #405b5d">Sesión: vence en <span style="font-family: 'IBM Plex Mono', monospace">[N]</span> min</span>
+        <span style="font-size: 14px; font-weight: 600; background: #e7eeea; border-radius: 999px; padding: 6px 12px">[correo del administrador]</span>
+        <a href="Ingreso.dc.html" style="min-height: 44px; display: inline-flex; align-items: center; padding: 0 14px; border: 1px solid #b9cbc7; border-radius: 8px; font-weight: 600; text-decoration: none">Cerrar sesión</a>
+      </div>
+    </header>
+    <main style="padding: 28px 40px 48px; box-sizing: border-box; width: 100%; max-width: 1240px; display: flex; flex-direction: column; gap: 20px">
+      <div style="display: flex; flex-wrap: wrap; gap: 16px; align-items: flex-end; justify-content: space-between">
+        <div style="display: flex; flex-direction: column; gap: 6px">
+          <nav aria-label="Ruta" style="font-size: 14px; color: #52676a"><a href="Main.dc.html">Inicio</a> / Alertas internas</nav>
+          <h1 style="margin: 0; font-size: 32px; line-height: 1.15">Alertas internas</h1>
+          <p style="margin: 0; color: #405b5d; font-size: 17px">Avisos que generan las reglas sobre las predicciones, para que un administrador decida.</p>
+        </div>
+        <button type="button" style="min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: #087b75; color: #ffffff; font: inherit; font-weight: 600">Nueva regla</button>
+      </div>
+      <section aria-label="Cómo funciona" style="background: #123a3d; color: #d9e9e6; border-radius: 14px; padding: 18px 22px; display: flex; flex-direction: column; gap: 14px">
+        <strong style="display: inline-flex; align-items: center; gap: 10px; color: #ffffff; font-size: 17px"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6z"></path></svg>Ningún algoritmo publica alertas</strong>
+        <ol style="margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px">
+          <li style="border: 1px solid #2c5a5d; border-radius: 8px; padding: 6px 12px">1 · Regla</li>
+          <li aria-hidden="true" style="color: #a9c7c2">→</li>
+          <li style="border: 1px solid #2c5a5d; border-radius: 8px; padding: 6px 12px">2 · Evaluación semanal</li>
+          <li aria-hidden="true" style="color: #a9c7c2">→</li>
+          <li style="border: 1px solid #2c5a5d; border-radius: 8px; padding: 6px 12px">3 · Candidata</li>
+          <li aria-hidden="true" style="color: #a9c7c2">→</li>
+          <li style="background: #dceee7; color: #123a3d; border-radius: 8px; padding: 6px 12px; font-weight: 600">4 · Revisión humana</li>
+          <li aria-hidden="true" style="color: #a9c7c2">→</li>
+          <li style="border: 1px solid #2c5a5d; border-radius: 8px; padding: 6px 12px">5 · Aviso interno</li>
+        </ol>
+        <span style="font-size: 14px; color: #a9c7c2">La publicación a la ciudadanía está bloqueada en el sistema.</span>
+      </section>
+      <div role="tablist" aria-label="Vistas" style="display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid #d6e1de">
+        <button type="button" role="tab" aria-selected="true" style="min-height: 44px; padding: 0 16px; border: 0; border-bottom: 3px solid #087b75; background: transparent; font: inherit; font-weight: 700; color: #183033">Pendientes · <span style="font-family: 'IBM Plex Mono', monospace">[N]</span></button>
+        <button type="button" role="tab" aria-selected="false" style="min-height: 44px; padding: 0 16px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-weight: 600; color: #405b5d">Reglas</button>
+        <button type="button" role="tab" aria-selected="false" style="min-height: 44px; padding: 0 16px; border: 0; border-bottom: 3px solid transparent; background: transparent; font: inherit; font-weight: 600; color: #405b5d">Historial</button>
+      </div>
+      <div style="display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start">
+        <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 16px">
+          <article aria-labelledby="cand1" style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; box-shadow: 0 5px 16px rgba(18, 58, 61, 0.08); padding: 22px; display: flex; flex-direction: column; gap: 16px">
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between">
+              <h2 id="cand1" style="margin: 0; font-size: 19px">Radio <span style="font-family: 'IBM Plex Mono', monospace">[código]</span> · <span style="font-family: 'IBM Plex Mono', monospace">SE [N]/[año]</span></h2>
+              <span style="display: inline-flex; gap: 6px; align-items: center; font-size: 13px; font-weight: 700; color: #8a3a0c; background: #fbe9dc; border-radius: 6px; padding: 4px 10px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5l3 2"></path></svg>Pendiente de decisión</span>
+            </div>
+            <dl style="margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 14px">
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 13px; color: #52676a">Regla</dt><dd style="margin: 0; font-weight: 600">[nombre de la regla]</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 13px; color: #52676a">Condición</dt><dd style="margin: 0; font-weight: 600">Entre los 10 priorizados · 2 semanas seguidas</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 13px; color: #52676a">Modelo</dt><dd style="margin: 0; font-weight: 600">¿Dónde? · bosque aleatorio v2</dd></div>
+              <div style="display: flex; flex-direction: column; gap: 2px"><dt style="font-size: 13px; color: #52676a">Registros observados</dt><dd style="margin: 0; font-weight: 600">Protegido (menos de 5)</dd></div>
+            </dl>
+            <div style="display: flex; flex-direction: column; gap: 8px">
+              <span style="font-size: 13px; color: #52676a; font-weight: 600">Evidencia por semana</span>
+              <div style="display: flex; flex-wrap: wrap; gap: 8px">
+                <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; background: #dceee7; color: #06625e; border-radius: 8px; padding: 6px 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg><span style="font-family: 'IBM Plex Mono', monospace">SE [N−1]</span> priorizado</span>
+                <span style="display: inline-flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; background: #dceee7; color: #06625e; border-radius: 8px; padding: 6px 12px"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" aria-hidden="true"><path d="M5 12l4 4 10-10"></path></svg><span style="font-family: 'IBM Plex Mono', monospace">SE [N]</span> priorizado</span>
+              </div>
+            </div>
+            <label style="display: flex; flex-direction: column; gap: 6px; font-size: 15px; font-weight: 600">Comentario <span style="font-weight: 400; font-size: 13px; color: #52676a">Obligatorio para aprobar. Queda en el registro de auditoría.</span>
+              <textarea rows="2" style="font: inherit; font-weight: 400; border: 1px solid #b9cbc7; border-radius: 8px; padding: 10px 12px; resize: vertical; background: #ffffff"></textarea>
+            </label>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px; align-items: center">
+              <button type="button" style="min-height: 44px; padding: 0 18px; border: 0; border-radius: 8px; background: #087b75; color: #ffffff; font: inherit; font-weight: 700">Aprobar como aviso interno</button>
+              <button type="button" style="min-height: 44px; padding: 0 18px; border: 1px solid #b9cbc7; border-radius: 8px; background: #fffefa; color: #183033; font: inherit; font-weight: 600">Descartar con motivo…</button>
+              <a href="Predictivo.dc.html" style="margin-left: auto; min-height: 44px; display: inline-flex; align-items: center; font-weight: 600">Ver en el mapa</a>
+            </div>
+          </article>
+          <article aria-labelledby="cand2" style="background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 18px 22px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between">
+            <div style="display: flex; flex-direction: column; gap: 4px">
+              <h2 id="cand2" style="margin: 0; font-size: 17px">Radio <span style="font-family: 'IBM Plex Mono', monospace">[código]</span> · <span style="font-family: 'IBM Plex Mono', monospace">SE [N]/[año]</span></h2>
+              <span style="font-size: 14px; color: #405b5d">[nombre de la regla] · ¿Cuántos? · registros esperados de 5 o más</span>
+            </div>
+            <button type="button" style="min-height: 44px; padding: 0 18px; border: 1px solid #b9cbc7; border-radius: 8px; background: #fffefa; color: #06625e; font: inherit; font-weight: 600">Revisar</button>
+          </article>
+        </div>
+        <aside aria-labelledby="reglas" style="flex: 1 1 300px; min-width: 0; background: #fffefa; border: 1px solid #d6e1de; border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 12px">
+          <h2 id="reglas" style="margin: 0; font-size: 18px">Reglas activas</h2>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 10px; background: #f2f5f0">
+            <strong>[nombre de la regla]</strong>
+            <span style="font-size: 14px; color: #405b5d">¿Dónde? · todo el territorio · 2 semanas seguidas</span>
+            <span style="font-size: 13px; color: #52676a">Se habría activado <span style="font-family: 'IBM Plex Mono', monospace">[N]</span> veces en 2021–2024 (reconstrucción retrospectiva)</span>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 4px; padding: 14px; border-radius: 10px; background: #f2f5f0">
+            <strong>[nombre de la regla]</strong>
+            <span style="font-size: 14px; color: #405b5d">¿Cuántos? · radios seleccionados · umbral 5</span>
+            <span style="font-size: 13px; color: #52676a">Se habría activado <span style="font-family: 'IBM Plex Mono', monospace">[N]</span> veces en 2021–2024</span>
+          </div>
+          <button type="button" style="min-height: 44px; padding: 0 18px; border: 1px solid #b9cbc7; border-radius: 8px; background: #fffefa; color: #06625e; font: inherit; font-weight: 600">Evaluar la próxima semana pendiente</button>
+        </aside>
+      </div>
+    </main>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1360}}'>
+class Component extends DCLogic {
+  renderVals() {
+    var active = 'alertas';
+    var main = [
+      { key: 'inicio', label: 'Inicio', href: 'Main.dc.html', d: 'M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z' },
+      { key: 'predictivo', label: 'Módulo predictivo', href: 'Predictivo.dc.html', d: 'M9 4L3 6v14l6-2 6 2 6-2V4l-6 2zM9 4v14M15 6v14' },
+      { key: 'alertas', label: 'Alertas internas', href: 'Alertas.dc.html', d: 'M18 8a6 6 0 1 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0', badge: '[N]' },
+      { key: 'reportes', label: 'Reportes ciudadanos', href: 'Reportes.dc.html', d: 'M4 4h16v12H5.2L4 17.2zM8 9h8M8 12h5', badge: '[N]' }
+    ];
+    var admin = [
+      { key: 'contenido', label: 'Contenido preventivo', href: 'Contenido.dc.html', d: 'M12 20h9M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4z' },
+      { key: 'cuentas', label: 'Cuentas', href: 'Cuentas.dc.html', d: 'M9 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM2 21c0-4 3-6 7-6s7 2 7 6M17 11h5M19.5 8.5v5' },
+      { key: 'auditoria', label: 'Auditoría', href: 'Auditoria.dc.html', d: 'M9 4h6l1 3h4v13H4V7h4zM8 13l3 3 5-5' }
+    ];
+    var mark = function (n) { return Object.assign({}, n, { active: n.key === active, inactive: n.key !== active, hasBadge: !!n.badge }); };
+    return { navMain: main.map(mark), navAdmin: admin.map(mark) };
+  }
+}
+</script>
+</body>
+</html>

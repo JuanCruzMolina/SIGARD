@@ -28,10 +28,10 @@ cadena Alembic completa reversible, cuentas/concurrencia, reportes y geometrías
 ficticias. Ver [procedimiento y límites](#ensayo-postgresqlpostgis-descartable--etapa-17).
 Esto no despliega la API persistente ni modifica `npm.cmd --prefix frontend run dev`.
 
-El mapa local A/B consulta agregados sin autenticación, cookies ni diálogos de
-Windows. Su instancia FastAPI fija `127.0.0.1:8765`, sin base de datos ni claves,
-y sólo permite lectura desde Vite en `127.0.0.1:5173`. La administración habitual
-de reportes conserva su autenticación; ver la guía anterior.
+Histórico (archivado): el mapa local A/B consultaba agregados sin autenticación en una
+instancia FastAPI fija `127.0.0.1:8765`. Desde F2 (22/11/2026) ese lanzador fue retirado y
+el único módulo predictivo activo se sirve en la API administrativa local (8767) sólo con
+sesión de administrador; ver `docs/predictive-module-final.md` («Decisión F2»).
 
 El panel local de análisis reutiliza esa instancia con dos consultas GET de
 sólo lectura: `/api/v1/research/spatial/evaluation` proyecta las seis métricas
