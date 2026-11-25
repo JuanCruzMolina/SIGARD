@@ -248,7 +248,7 @@ test('browser suites use the pinned Puppeteer devDependency (SIGARD_BROWSER_MODU
   const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'))
   assert.equal(lock.packages['node_modules/puppeteer'].version, '25.9.0')
   const scripts = (await readdir(new URL('.', import.meta.url))).filter(name => name.endsWith('.browser.mjs') && name !== 'thesis-workspace.browser.mjs')
-  assert.ok(scripts.length >= 19)
+  assert.ok(scripts.length >= 17)
   for (const name of scripts) {
     const source = await readFile(new URL(name, import.meta.url), 'utf8')
     assert.match(source, /require\(process\.env\.SIGARD_BROWSER_MODULE \|\| 'puppeteer'\)/, `${name}: carga Puppeteer del proyecto o el override`)

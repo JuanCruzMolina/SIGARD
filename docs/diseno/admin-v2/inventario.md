@@ -640,7 +640,7 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   - Corregido: un fallo del manifiesto quedaba guardado como «sin semana» hasta recargar la página.
     Ahora sólo se guarda una semana encontrada (`rememberFound`); un fallo se vuelve a pedir en la
     próxima carga (cada sección monta su propio menú). Regresión en `test:admin`.
-- **Scripts de navegador sin comando** (no se borran):
+- **Scripts de navegador sin comando** (decisión de F7a; los dos obsoletos se borraron después, ver «F7a · Limpieza»):
   - `scripts/thesis-workspace.browser.mjs`: **vigente**. No es una suite: es el módulo auxiliar que
     importa `demo-flow.browser.mjs` (`test:demo:browser`) para medir el espacio de análisis de la
     demo. Se ejecuta con esa suite; no lleva comando propio.
@@ -670,8 +670,8 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   | zod 4.4.3 (memoria con colecciones grandes) | alta | desarrollo (eslint-plugin-react-hooks) | Sólo `lint`, valida configuración propia | Corregido: 4.6.7 |
   | zod 3.25.76 vía chromium-bidi 17.0.2 → puppeteer-core → puppeteer 25.9.0 | alta (4 avisos encadenados) | desarrollo | No en la práctica: sólo las pruebas de navegador; con Chrome Puppeteer usa CDP, no WebDriver BiDi, y los mensajes vienen del Chromium local | **Pendiente**: la corrección exige puppeteer 25.18.1 y F7a fija 25.9.0 exacto |
 
-  Pendiente aparte: axios figura en `dependencies` pero no se usa; quitarlo es un cambio de
-  dependencias que no se hizo en F7a.
+  Pendiente aparte (resuelto en «F7a · Integración del remoto y limpieza»): axios figuraba en
+  `dependencies` sin usarse.
 - **División del bundle por rutas** (opcional): **no se hizo; documentado**. `React.lazy` para
   Administración y el visor obliga a cambiar el contrato de `security/local-entry.test.mjs`
   (`test:research`): esa prueba reemplaza `react` por un sustituto sin `lazy` ni `Suspense` y
@@ -716,3 +716,29 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   - Evidencia: capturas en `<carpeta de cada suite>/f7a-regresion[-real]/` y resumen (auditorías npm,
     fuentes sin conexión antes/después) en `data/interim/official/f7a-resumen/`; registros en
     `frontend/.tmp/diag/f7a/`.
+
+## F7a · Integración del remoto y limpieza
+
+- **Merge** de `origin/entrenamiento-ML` (`01c4074`, Referer de los tiles de OSM): las cuatro capas
+  de tiles (`BacktestMaps`, `PublicActivity`, `HealthFacilitiesMap`, `CitizenReportForm`) usan
+  `referrerPolicy="strict-origin"`, que sólo envía el origen (`http://127.0.0.1:5173/` en local; el
+  dominio en producción) y nunca la ruta ni la consulta (`anio`, `se`, `radio`). El resto del sitio
+  sigue con `Referrer-Policy: no-referrer` (`frontend/vercel.json`). `test:public-map` exige ese
+  atributo en las cuatro capas y `test:predictive:browser` compara el Referer de cada pedido de tile
+  con el origen exacto (además, la URL del tile no lleva consulta ni fragmento).
+- **Limpieza**:
+  - Se quitó `axios` de `dependencies` (no lo importaba ningún archivo; con él salen axios y
+    sus dependencias, incluida follow-redirects, del lockfile).
+  - Se borraron `scripts/backtest.browser.mjs` y `scripts/research-panel.browser.mjs` (dependían de
+    8765). Antes se comprobó que nada los importa; sólo los citaban documentos. `frontend/README.md`
+    se actualizó; los documentos históricos (`docs/database/historical-backtesting-stage3.md`,
+    `docs/mvp-functional-status.md`, `docs/experimental-spatial-date-query.md`) conservan la mención
+    como registro de su etapa.
+  - **No** se borró `services/experimentalResults.js`: la búsqueda mostró que lo importan 9 archivos
+    de `src` (`App.jsx`, `AdminLayout`, `AdminAlerts`, `AdminInicio`, `AdminAuditoria`,
+    `AdminPredictivo`, `backtestResults.js`, `ExperimentalSpatial`, `ExperimentalAnalysis`) y 3
+    pruebas: su `localResearchEnabled()` es la compuerta del entorno local. Lo único sin uso
+    operativo son sus llamadas a 8765 (`researchCatalog`, `researchDate`, `researchDateQuery`,
+    `researchEvaluation`, `researchHistory`), usadas por `ExperimentalSpatial` y
+    `ExperimentalAnalysis`; separarlas queda pendiente.
+  - Zod 3 vía Puppeteer queda como se documentó en el punto 7a.
