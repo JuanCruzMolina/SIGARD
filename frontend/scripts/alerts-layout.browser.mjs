@@ -81,6 +81,12 @@ try {
       .map(x => { const r = x.getBoundingClientRect(); return [x.textContent.trim().slice(0, 30) || x.tagName, Math.round(r.width), Math.round(r.height)] })
       .filter(([, w, h]) => w < 44 || h < 44))
     assert.deepEqual(targets, [], `${name}: áreas táctiles de 44 px: ${JSON.stringify(targets)}`)
+    // Tabs: one row that scrolls sideways (never two lines); the active one keeps its underline.
+    const tabs = await page.$eval('.alerts-tabs', nav => ({ rows: new Set([...nav.children].map(b => Math.round(b.getBoundingClientRect().top))).size,
+      scrolls: nav.scrollWidth > nav.clientWidth, overflow: getComputedStyle(nav).overflowX,
+      underline: getComputedStyle(nav.querySelector('[aria-pressed="true"]')).borderBottomColor }))
+    assert.ok(tabs.rows === 1 && tabs.scrolls && ['auto', 'scroll'].includes(tabs.overflow) && tabs.underline === 'rgb(8, 123, 117)',
+      `${name}: pestañas en una fila con desplazamiento horizontal: ${JSON.stringify(tabs)}`)
     const small = await page.evaluate(() => {
       const found = [], walker = document.createTreeWalker(document.querySelector('main'), NodeFilter.SHOW_TEXT)
       for (let node = walker.nextNode(); node; node = walker.nextNode()) {

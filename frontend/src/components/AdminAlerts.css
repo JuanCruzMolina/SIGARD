@@ -99,7 +99,9 @@
 }
 @media (max-width: 760px) {
   .alerts-flow { grid-template-columns: 1fr; }
-  .alerts-tabs button { flex: 1 1 auto; padding: 0 10px; }
+  /* One row of tabs that scrolls sideways (never two lines); the underline stays inside each tab. */
+  .alerts-tabs { flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden; scrollbar-width: thin; }
+  .alerts-tabs button { flex: 0 0 auto; margin-bottom: 0; padding: 0 14px; white-space: nowrap; }
   .alerts-card-foot .alerts-map-link { width: 100%; }
   .alerts-evidence th, .alerts-evidence td { padding: 6px 4px; font-size: .875rem; overflow-wrap: anywhere; letter-spacing: 0; }
 }
