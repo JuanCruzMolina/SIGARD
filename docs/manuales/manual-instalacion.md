@@ -310,7 +310,8 @@ sirviendo para usar otra instalación (ruta al paquete `puppeteer`).
 
 **Migraciones en PostGIS real.** `backend/tests/postgres_migration_check.py` crea una base
 descartable en el clúster 55439, recorre la cadena completa y la elimina al terminar. Las 6
-pruebas PostGIS del runner con Docker quedan omitidas por la regla de no iniciar Docker.
+pruebas PostGIS omitidas usan un contenedor Docker descartable propio (`backend/tests/postgis_disposable.py`,
+127.0.0.1:5435), no la base de investigación; quedan omitidas por la regla de no iniciar Docker.
 
 ## 10. Problemas frecuentes
 

@@ -679,3 +679,15 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   muestra el respaldo de `Suspense`. Además Leaflet lo usan también el mapa público y Prevención,
   así que seguiría en el bloque principal y no está asegurado que baje de 500 kB. El aviso de Vite
   (bloque principal de unos 642 kB, 194 kB comprimido) sigue y no rompe el build.
+- **Pruebas de PostGIS omitidas (6)**: **no se corrieron; documentado**.
+  - Cinco están en `backend/tests/test_postgis_integration.py` y se omiten sin `SIGARD_POSTGIS_URL`.
+    La sexta, en `test_admin_accounts.py`, se omite sin `SIGARD_TEST_POSTGRES_URL`.
+  - Ninguna usa la base de investigación (`sigard_epi_local_v1` ni `sigard_epi_test_v1`, puerto 55439).
+    Las define `backend/tests/postgis_disposable.py`: un contenedor **Docker** propio
+    (`postgis/postgis:17-3.5`, `sigard-stage17-postgis`, tmpfs) en 127.0.0.1:5435, con las bases
+    `sigard_stage16_schema` y `sigard_stage15_test` y el rol `sigard_stage15_test`.
+    `postgis_support.validate_url` rechaza cualquier otro destino antes de conectar.
+  - No cumplen la condición pedida (sólo la base de prueba `sigard_epi_test_v1`), y correrlas exige
+    iniciar Docker, que `AGENTS.md` prohíbe. Ejecutarlas requiere una decisión del responsable:
+    autorizar Docker para ese contenedor descartable, o adaptarlas a la base de prueba del clúster
+    WSL (55439), lo que exige iniciar WSL/PostgreSQL.
