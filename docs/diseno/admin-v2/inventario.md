@@ -652,3 +652,23 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
     investigación espacial A/B en `127.0.0.1:8765/api/v1/research/spatial`, que `dev` ya no inicia
     desde F2; su parte ficticia cubre el panel A/B anterior. `services/experimentalResults.js`
     conserva esa ruta a 8765 (ver pendientes).
+- **`npm audit`** (con Puppeteer ya instalado; 12 avisos: 9 altos, 3 moderados). Se aplicó
+  `npm audit fix` sin `--force`: `package.json` no cambia (las versiones nuevas caben en los rangos
+  declarados), cambia `package-lock.json`. Las dependencias directas suben sólo de versión menor;
+  la subida de eslint trae cambios mayores en dependencias transitivas suyas (minimatch 10 → 11,
+  keyv 4 → 5, flat-cache 4 → 6, file-entry-cache 8 → 11) y paquetes transitivos nuevos de caché
+  (`cacheable`, `hookified` y otros), todos de desarrollo. Después: 4 altos, todos por el mismo
+  aviso.
+
+  | Paquete (versión) | Gravedad | Desarrollo / producción | ¿Alcanzable en SIGARD? | Estado |
+  |---|---|---|---|---|
+  | axios 1.19.0 (12 avisos: contaminación de prototipo, ReDoS, SSRF por redirecciones, HTTP/2) | alta | producción (`dependencies`) | No: ningún archivo de `src` lo importa y no entra al bundle | Corregido: 1.21.1 |
+  | follow-redirects 1.16.0 (encabezados con credenciales en redirecciones) | alta | producción (transitiva de axios) | No: sólo el adaptador Node de axios | Corregido: 1.16.3 |
+  | vite 8.2.1 (launch-editor en Windows, middleware entre orígenes, `server.fs`) | alta | desarrollo | Sólo el servidor de desarrollo en 127.0.0.1 (`dev`, `dev:demo`, pruebas); no el sitio publicado | Corregido: 8.3.8 |
+  | source-map-js 1.2.1 (bloqueo con source maps manipulados) | alta | desarrollo (postcss de vite) | Sólo el build, con source maps propios | Corregido: 1.2.4 |
+  | eslint 10.3.0, @eslint/config-array 0.23.5, minimatch 10.2.5, brace-expansion 5.0.9 (DoS con patrones glob) | moderada / alta | desarrollo | Sólo `lint`, con patrones del repositorio | Corregido: eslint 10.15.0, config-array 0.23.6, minimatch 11.0.9, brace-expansion 5.1.0 |
+  | zod 4.4.3 (memoria con colecciones grandes) | alta | desarrollo (eslint-plugin-react-hooks) | Sólo `lint`, valida configuración propia | Corregido: 4.6.7 |
+  | zod 3.25.76 vía chromium-bidi 17.0.2 → puppeteer-core → puppeteer 25.9.0 | alta (4 avisos encadenados) | desarrollo | No en la práctica: sólo las pruebas de navegador; con Chrome Puppeteer usa CDP, no WebDriver BiDi, y los mensajes vienen del Chromium local | **Pendiente**: la corrección exige puppeteer 25.18.1 y F7a fija 25.9.0 exacto |
+
+  Pendiente aparte: axios figura en `dependencies` pero no se usa; quitarlo es un cambio de
+  dependencias que no se hizo en F7a.
