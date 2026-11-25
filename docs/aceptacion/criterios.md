@@ -12,11 +12,11 @@ sanitario y exactitud geográfica.
 
 | Id | Criterio | Umbral | Cálculo |
 |---|---|---|---|
-| A1 | Usabilidad (SUS) | Promedio ≥ 68 | `cuestionario-sus.md`, n = participantes |
-| A2 | Eficacia | ≥ 80 % de las tareas asignadas completadas **sin ayuda** | completadas / (completadas + con_ayuda + no_completadas), sobre todas las filas |
+| A1 | Usabilidad (SUS) | Promedio ≥ 68 | `cuestionario-sus.md`, n = 2 referentes |
+| A2 | Eficacia | ≥ 80 % de los escenarios completados **sin ayuda** (al menos 7 de 8), cada uno con su criterio de aceptación de `escenarios.md` | completados / 8, sobre las filas de la planilla |
 | A3 | Seguridad y privacidad en uso | **0** errores críticos | Suma de la columna `errores_criticos` |
 | A4 | Utilidad percibida | Media U1–U5 ≥ 3,5 | Media de las medias individuales |
-| A5 | Eficiencia (informativo) | Mediana de tiempo ≤ tiempo máximo en cada tarea | Por tarea; no bloquea el dictamen salvo que A2 falle |
+| A5 | Eficiencia (informativo) | Cada escenario dentro de su tiempo máximo y la sesión en ≤ 45 min | Por escenario; no bloquea el dictamen salvo que A2 falle |
 
 ## B. Verificaciones técnicas
 
@@ -31,26 +31,26 @@ existentes del repositorio; no se modifican para la sesión.
 | S2 | Rutas administrativas protegidas | `test_admin_accounts.py`, `test_internal_alerts.py` y `test_prevention_content.py` en la regresión backend (`publication_isolated.py --backend-regression`) | 0 fallas; 401/403 sin token o sin permisos |
 | S3 | Sesión revocada | `npm run test:accounts:browser` | Tras rotar o desactivar una cuenta, la sesión se cierra |
 | S4 | Recursos públicos aprobados | `npm run test:security` | Sólo los recursos públicos aprobados por hash |
-| S5 | Credenciales | Observación durante E3 y E9 | Ninguna credencial queda en pantalla, grabación ni papel conservado |
+| S5 | Credenciales | Observación durante E2 y E7 | Ninguna credencial queda en pantalla, grabación ni papel conservado |
 
 ### B2. Protección de datos
 
 | Id | Verificación | Procedimiento | Aprobado si |
 |---|---|---|---|
-| P1 | Reportes: la ubicación exacta sólo está en el panel protegido | E2/E4 y `npm run test:citizen` | El estado público contiene sólo código, estado, fechas y mensaje |
-| P2 | Mínimo 5 en salidas agregadas | Visor sólo en modo protegido (sin `SIGARD_PRIVATE_VIEW`), alertas y exportación (E6, E9, E10); `npm run test:backtest` (bundle sin opción de valores exactos) | Ningún valor exacto entre 1 y 4 visible ni exportado; el selector de valores exactos no existe |
+| P1 | Reportes: la ubicación exacta sólo está en el panel protegido | E1/E3 y `npm run test:citizen` | El estado público contiene sólo código, estado, fechas y mensaje |
+| P2 | Mínimo 5 en salidas agregadas | Visor sólo en modo protegido (sin `SIGARD_PRIVATE_VIEW`), alertas (E5, E6); `npm run test:backtest` (bundle sin opción de valores exactos) | Ningún valor exacto entre 1 y 4 visible ni exportado; el selector de valores exactos no existe |
 | P3 | Mapa «Actividad registrada» | `npm run test:public-activity`, `test_public_activity.py` e informe de riesgo del paquete | 0 revelaciones; ningún conteo exacto por radio; 2022 excluido |
 | P4 | Desactivado sin autorización | `GET /api/v1/public/activity` sin archivo de autorización | 404 |
 | P5 | Sin datos reales en el sitio público | `npm run test:public-activity` (ausencia en `public` y `dist`) | Aprobado |
-| P6 | Datos históricos rotulados | E8 y prueba de navegador del banner | Banner con período visible en todos los bloques; fecha de generación separada |
+| P6 | Datos históricos rotulados | E1 y prueba de navegador del banner | Banner con período visible en todos los bloques; fecha de generación separada |
 
 ### B3. Alertas
 
 | Id | Verificación | Procedimiento | Aprobado si |
 |---|---|---|---|
-| L1 | Aprobación humana obligatoria | E9 + `test_internal_alerts.py` | Ninguna candidata se convierte en aviso sin decisión explícita con motivo |
-| L2 | Sin publicación ciudadana | E9 | Aprobar no altera ninguna página pública |
-| L3 | Trazabilidad | Pestañas «Decisiones» y «Auditoría» | Cada decisión tiene autor, fecha, motivo y regla |
+| L1 | Aprobación humana obligatoria | E6 + `test_internal_alerts.py` | Ninguna candidata se convierte en aviso sin decisión explícita con motivo |
+| L2 | Sin publicación ciudadana | E6 | Aprobar no altera ninguna página pública |
+| L3 | Trazabilidad | Pestaña «Historial» de Alertas internas y sección Auditoría (E6, E8) | Cada decisión tiene autor, fecha, motivo y regla |
 | L4 | Límite declarado | Textos de la sección | Se indica que es retrospectivo y que los modelos no están promovidos |
 
 ### B4. Contenido sanitario
@@ -58,7 +58,7 @@ existentes del repositorio; no se modifican para la sesión.
 | Id | Verificación | Procedimiento | Aprobado si |
 |---|---|---|---|
 | C1 | Fuentes citadas | Revisar cada sección publicada | Cada sección tiene fuente (`source_label` y URL https) |
-| C2 | Flujo borrador → publicación | E5 + `test_prevention_content.py` | Lo público cambia sólo al publicar; la versión aumenta; hay auditoría |
+| C2 | Flujo borrador → publicación | E4 + `test_prevention_content.py` | Lo público cambia sólo al publicar; la versión aumenta; hay auditoría |
 | C3 | Revisión institucional del texto | Lectura por el área de comunicación/promoción | Sin observaciones bloqueantes de contenido sanitario |
 | C4 | Directorio de centros de salud | E1 | Fuentes y vigencia visibles; sin datos de personas |
 

@@ -149,7 +149,7 @@ Uso detallado: [manual del administrador](docs/manuales/manual-administrador.md)
 
 ### Verificación y aceptación
 - [Verificación final (P6/P6.1)](docs/verificacion-final.md): matriz de trazabilidad, criterios, rendimiento, seguridad, defectos.
-- Kit de aceptación: [protocolo](docs/aceptacion/protocolo.md), [escenarios](docs/aceptacion/escenarios.md), [criterios](docs/aceptacion/criterios.md), [cuestionario SUS](docs/aceptacion/cuestionario-sus.md), [preparación de la sesión](docs/aceptacion/preparacion-sesion.md), [acta modelo](docs/aceptacion/acta-modelo.md) y [planilla de resultados](docs/aceptacion/planilla-resultados.csv).
+- Kit de aceptación v1.0.0 (sesión de 30–45 min con 2 referentes, un escenario por sección): [protocolo](docs/aceptacion/protocolo.md), [escenarios](docs/aceptacion/escenarios.md), [criterios](docs/aceptacion/criterios.md), [cuestionario SUS](docs/aceptacion/cuestionario-sus.md), [preparación de la sesión](docs/aceptacion/preparacion-sesion.md), [formulario de observaciones](docs/aceptacion/formulario-observaciones.md), [acta modelo](docs/aceptacion/acta-modelo.md) y [planilla de resultados](docs/aceptacion/planilla-resultados.csv).
 - [Cierre funcional para la tesis](docs/cierre-funcional-tesis.md) · [Protocolo de validación predictiva](docs/validacion-predictiva-tesis.md) · [Consolidación técnica de las etapas 1 a 17](docs/technical-consolidation.md).
 
 ### Base de investigación y ML (`docs/database/`)

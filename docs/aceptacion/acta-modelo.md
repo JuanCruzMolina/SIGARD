@@ -10,7 +10,7 @@
 | Rama | `entrenamiento-ML` |
 | Commit evaluado | `________________________________________` (salida de `git rev-parse HEAD`) |
 | Árbol de trabajo limpio | ☐ Sí ☐ No (si no, detallar: ____________________) |
-| Entornos usados | ☐ `dev:demo` ☐ `dev` ☐ `dev` + API fixture ☐ `dev:alerts` |
+| Entorno usado | ☐ `dev` con `SIGARD_PUBLIC_ACTIVITY=fixture` (kit v1.0.0, escenarios E1–E8) |
 | «Actividad registrada» | ☐ Fixture ficticia ☐ Paquete real con autorización N.º ______ (SHA del manifiesto: `__________`) |
 
 ## 2. Participantes (por cargo; sin nombres en el repositorio)

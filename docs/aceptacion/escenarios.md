@@ -1,179 +1,241 @@
-# Escenarios de aceptación
+# Escenarios de aceptación (versión v1.0.0)
 
-Cada tarea se lee textualmente y se entrega impresa. «Entorno» remite a `preparacion-sesion.md`.
-Los tiempos máximos incluyen la lectura de pantalla. Superado el máximo, la tarea queda
-«no completada».
+Kit para **una sesión de 30–45 minutos con 2 referentes del Ministerio de Salud** (P01 y P02).
+Hay un escenario para el sitio público y uno por cada una de las siete secciones de
+Administración. Todos usan el mismo entorno: `npm run dev` con la fixture ficticia de
+«Actividad registrada» (ver `preparacion-sesion.md`). Las observaciones se anotan en
+`formulario-observaciones.md`.
 
-| Tarea | Módulo | Perfil | Entorno | Máx. |
+Reglas comunes:
+- Las dos personas están frente a la misma pantalla. En cada escenario **una maneja** (columna
+  «Maneja») y la otra observa y puede opinar al final; se alternan para que ambas usen el sistema.
+- El moderador lee la consigna textual y entrega la tarjeta impresa. No ayuda salvo bloqueo: tras
+  60 s sin avance da **una** pista estándar y el escenario queda «con ayuda».
+- El tiempo máximo incluye la lectura de pantalla. Superado, el escenario queda «no completado» y
+  se pasa al siguiente.
+- Todo lo que se escribe es inventado: ningún nombre, teléfono, dirección ni dato personal real.
+
+| Esc. | Sección | Maneja | Máx. | Depende de |
 |---|---|---|---|---|
-| E1 | 1 Prevención | Todos | A (`dev:demo`) | 3 min |
-| E2 | 2 Reporte ciudadano | Todos | A | 6 min |
-| E3 | 6 Administración | Gestión de reportes | A | 2 min |
-| E4 | 6 Administración | Gestión de reportes | A | 6 min |
-| E5 | 6 Contenido preventivo | Comunicación | A | 7 min |
-| E6 | 4 Visor predictivo | Vigilancia | B (`dev`) | 6 min |
-| E7 | 4 Visor predictivo | Vigilancia | B | 4 min |
-| E8 | 3 Actividad registrada | Todos | C (`dev` + API fixture) | 5 min |
-| E9 | 5 Alertas internas | Vigilancia | D (`dev:alerts`) | 8 min |
-| E10 | 5 Alertas internas | Vigilancia | D | 4 min |
+| E1 | Sitio público (prevención, reporte, seguimiento, actividad registrada) | P01 | 7 min | — |
+| E2 | Administración · Inicio | P02 | 3 min | E1 (el reporte nuevo aparece como pendiente) |
+| E3 | Administración · Reportes ciudadanos | P01 | 5 min | E1 |
+| E4 | Administración · Contenido preventivo | P02 | 5 min | — |
+| E5 | Administración · Módulo predictivo | P01 | 6 min | — |
+| E6 | Administración · Alertas internas | P02 | 6 min | — |
+| E7 | Administración · Cuentas | P01 | 4 min | — |
+| E8 | Administración · Auditoría | P02 | 3 min | E3, E4, E6, E7 |
+| | **Total de tareas** | | **39 min máx.** (≈ 25 min esperados) | |
+
+Con bienvenida (5 min) y cuestionario (7 min) la sesión entra en 45 minutos. Si el tiempo se
+acorta, se omite la segunda parte de E1 (actividad registrada) y E8 se hace sólo como lectura.
 
 ---
 
-### E1 — Consultar la información de prevención
-**Consigna:** «Usted quiere saber qué hacer en su casa para evitar criaderos de mosquitos y
-dónde está el centro de salud más cercano a la plaza principal. Encuéntrelo en el sistema.»
+### E1 — Sitio público: prevención, reporte y seguimiento
+**Punto de partida:** `http://127.0.0.1:5173/`, sin sesión.
 
-**Éxito:**
-- abre «Prevención y ayuda»;
-- nombra al menos una medida de eliminación de criaderos;
-- usa el directorio (búsqueda o filtro) y nombra un centro de salud.
+**Consigna:** «Usted vio agua acumulada en un terreno baldío. Busque qué recomienda el sistema
+para evitar criaderos y cuál es el centro de salud más cercano a la plaza principal. Después
+envíe un reporte con una ubicación aproximada inventada y consulte en qué estado quedó. Por
+último, abra “Actividad registrada” y diga a qué período corresponden esos datos.»
 
-**Pista estándar:** «Busque en el menú superior algo relacionado con prevención.»
+**Pasos esperados:**
+1. Menú **Prevención y ayuda** → lee una medida contra criaderos y usa el directorio de centros
+   de salud (búsqueda o filtro).
+2. **Reportar**: categoría «Agua acumulada», descripción inventada, punto en el mapa, acepta la
+   privacidad y envía. Anota el código de seguimiento (en la tarjeta, no en el equipo).
+3. **Seguimiento**: ingresa el código y ve el estado «Recibido».
+4. Menú **Actividad registrada** → lee el período del banner.
 
-### E2 — Enviar un reporte ciudadano y consultar su estado
-**Consigna:** «Vio agua acumulada en recipientes en un terreno baldío. Envíe un reporte
-(ubicación aproximada inventada, sin datos personales) y luego consulte en qué estado está.»
+**Qué observar:**
+- si encuentra el directorio sin ayuda y entiende la vigencia «por confirmar» de los centros;
+- si el formulario le pide algún dato personal (no debería) y cómo elige la ubicación;
+- si el seguimiento muestra sólo código, estado, fechas y mensaje (nunca la descripción ni la
+  ubicación);
+- si interpreta «Actividad registrada» como datos **históricos** y la trama «protegido» como
+  «menos de 5 registros u oculto», no como «sin casos». Con la fixture, el aviso «Datos ficticios
+  de prueba» está visible.
 
-**Éxito:**
-- completa categoría, descripción y ubicación en el mapa;
-- acepta la privacidad y envía;
-- conserva el código de seguimiento;
-- en «Seguimiento» obtiene el estado «Recibido».
+**Criterio de aceptación:** nombra una medida y un centro de salud, envía el reporte, obtiene el
+estado «Recibido» con su código y responde que la actividad registrada **no** refleja la
+situación actual.
 
-**Error crítico:** escribir datos personales reales y que el sistema los muestre públicamente.
-Debe registrarse aunque haya sido inducido por la persona.
+**Error crítico:** que el seguimiento o cualquier página pública muestre la descripción o la
+ubicación del reporte; que la persona entienda «Actividad registrada» como situación actual y el
+sistema no lo aclare.
 
-**Pista estándar:** «El código que le dio el sistema sirve para consultar el estado.»
+**Pista estándar:** «Busque en el menú superior algo relacionado con prevención; el código del
+reporte sirve para consultar su estado.»
 
-### E3 — Iniciar sesión como administrador
-**Consigna:** «Ingrese al área de administración con la cuenta que le entregamos en papel.»
+### E2 — Inicio: qué requiere atención
+**Punto de partida:** sitio público. El moderador entrega la tarjeta con la cuenta de la sesión.
 
-**Éxito:** llega a «Reportes ciudadanos» con la sesión iniciada. Las credenciales no quedan
-visibles en pantalla ni guardadas en el navegador.
+**Consigna:** «Ingrese a Administración con la cuenta de la tarjeta. En la primera pantalla,
+diga cuántos reportes ciudadanos esperan revisión y cuál es el pendiente más antiguo.»
 
-**Pista estándar:** «Busque “Administración” en el menú.»
+**Pasos esperados:** menú **Administración** → ingreso → **Inicio** → lee «Requiere tu
+atención» y la tabla «Pendientes».
 
-### E4 — Revisar y exportar reportes
-**Consigna:** «Filtre los reportes de categoría “agua acumulada”. Abra el que envió en la tarea
-E2, cámbielo a “En revisión” con un mensaje público breve y exporte el listado a CSV.»
+**Qué observar:**
+- si encuentra el ingreso y si el navegador ofrece guardar la contraseña (se rechaza);
+- si entiende el menú lateral (Operación / Gestión), los números naranjas y la barra superior
+  con el vencimiento de la sesión;
+- si lee el rótulo «Prototipo experimental — reconstrucción histórica, no uso operativo».
 
-**Éxito:**
-- el filtro está aplicado;
-- el reporte cambió a «En revisión» con mensaje público;
-- el archivo CSV se descargó.
+**Criterio de aceptación:** ingresa, da la cantidad de reportes en «Recibido» igual a la de la
+pantalla (incluye el de E1) y nombra el pendiente más antiguo.
 
-La persona sabe explicar que la ubicación exacta sólo se ve en el panel protegido. **Error
-crítico:** copiar la ubicación exacta a un canal público.
+**Error crítico:** que las credenciales queden visibles en pantalla o guardadas en el navegador.
 
-**Pista estándar:** «Los filtros están arriba del listado; la exportación, en los botones del
-encabezado.»
+**Pista estándar:** «Busque “Administración” en el menú superior.»
 
-### E5 — Editar y publicar contenido preventivo
-**Consigna:** «Agregue una oración a la sección de eliminación de criaderos y publíquela. Luego
-compruebe en la página pública que el cambio se ve.»
+### E3 — Reportes ciudadanos
+**Consigna:** «Filtre los reportes de “Agua acumulada”, abra el que se envió en el primer
+escenario, páselo a “En revisión” con un mensaje público breve y exporte el listado filtrado.»
 
-**Éxito:**
-- edita la copia de trabajo y la guarda;
-- confirma la publicación (la versión aumenta);
-- verifica el texto en «Prevención y ayuda».
+**Pasos esperados:** menú **Reportes ciudadanos** → filtro de categoría → abre el reporte (por su
+código) → estado «En revisión», mensaje público → **Guardar cambios** → **Exportar CSV**.
 
-Distingue entre borrador y publicado.
+**Qué observar:**
+- si distingue el **mensaje público** (lo ve el ciudadano) de la **nota interna**;
+- si comenta que la ubicación exacta sólo se ve en este panel protegido;
+- si el número del menú lateral baja al guardar;
+- (opcional, P02) volver a consultar el código en el sitio público y ver el mensaje.
 
-**Pista estándar:** «En administración, busque “Contenido preventivo”.»
+**Criterio de aceptación:** filtro aplicado, reporte en «En revisión» con mensaje público y CSV
+descargado.
 
-### E6 — Consultar qué radios estaban priorizados en una semana y compararlo con lo ocurrido
-**Punto de partida:** el participante está en la bandeja de Administración, con sesión de
-administrador iniciada (E3). El visor no está en el menú público: se abre con **Módulo
-predictivo** dentro de Administración (`/admin/predictivo`).
+**Error crítico:** copiar la ubicación exacta o la descripción a un canal público; escribir datos
+personales en el mensaje público.
 
-**Consigna:** «Abra el módulo predictivo desde Administración y elija la semana epidemiológica que le indicamos
-(tarjeta: una semana de 2024 con actividad). Indique cuántos radios estaban priorizados, cuántos
-de ellos tuvieron registros (“Acierto”) y cuántos radios con registros no estaban priorizados
-(“No anticipado”).»
+**Pista estándar:** «Los filtros están arriba de la lista; la exportación, arriba a la derecha.»
 
-**Éxito:**
-- selecciona la semana;
-- lee los tres valores de la leyenda o del resumen, con tolerancia 0;
-- explica que es una **reconstrucción histórica**, no un pronóstico actual.
+### E4 — Contenido preventivo
+**Consigna:** «Agregue una oración a la sección de eliminación de criaderos, mire cómo queda en la
+vista previa y publíquela. Después compruebe en el sitio público que el cambio se ve.»
 
-**Modo de divulgación:** sólo modo protegido. Con `npm run dev` el control de «valores exactos»
-no existe en la interfaz: sólo aparece si el equipo inicia `dev` con `SIGARD_PRIVATE_VIEW=1`,
-lo que **no** se hace en la sesión. El observador comprueba que «Opciones avanzadas» muestra
-«Modo de divulgación: protegido».
+**Pasos esperados:** menú **Contenido preventivo** → elige la sección → edita → **Guardar
+borrador** (estado «cambios sin publicar») → **Publicar** → confirma → la versión sube → abre
+**Prevención y ayuda** y encuentra la oración.
 
-**Error crítico:** que el sistema presente los resultados como casos confirmados o como
-situación actual sin aclararlo, o que el visor se muestre sin sesión de administrador.
+**Qué observar:**
+- si entiende la diferencia entre **borrador** y **publicado**;
+- si usa la vista previa;
+- si lee la fuente y el enlace sanitario `https://` que exige la publicación;
+- si encuentra el **Historial** con su cambio.
 
-**Pista estándar:** «El módulo predictivo está en Administración, junto a los reportes. El
-selector de semana está arriba del mapa; la leyenda, debajo.»
+**Criterio de aceptación:** la oración aparece en el sitio público, la versión aumentó y el
+historial registra la publicación.
 
-### E7 — Interpretar un radio en el visor
-**Consigna:** «Elija un radio marcado como “Falsa alarma” y explique con sus palabras qué
-significa y qué limitación tiene el modelo.»
+**Error crítico:** que lo público cambie antes de publicar.
 
-**Éxito:**
-- abre el detalle del radio, con el mouse o con el teclado;
-- explica que estaba priorizado y no tuvo registros;
-- menciona al menos una limitación visible (no es operativo, registros ≠ casos, o asignación
-  aproximada).
+**Pista estándar:** «En Administración, “Contenido preventivo”; publicar está debajo del editor.»
 
-**Pista estándar:** «Abra “Cómo leer esta pantalla y limitaciones”.»
+### E5 — Módulo predictivo
+**Consigna:** «Abra el módulo predictivo y vaya a la semana de la tarjeta (una semana de 2024 con
+actividad). En “¿Dónde?”, diga cuántos radios estaban priorizados y cuántos de ellos tuvieron
+registros. Después abra uno de esos radios y explique qué esperaba cada método y qué ocurrió.»
 
-### E8 — Interpretar el mapa «Actividad registrada»
-**Consigna:** «Abra “Actividad registrada”. Diga a qué período corresponden los datos, si
-reflejan la situación actual y qué significa una zona con trama “protegido”. Luego cambie al
-bloque anterior y diga cuántos radios tienen nivel “Alto”.»
+**Pasos esperados:** menú **Módulo predictivo** → flechas, año o línea de tiempo hasta la
+semana → lee las tarjetas de cifras o la lista «Radios priorizados esta semana» → abre un radio
+(mapa, selector o lista) → lee el panel del radio.
 
-**Éxito:**
-- lee el período del banner y responde que **no** reflejan la situación actual;
-- explica «protegido» como «menos de 5 registros u ocultado para impedir deducciones», no como
-  «sin casos»;
-- usa el selector de bloque;
-- da la cantidad de «Alto» usando la tabla o el mapa.
+**Qué observar:**
+- si encuentra la semana sin ayuda;
+- si entiende que es una **reconstrucción histórica 2021–2024**, no un pronóstico actual, y que
+  los modelos dicen «no promovido»;
+- si interpreta «Protegido por privacidad (no significa cero)»;
+- si abre «¿Qué tan bien funciona el modelo?» o «Cómo leer esta pantalla y limitaciones».
+- El observador comprueba que **Opciones avanzadas** dice «Modo de divulgación: protegido» y que
+  no existe el selector de valores exactos.
 
-Con la fixture se aclara antes de empezar que los datos son ficticios.
+**Criterio de aceptación:** lee las dos cifras igual que la pantalla (tolerancia 0), explica el
+panel del radio y menciona que es una reconstrucción histórica.
 
-**Error crítico:** que la persona crea que puede identificar a alguien o un domicilio y que el
-sistema no se lo impida. Registrar también cualquier confusión del período con la situación
-actual.
+**Error crítico:** que la pantalla muestre un valor entre 1 y 4 en un radio, o que presente los
+resultados como casos confirmados o situación actual sin aclararlo.
 
-**Pista estándar:** «Lea la franja amarilla del pie de pantalla.»
+**Pista estándar:** «El selector de semana está arriba; los radios priorizados, a la derecha del
+mapa.»
 
-### E9 — Crear una regla de alerta, evaluarla y decidir sobre una candidata
-**Consigna:** «Cree una regla llamada “Prueba P0X” que avise cuando un radio supere el umbral
-indicado en la tarjeta durante 2 semanas consecutivas. Evalúe la semana indicada. Si aparece una
-candidata, apruébela como aviso interno con un motivo; si aparece otra, descártela.»
+### E6 — Alertas internas
+**Consigna:** «Cree una regla llamada “Prueba aceptación” que avise cuando un radio tenga al
+menos el número de registros esperados de la tarjeta durante 2 semanas seguidas. Calcule cuántas
+veces se habría activado y guárdela. Evalúe la semana de la tarjeta y decida sobre una
+candidata: apruébela como aviso interno o descártela, con su motivo.»
 
-**Éxito:**
-- la regla se crea con los parámetros correctos;
-- la evaluación se ejecuta;
-- al menos una candidata queda aprobada o descartada, con motivo;
-- la decisión figura en «Decisiones» y en «Auditoría».
+**Pasos esperados:** menú **Alertas internas** → **Nueva regla** → «¿Cuántos?», umbral (≥ 5),
+2 semanas → **Calcular frecuencia histórica** → **Guardar regla** → pestaña **Pendientes** →
+**Evaluar semana** → decide sobre una candidata con comentario o motivo → pestaña **Historial**.
 
-La persona entiende que la aprobación **no** publica nada a la ciudadanía.
+**Qué observar:**
+- si entiende que la frecuencia es de la reconstrucción 2021–2024 y sirve para elegir el umbral;
+- si entiende que aprobar **no publica nada** a la ciudadanía (franja «Ningún algoritmo publica
+  alertas»);
+- si la evidencia muestra «protegido» para valores menores a 5;
+- si encuentra su decisión en el historial. Si la semana no genera candidatas, se registra y se
+  usa la semana de reserva de la tarjeta.
 
-**Error crítico:** si una candidata muestra valores menores que 5 sin proteger, o si la
-aprobación genera algo visible en el sitio público.
+**Criterio de aceptación:** regla guardada con los parámetros pedidos, semana evaluada y una
+decisión con motivo visible en el historial.
 
-**Pista estándar:** «En administración, “Alertas internas” → “Nueva regla”.»
+**Error crítico:** una candidata con valores menores a 5 sin proteger, o una aprobación que cambie
+algo del sitio público.
 
-### E10 — Exportar decisiones de alertas
-**Consigna:** «Exporte el registro de alertas en CSV y diga si el archivo contiene valores
-exactos menores a 5.»
+**Pista estándar:** «“Nueva regla” está arriba a la derecha; la evaluación, en la pestaña
+Pendientes.»
 
-**Éxito:** descarga el CSV con valores protegidos y responde que no contiene valores exactos
-menores a 5. El observador lo verifica.
+### E7 — Cuentas
+**Consigna:** «Cree una cuenta para una persona nueva del equipo con el correo de la tarjeta
+(`aceptacion-nueva@example.test`). Después desactívela como si esa persona dejara el equipo.»
 
-**Pista estándar:** «Busque el botón “Exportar CSV (valores protegidos)” en la sección de
-alertas internas.»
+**Pasos esperados:** menú **Cuentas** → **Crear cuenta** → correo y contraseña inicial de la
+tarjeta → confirma con **su** contraseña → la cuenta aparece «Activa» → **Desactivar** → confirma
+→ queda «Inactiva» y «Sin acciones».
+
+**Qué observar:**
+- si entiende por qué se pide la contraseña de quien autoriza;
+- si nota que la cuenta inactiva no se puede reactivar desde el panel (limitación conocida);
+- si la contraseña inicial queda en pantalla después de confirmar (no debería).
+
+**Criterio de aceptación:** cuenta creada y desactivada; la lista muestra su estado correcto.
+
+**Error crítico:** que alguna contraseña quede visible o guardada; desactivar la propia cuenta y
+perder el acceso sin aviso.
+
+**Pista estándar:** «“Crear cuenta” está arriba a la derecha; cada fila tiene sus acciones.»
+
+### E8 — Auditoría
+**Consigna:** «Busque en la auditoría quién desactivó la cuenta del escenario anterior y cuándo.
+Diga también si la auditoría muestra el texto del mensaje que se escribió en el reporte.»
+
+**Pasos esperados:** menú **Auditoría** → filtra por categoría «Cuentas» (o por fecha de hoy) →
+lee el evento de desactivación → filtra «Reportes» y abre el cambio del E3.
+
+**Qué observar:**
+- si usa los filtros y entiende la hora de Argentina;
+- si entiende que de un cambio se ve **qué campos** cambiaron, no su texto;
+- si pregunta por eventos que no están (inicios y cierres de sesión no se registran:
+  ver `docs/tecnica/limitaciones.md`).
+
+**Criterio de aceptación:** nombra el usuario y la hora de la desactivación y responde que el
+texto del mensaje **no** aparece.
+
+**Error crítico:** que la auditoría muestre una contraseña, una nota, un mensaje o una ubicación.
+
+**Pista estándar:** «Use el filtro de categoría de arriba.»
 
 ---
 
-## Material impreso por participante
+## Material impreso
 
-- Tarjetas E1–E10 con la consigna, y para E6 y E9 la semana o el umbral asignados.
-- Credenciales:
-  - `dev:demo` (E3–E5): las genera la terminal en cada sesión; el moderador las copia a mano
-    en un papel que se destruye al terminar;
-  - `dev:alerts` (E9–E10): cuenta creada previamente.
-- Cuestionario (`cuestionario-sus.md`).
+- Una tarjeta por escenario con la consigna. Datos que completa el equipo antes de imprimir:
+  - E2: correo de la cuenta de la sesión (la contraseña se entrega aparte, en papel que se
+    destruye al terminar);
+  - E5: semana de 2024 con actividad (y su año);
+  - E6: umbral (≥ 5), semana a evaluar y una semana de reserva;
+  - E7: correo `aceptacion-nueva@example.test` y una contraseña inicial inventada.
+- `formulario-observaciones.md` impreso (una copia para el observador).
+- Cuestionario SUS y de utilidad (`cuestionario-sus.md`), uno por referente.
+- Consentimiento (`protocolo.md`), uno por referente.

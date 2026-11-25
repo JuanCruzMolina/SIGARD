@@ -1,24 +1,19 @@
-# Preparación de la sesión de aceptación
+# Preparación de la sesión de aceptación (kit v1.0.0)
 
 Todos los comandos se ejecutan en PowerShell desde la raíz del repositorio.
 
 Reglas generales:
-- Docker Desktop permanece **apagado**.
-- No se usa el PostgreSQL de `127.0.0.1:5432`.
-- Los entornos `dev` y `dev:demo` comparten el puerto 5173: **nunca se ejecutan en paralelo**.
-  Se detiene uno con Ctrl+C antes de iniciar el siguiente. `dev:alerts` es un alias obsoleto de
-  `dev`.
-- `dev` levanta el visor predictivo y la Administración completa (8767) a la vez: B y D son la
-  misma sesión de `dev`; C es `dev` reiniciado con la fixture de actividad.
+- Docker Desktop permanece **apagado**. No se usa el PostgreSQL de `127.0.0.1:5432`.
+- **Un único entorno** para los ocho escenarios: `npm run dev` con la fixture ficticia de
+  «Actividad registrada». Desde F2 la API administrativa (8767) sirve el sitio público, las siete
+  secciones de Administración y el visor predictivo; `dev:demo` no se usa en esta sesión porque no
+  tiene visor, alertas ni auditoría.
 
-| Entorno | Tareas | Comando | Puertos |
+| Entorno | Escenarios | Comando | Puertos |
 |---|---|---|---|
-| A | E1–E5 | `npm.cmd --prefix frontend run dev:demo` | 5173 · 8766 (API demo ficticia, SQLite temporal) |
-| B | E6–E7 | `npm.cmd --prefix frontend run dev` | 5173 · 8767 (API administrativa; incluye el visor predictivo con sesión de administrador) |
-| C | E8 | `dev` iniciado con `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` | 5173 · 8767 |
-| D | E9–E10 | `npm.cmd --prefix frontend run dev` (la misma sesión que B) | 5173 · 8767 |
+| Único | E1–E8 | `dev` iniciado con `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` | 5173 (sitio) · 8767 (API administrativa) |
 
-Abrir siempre `http://127.0.0.1:5173/`, en una ventana privada nueva por participante.
+Abrir siempre `http://127.0.0.1:5173/`, en una ventana privada nueva.
 
 ## 1. Verificación previa (día anterior)
 
@@ -33,121 +28,93 @@ npm.cmd --prefix frontend run build
 npm.cmd --prefix frontend run test:security
 npm.cmd --prefix frontend run test:public-activity
 npm.cmd --prefix frontend run test:citizen
+npm.cmd --prefix frontend run test:admin
 .\backend\.venv\Scripts\python.exe -B backend/tests/publication_isolated.py --backend-regression
 # Sin autorización de publicación real (debe responder False), salvo que exista la autorización formal:
 Test-Path data\interim\official\public-activity-authorization.private.json
 # Puertos libres (no debe listar nada):
-Get-NetTCPConnection -LocalPort 5173,8000,8765,8766,8767 -State Listen -ErrorAction SilentlyContinue
+Get-NetTCPConnection -LocalPort 5173,5174,8766,8767 -State Listen -ErrorAction SilentlyContinue
 ```
 
-Con `dev` activo (entorno B) también se pueden correr las pruebas de navegador. Si Puppeteer no
-está en el proyecto, se indica su ruta con `$env:SIGARD_BROWSER_MODULE`:
-- `npm.cmd --prefix frontend run test:accounts:browser`
-- `npm.cmd --prefix frontend run test:public-activity:browser`
+Pruebas de navegador recomendadas (cada una levanta y cierra su propio entorno; con los puertos
+libres y **antes** de iniciar `dev`): `test:admin:browser`, `test:predictive:browser`,
+`test:alerts:layout:browser`, `test:reports:layout:browser`, `test:content:layout:browser`,
+`test:accounts:layout:browser` y `test:audit:layout:browser`. Guardar las salidas como anexos del
+acta en la carpeta privada `data/interim/official/aceptacion/<fecha>/`.
 
-Guardar las salidas como anexos del acta, en la carpeta privada
-`data/interim/official/aceptacion/<fecha>/`.
+## 2. Cuenta de administrador de la sesión
 
-## 2. Cuenta de administrador
+Cuenta persistente en el almacén privado de la Administración local
+(`data/interim/official/internal-alerts-v1/`). `dev` arranca aunque no exista y muestra este
+comando. Se crea **una vez**, en otra terminal y en forma interactiva (la contraseña no se
+muestra), sin reiniciar `dev`:
 
-- **Entorno A (`dev:demo`):** la cuenta se genera en cada arranque. Correo y contraseña aparecen
-  **una sola vez** en la terminal. El moderador los copia a mano en un papel para la persona
-  participante y lo destruye al terminar. No se fotografían ni se guardan, y la terminal no debe
-  quedar a la vista ni en grabaciones.
-- **Entornos B–D (`dev`):** cuenta persistente en el almacén privado de la Administración local.
-  `dev` arranca aunque no exista y muestra este comando en la terminal. Se crea **una vez**, en
-  otra terminal y en forma interactiva (la contraseña no se muestra), sin reiniciar `dev`:
-  ```powershell
-  .\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin
-  ```
-  Usar un correo de función (por ejemplo `aceptacion@example.test`) y una contraseña entregada
-  en papel. Nunca se escriben en el repositorio.
-
-## 3. Levantar cada entorno
-
-### Entorno A — prevención, reporte, administración y contenido preventivo
 ```powershell
-npm.cmd --prefix frontend run dev:demo
-```
-Esperar a la línea de «listo» y a las credenciales. Base SQLite temporal; Ctrl+C la elimina.
-
-### Entorno B — visor predictivo
-```powershell
-npm.cmd --prefix frontend run dev
-```
-Abrir `/admin/predictivo` (o **Administración → Módulo predictivo**) e ingresar con la cuenta
-de administrador de la sesión; `/mapa` es el mapa público y ya no muestra el visor. Comprobar
-que sin sesión la ruta muestra el formulario de ingreso y no el visor. En «Opciones avanzadas» debe leerse «Modo de divulgación: protegido» y no debe
-existir selector de valores exactos. Ese control sólo aparece si `dev` se inicia con
-`SIGARD_PRIVATE_VIEW=1`, y **nunca se usa en la sesión**: verificar que la variable no está
-definida (`$env:SIGARD_PRIVATE_VIEW` vacío). Tener lista la semana asignada para E6.
-
-### Entorno C — «Actividad registrada» con fixture ficticia
-Detener `dev` (Ctrl+C) y volver a iniciarlo con la opción explícita de fixture:
-```powershell
-$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'
-npm.cmd --prefix frontend run dev
-```
-- Aparece «Actividad registrada» en el menú. Comprobar el aviso «Datos ficticios de prueba».
-- Para cerrar: Ctrl+C y `Remove-Item Env:SIGARD_PUBLIC_ACTIVITY`, para que la variable no quede
-  activa en los entornos siguientes.
-- **Paquete real:** sólo con la autorización institucional formal. Entonces se omite
-  `SIGARD_PUBLIC_ACTIVITY` y la API valida autorización, manifiesto e informe. Sin autorización
-  responde 404 y la vista no aparece.
-
-### Entorno D — alertas internas
-```powershell
-npm.cmd --prefix frontend run dev
-```
-Es la misma sesión de `dev` del entorno B (sin la variable del entorno C). La precarga de
-predicciones tarda unos 25 s. Iniciar sesión en «Administración» con la cuenta
-del punto 2 y abrir «Alertas internas». Tener listos el umbral y la semana de E9.
-
-## 4. Orden sugerido por participante
-
-A (E1–E5 según el perfil) → B (E6–E7) → C (E8) → D (E9–E10) → cuestionario.
-
-Cada cambio de entorno lleva unos 30–60 s, que no se cuentan en los tiempos de tarea. Se pueden
-agrupar participantes por entorno para reducir los cambios.
-
-## 5. Restablecer entre participantes
-
-| Entorno | Acción |
-|---|---|
-| A | Ctrl+C (elimina la SQLite y la cuenta) y volver a iniciar `dev:demo`: base vacía y credenciales nuevas |
-| B | Sin estado propio: cerrar la ventana privada y abrir otra |
-| C | Sin estado: la fixture es fija. Cerrar la ventana privada |
-| D | Reglas, decisiones, reportes y contenido **persisten**. Para empezar en limpio: detener `dev`, renombrar el almacén privado con el código del participante y volver a crear la cuenta (comandos debajo) |
-
-Comandos del entorno D (no borra nada; conserva la evidencia de cada participante):
-```powershell
-Rename-Item data\interim\official\internal-alerts-v1 internal-alerts-v1-P01
 .\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin
 ```
-Alternativa más rápida: cada participante nombra su regla «Prueba P0X» y el observador filtra
-por ese nombre.
 
-En todos los casos: cerrar la ventana privada, comprobar que no quedó ninguna sesión
-administrativa abierta y destruir el papel con las credenciales de `dev:demo`.
+Usar un correo de función (por ejemplo `aceptacion@example.test`) y una contraseña que se entrega
+en papel a las referentes y se destruye al terminar. Nunca se escriben en el repositorio. Para E7
+se prepara además la contraseña inicial inventada de `aceptacion-nueva@example.test`.
+
+## 3. Levantar el entorno
+
+```powershell
+$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'
+Remove-Item Env:SIGARD_PRIVATE_VIEW -ErrorAction SilentlyContinue
+npm.cmd --prefix frontend run dev
+```
+
+Comprobar antes de que lleguen las referentes (unos 2 minutos):
+- La API precarga las predicciones durante unos 25 s; esperar a que la terminal lo indique.
+- En el menú público aparece «Actividad registrada», con el aviso «Datos ficticios de prueba».
+- `/admin/predictivo` sin sesión muestra el formulario de ingreso, no el visor.
+- Con sesión: **Inicio** muestra cifras (no «No disponible»); en el visor, **Opciones avanzadas**
+  dice «Modo de divulgación: protegido» y no hay selector de valores exactos.
+- Elegir y anotar en las tarjetas:
+  - E5: una semana de 2024 con actividad (con **Ir a la semana con más actividad** se encuentra);
+  - E6: umbral (≥ 5) y una semana a evaluar que genere al menos una candidata con la regla
+    pedida, más una semana de reserva. Probarlo con una regla de ensayo y desactivarla después
+    (las reglas no se borran).
+- Cerrar la sesión de prueba y abrir una ventana privada nueva para la sesión.
+
+**Paquete real de «Actividad registrada»:** sólo con la autorización institucional formal. En ese
+caso se omite `SIGARD_PUBLIC_ACTIVITY` y la API valida autorización, manifiesto e informe; sin
+autorización responde 404 y la vista no aparece.
+
+## 4. Desarrollo de la sesión
+
+Orden fijo E1 → E8 (varios escenarios usan lo creado en los anteriores), alternando quién maneja
+según `escenarios.md`. Tiempos y observaciones en `formulario-observaciones.md`. Al terminar los
+escenarios: preguntas abiertas y cuestionario (`cuestionario-sus.md`), uno por referente.
+
+## 5. Después de la sesión
+
+1. **Ctrl+C** en la terminal de `dev` y `Remove-Item Env:SIGARD_PUBLIC_ACTIVITY`.
+2. Conservar como evidencia lo creado en la sesión (reporte, edición publicada, regla, cuenta
+   desactivada, eventos de auditoría) renombrando el almacén con la fecha; **no se borra**:
+
+   ```powershell
+   Rename-Item data\interim\official\internal-alerts-v1 internal-alerts-v1-aceptacion-AAAAMMDD
+   ```
+
+   La próxima vez que se inicie `dev`, el almacén empieza vacío y hay que volver a crear la cuenta
+   (punto 2). El texto preventivo publicado en E4 queda sólo en el almacén renombrado.
+3. Destruir los papeles con credenciales.
+4. Correr de nuevo `check_repository_security.py` y `git status --short`.
 
 ## 6. Checklist del día
 
 - [ ] Commit anotado y árbol limpio (`git status --short` vacío).
 - [ ] Verificación previa aprobada y salidas guardadas en la carpeta privada.
-- [ ] Docker apagado; puertos 5173/8000/8765/8766/8767 libres antes de empezar.
+- [ ] Docker apagado; puertos 5173/5174/8766/8767 libres antes de empezar.
 - [ ] `$env:SIGARD_PRIVATE_VIEW` vacío: el visor sólo ofrece modo protegido.
-- [ ] Cuenta local de `dev` creada y probada (login en «Administración»).
-- [ ] `$env:SIGARD_PUBLIC_ACTIVITY` vacío salvo durante el entorno C.
+- [ ] `$env:SIGARD_PUBLIC_ACTIVITY = 'fixture'` definido sólo en la terminal de la sesión.
+- [ ] Cuenta de la sesión creada y probada; contraseña inicial de E7 preparada.
 - [ ] Sin archivo de autorización real (o, si existe, número y SHA anotados en el acta).
-- [ ] Tarjetas E1–E10 impresas con la semana y el umbral asignados.
-- [ ] Consentimientos impresos; cuestionarios impresos (`cuestionario-sus.md`).
+- [ ] Tarjetas E1–E8 impresas con cuenta, semana, umbral y correo asignados.
+- [ ] Consentimientos (2), cuestionarios (2) y `formulario-observaciones.md` impresos.
 - [ ] Copia privada de `planilla-resultados.csv` en `data/interim/official/aceptacion/<fecha>/`.
-  Una fila `tarea` por participante y tarea, y una fila `cuestionario` por participante.
-- [ ] Cronómetro, ventana privada del navegador y pantalla externa para la persona participante,
-  con la terminal fuera de su vista.
-- [ ] Grabación sólo con consentimiento, sin terminal ni credenciales.
-- [ ] Al terminar:
-  - detener todos los entornos (Ctrl+C);
-  - borrar `backend\.tmp\aceptacion-actividad`;
-  - destruir los papeles con credenciales;
-  - correr de nuevo `check_repository_security.py` y `git status --short`.
+- [ ] Cronómetro, ventana privada y pantalla externa para las referentes, con la terminal fuera de
+      su vista.
+- [ ] Grabación sólo con consentimiento de ambas, sin terminal ni credenciales.
