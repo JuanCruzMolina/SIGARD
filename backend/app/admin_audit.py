@@ -23,18 +23,24 @@ from datetime import date, datetime, time, timedelta, timezone
 import json
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from sqlalchemy import Column, DateTime, Integer, MetaData, String, Table, Text, func, insert, literal, select, union_all
+from sqlalchemy import Column, DateTime, Integer, MetaData, Table, Text, func, insert, inspect, literal, select, union_all
 from sqlalchemy.orm import Session
 
 from .alert_rules import DISCARD_REASONS
 from .database import get_db
 from .models import (AdminAccountAudit, CitizenReport, CitizenReportAudit, InternalAlertAudit, PreventionAudit,
                      PreventionSection, User)
-from .predictive_admin import AUTHORITY, ORIGIN, audit as viewer_audit, metadata as viewer_metadata
 from .schemas import ReportStatus
 from .security import get_current_admin
 
 PATH = "/api/v1/admin/audit"
+# Same local origin and authority as the viewer guard (app.predictive_admin, which only alerts_local may
+# import; a test checks both stay equal).
+ORIGIN = "http://127.0.0.1:5173"
+AUTHORITY = "127.0.0.1:8767"
+# Private viewer queries: table created by the viewer mount on the same local database; read by
+# reflection (never by importing the viewer). Without it the «visor» category is simply empty.
+VIEWER_AUDIT_TABLE = "predictive_view_audit"
 ARGENTINA = timezone(timedelta(hours=-3), "UTC-03:00 (Argentina)")
 PAGE_SIZE, MAX_PAGE_SIZE = 25, 100
 
@@ -89,7 +95,12 @@ def day_start(day: date) -> datetime:
     return datetime.combine(day, time.min, tzinfo=ARGENTINA).astimezone(timezone.utc)
 
 
-def sources():
+def viewer_table(db: Session):
+    engine = db.get_bind()
+    return Table(VIEWER_AUDIT_TABLE, MetaData(), autoload_with=engine) if inspect(engine).has_table(VIEWER_AUDIT_TABLE) else None
+
+
+def sources(viewer_audit):
     """One SELECT per category with the common columns (category, id, actor, action, time)."""
     view_audit_action = literal("private_query")
     return {
@@ -97,7 +108,7 @@ def sources():
         "reportes": (CitizenReportAudit.id, CitizenReportAudit.actor_user_id, CitizenReportAudit.action, CitizenReportAudit.created_at),
         "contenido": (PreventionAudit.id, PreventionAudit.actor_user_id, PreventionAudit.action, PreventionAudit.created_at),
         "alertas": (InternalAlertAudit.id, InternalAlertAudit.actor_user_id, InternalAlertAudit.action, InternalAlertAudit.created_at),
-        "visor": (viewer_audit.c.id, viewer_audit.c.actor_user_id, view_audit_action, viewer_audit.c.created_at),
+        **({"visor": (viewer_audit.c.id, viewer_audit.c.actor_user_id, view_audit_action, viewer_audit.c.created_at)} if viewer_audit is not None else {}),
         "auditoria": (view_log.c.id, view_log.c.actor_user_id, literal("audit_viewed"), view_log.c.created_at),
     }
 
@@ -111,7 +122,7 @@ def changed(before, after, fields):
     return [field for field in fields if field in before or field in after if before.get(field) != after.get(field)]
 
 
-def details(db: Session, rows):
+def details(db: Session, rows, viewer_audit):
     """target/summary per event, only from allowed fields."""
     by_category = {}
     for row in rows:
@@ -190,7 +201,7 @@ def details(db: Session, rows):
             result[("alertas", audit.id)] = ({key: value for key, value in target.items() if value is not None}, summary)
 
     ids = by_category.get("visor")
-    if ids:
+    if ids and viewer_audit is not None:
         for audit_id, route, period, radio in db.execute(select(viewer_audit.c.id, viewer_audit.c.route, viewer_audit.c.period,
                                                                 viewer_audit.c.radio).where(viewer_audit.c.id.in_(ids))):
             result[("visor", audit_id)] = ({"route": route, "period": period, **({"radio_id": radio} if radio else {})}, {})
@@ -242,10 +253,11 @@ def list_audit(
 
     start = day_start(date_from) if date_from else None
     end = day_start(date_to + timedelta(days=1)) if date_to else None  # date_to includes the whole day
-    columns = sources()
+    viewer_audit = viewer_table(db)
+    columns = sources(viewer_audit)
     selects = []
     for name in categories:
-        if action is not None and action not in ACTIONS[name]:
+        if name not in columns or (action is not None and action not in ACTIONS[name]):
             continue
         event_id, actor, act, created_at = columns[name]
         query = select(literal(name).label("category"), event_id.label("id"), actor.label("actor_user_id"),
@@ -265,7 +277,7 @@ def list_audit(
     total = db.scalar(select(func.count()).select_from(events)) or 0
     rows = db.execute(select(events).order_by(events.c.created_at.desc(), events.c.category, events.c.id.desc())
                       .limit(page_size).offset((page - 1) * page_size)).all()
-    extra = details(db, rows)
+    extra = details(db, rows, viewer_audit)
     actors = {user_id: email for user_id, email in db.execute(
         select(User.id, User.email).where(User.id.in_({row.actor_user_id for row in rows if row.actor_user_id is not None})))}
     items = []
@@ -280,7 +292,6 @@ def list_audit(
 
 
 def mount(app):
-    """Attach the read-only audit route and its local tables to the local administrative app."""
-    viewer_metadata.create_all(app.state.engine)  # private viewer queries (also created by the viewer mount)
+    """Attach the read-only audit route and its local table to the local administrative app."""
     metadata.create_all(app.state.engine)
     app.include_router(router)

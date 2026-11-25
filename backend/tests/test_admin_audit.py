@@ -18,11 +18,13 @@ import pytest
 from sqlalchemy import insert, select, text
 
 from app import main
+from app import admin_audit
 from app.admin_audit import PATH, mount, view_log
 from app.config import get_settings
 from app.database import Base
 from app.models import CitizenReport, InternalAlertAudit, User
-from app.predictive_admin import audit as viewer_audit
+from app import predictive_admin
+from app.predictive_admin import audit as viewer_audit, metadata as viewer_metadata
 from predictive_admin_support import ORIGIN, add_account, bearer, client
 
 # Windows: a child of a process without a console would open its own console window; then
@@ -58,6 +60,7 @@ def local_app(tmp_path, monkeypatch):
     monkeypatch.setattr(main, 'get_settings', lambda: settings)
     app = main.create_app(database_url=f"sqlite:///{(tmp_path / 'audit.db').as_posix()}", auto_create_schema=True)
     Base.metadata.create_all(app.state.engine)
+    viewer_metadata.create_all(app.state.engine)  # as the viewer mount does in alerts_local
     mount(app)
     admin = add_account(app)
     return app, {**LOCAL, **bearer(admin)}, admin
@@ -370,3 +373,24 @@ def test_only_the_local_api_mounts_the_audit():
     source = (BACKEND / 'app/alerts_local.py').read_text(encoding='utf-8')
     calls = [line for line in source.splitlines() if line.strip() == 'mount_audit(app)']
     assert 'from app.admin_audit import mount' in source and len(calls) == 2  # the two serve paths (persistent and session)
+
+
+def test_guard_constants_match_the_viewer_without_importing_it():
+    # Only alerts_local may import predictive_admin (F2); the audit keeps its own copy of the values.
+    assert (admin_audit.ORIGIN, admin_audit.AUTHORITY) == (predictive_admin.ORIGIN, predictive_admin.AUTHORITY)
+    assert admin_audit.VIEWER_AUDIT_TABLE == viewer_audit.name
+    # The import itself is covered by test_predictive_access.test_only_the_local_launcher_imports_the_viewer_mount.
+
+
+@pytest.mark.anyio
+async def test_without_the_viewer_table_the_visor_category_is_empty(tmp_path, monkeypatch):
+    settings = get_settings().model_copy(update={'cors_origins': ORIGIN})
+    monkeypatch.setattr(main, 'get_settings', lambda: settings)
+    app = main.create_app(database_url=f"sqlite:///{(tmp_path / 'sin-visor.db').as_posix()}", auto_create_schema=True)
+    Base.metadata.create_all(app.state.engine)
+    mount(app)
+    admin = add_account(app)
+    async with client(app) as c:
+        everything = await c.get(PATH, headers={**LOCAL, **bearer(admin)})
+        viewer = await c.get(PATH, headers={**LOCAL, **bearer(admin)}, params={'category': 'visor'})
+    assert everything.status_code == 200 and viewer.status_code == 200 and viewer.json()['total'] == 0
