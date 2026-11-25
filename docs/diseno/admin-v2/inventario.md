@@ -761,3 +761,29 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   `research/spatial` o los componentes borrados.
 - Las menciones en documentos históricos (`docs/mvp-functional-status.md`, `docs/technical-consolidation.md`,
   `docs/experimental-spatial-local.md`) quedan como registro de su etapa.
+
+## F7b · Cierre técnico y documentación
+
+Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7b`. Un commit por punto:
+código muerto (arriba), capturas de manuales, README, kit de aceptación v1.0.0,
+`docs/tecnica/limitaciones.md`, notas de versión `docs/versiones/v1.0.0.md`. La lista de limpieza
+de `data/interim/official/` se entregó en el chat (sólo lectura; no se borró nada).
+
+- **Capturas de manuales**: 16 reemplazadas y 2 nuevas (`admin-inicio.png`, `admin-auditoria.png`),
+  todas de corridas con fixtures ficticias (regresión `f7b-regresion` y corridas de las suites de
+  layout, alertas, ciudadanía y actividad con `SIGARD_DIAG_PHASE=f7b`); ninguna de corridas `--real`.
+- **Regresión F7b** (sin medición de rendimiento; sin `SIGARD_BROWSER_MODULE`). Todo en verde:
+  - **Rápidas** (repetidas sobre el HEAD final): lint, build (aviso de bloque > 500 kB),
+    `security:check`, `test:guard` 271/271, `test:dev` 29/29, suites Node 123/123
+    (`security/*.test.mjs` + `test:demo`).
+  - **Backend completo**: 399 pasan, 6 omitidas (PostGIS). Una primera corrida dio 398 + 7 porque
+    `test_local_launcher_process_serves_the_viewer_behind_login` se omite si 8767 está ocupado (corría
+    en paralelo con las suites de navegador); repetida con los puertos libres.
+  - **Auditoría de seguridad**: 197 comprobaciones, 708 archivos versionados, 0 candidatos sensibles;
+    `git diff --check` limpio.
+  - **Navegador** (en serie): `test:predictive:browser` ficticio (159 pedidos de teselas revisados,
+    0 errores) y `--real` (147, 0 errores); `test:predictive:layout:browser` 9 comprobaciones;
+    `test:admin:browser` 11; `test:admin:home:browser` 5; `test:demo:browser` 11, con cierre por
+    Ctrl+C (SQLite y escuchas propias eliminadas). Además, para las capturas: layout de alertas,
+    reportes, contenido, cuentas y auditoría, `test:alerts:browser`, `test:citizen:browser` y
+    `test:public-activity:browser` (11), todas con código 0.
