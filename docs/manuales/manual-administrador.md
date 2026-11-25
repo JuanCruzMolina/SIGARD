@@ -1,10 +1,11 @@
 # Manual del administrador
 
 SIGARD · Vigilancia territorial del dengue · La Rioja Capital
-Versión del prototipo: `v0.9.1-aceptacion` (noviembre de 2026)
+Versión del prototipo: `v1.0.0` (noviembre de 2026)
 
 > Todas las imágenes se tomaron con **datos ficticios** (cuentas `@example.test`, radios y
-> reportes de prueba) y, en el visor, en **modo protegido**. No muestran datos reales.
+> reportes de prueba) y, en el visor, en **modo protegido**. No muestran datos reales. Se
+> regeneraron en F7b (25/11/2026) con las pantallas del diseño v2 de Administración.
 
 Este manual es para el personal autorizado que usa el área **Administración**. Para instalar y
 levantar el sistema, ver el [manual de instalación](manual-instalacion.md).
@@ -43,6 +44,8 @@ concreta (por ejemplo `/admin/reportes` o un enlace del visor), después del ing
 
 ### Inicio
 
+![Inicio con pendientes y estado del sistema (datos ficticios)](img/admin-inicio.png)
+
 **Inicio** (`/admin/inicio`) resume lo que requiere una decisión y el estado del sistema. Lleva la
 etiqueta «Prototipo experimental — reconstrucción histórica, no uso operativo».
 
@@ -59,8 +62,6 @@ etiqueta «Prototipo experimental — reconstrucción histórica, no uso operati
   Contenido) y **Revisar**. Muestra los 10 más antiguos; el resto está en cada sección.
 - **Accesos rápidos**: visor en la última semana evaluable, reglas de alerta, exportación de
   reportes y nueva sección preventiva (llevan a la sección correspondiente).
-
-**Auditoría** todavía no tiene pantalla propia y muestra «Próximamente».
 
 ## 2. Cuentas administrativas
 
@@ -329,6 +330,8 @@ su fecha. La pestaña **Cómo funciona** resume el circuito para quien lo usa po
   estado «publicada», y el intento de publicar se rechaza y queda auditado.
 
 ## 7. Auditoría
+
+![Registro de auditoría con eventos ficticios](img/admin-auditoria.png)
 
 En **Auditoría** (`/admin/auditoria`) se consulta, sólo para leer, quién hizo qué y cuándo:
 

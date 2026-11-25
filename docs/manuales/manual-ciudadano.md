@@ -1,10 +1,11 @@
 # Manual de uso para la ciudadanía
 
 SIGARD · Vigilancia territorial del dengue · La Rioja Capital
-Versión del prototipo: `v0.9.1-aceptacion` (noviembre de 2026)
+Versión del prototipo: `v1.0.0` (noviembre de 2026)
 
 > Las imágenes de este manual se tomaron con **datos ficticios de prueba**. No muestran casos
-> reales ni la situación sanitaria de la ciudad.
+> reales ni la situación sanitaria de la ciudad. Se actualizaron el 25/11/2026 con las pantallas
+> vigentes.
 
 ## 1. ¿Qué es SIGARD?
 
@@ -106,6 +107,8 @@ del reporte.
 ## 6. Actividad registrada (datos históricos)
 
 ![Vista «Actividad registrada» con datos ficticios](img/ciudadano-actividad.png)
+
+![La misma vista en el celular (datos ficticios)](img/ciudadano-actividad-movil.png)
 
 Esta sección muestra **cuánta actividad de dengue se registró en años anteriores**, por radio
 censal. Un radio censal es una zona pequeña de la ciudad que usa el censo. Sólo aparece en el
