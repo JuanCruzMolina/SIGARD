@@ -3,8 +3,8 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, readdir, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { newRunDirectory, runLabel } from './private-output.mjs'
+import { join, resolve, sep } from 'node:path'
+import { DIAG_ROOT, newRunDirectory, outputBase, runLabel } from './private-output.mjs'
 
 test('labels: explicit or timestamped, lowercase digits and hyphens only', () => {
   assert.equal(runLabel('f4-regresion'), 'f4-regresion')
@@ -34,4 +34,12 @@ test('every harness writing below data/interim/official uses a new run folder an
   const performance = await readFile(new URL('./performance.browser.mjs', import.meta.url), 'utf8')
   assert.match(performance, /emptyOutDir: false/)
   assert.doesNotMatch(performance, /results-\$\{label\}/, 'results go inside the run folder')
+})
+
+test('SIGARD_DIAG_PHASE sends trial runs to frontend/.tmp/diag/<phase>/, never below data/', () => {
+  const base = resolve('C:/x/data/interim/official/ux-admin-v2-f6-5')
+  assert.equal(outputBase(base, undefined), base, 'without a phase: the evidence folder')
+  assert.equal(outputBase(base, 'f6-5'), resolve(DIAG_ROOT, 'f6-5', 'ux-admin-v2-f6-5'))
+  assert.ok(!outputBase(base, 'f6-5').includes(`${sep}data${sep}`))
+  assert.throws(() => outputBase(base, '../fuera'), /Fase de diagnóstico inválida/)
 })
