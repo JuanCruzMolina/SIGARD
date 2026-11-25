@@ -49,25 +49,86 @@ Detalle, evidencia, defectos y pendientes: [verificación final](docs/verificaci
 - tarea programada de retención en un despliegue institucional;
 - 6 pruebas PostGIS que exigen Docker (no se inicia por regla del proyecto).
 
-## Inicio rápido (Windows, desde la raíz)
+## Instalación (Windows, desde la raíz)
+
+Requisitos: Git, Node.js 24 (probado con 24.15.0) y Python 3.12. No hace falta Docker ni
+PostgreSQL para el sitio ni para la demostración.
 
 ```powershell
+# 1. Frontend (instala también Puppeteer 25.9.0, sólo para las pruebas de navegador)
 npm.cmd --prefix frontend ci
+
+# 2. Backend con las versiones exactas con las que se probó (recomendado)
 python -m venv backend/.venv
-.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.research.txt
-npm.cmd --prefix frontend run dev:demo      # demostración ficticia completa → http://127.0.0.1:5173/
+.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.lock.txt
+.\backend\.venv\Scripts\python.exe -m pip check
 ```
 
-| Comando | Para qué | Requiere datos privados |
-|---|---|---|
-| `npm.cmd --prefix frontend run dev:demo` | Sitio completo con API ficticia y SQLite temporal | No |
-| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: Administración completa (8767: login, reportes, contenido, cuentas, alertas y visor predictivo con sesión de administrador) con SQLite privado persistente | Sí |
-| `npm.cmd --prefix frontend run dev:alerts` | **Obsoleto**: alias de `dev` | Sí |
+- **Lock del backend.** `backend/requirements.lock.txt` fija cada paquete (incluidas las
+  dependencias indirectas) del entorno probado en CPython 3.12 / Windows x64. En otro sistema
+  operativo, instalar `backend/requirements.research.txt` (rangos de versiones) y comparar.
+- **Puppeteer.** `npm ci` descarga Chrome for Testing 152 en `%USERPROFILE%\.cache\puppeteer\`
+  (≈700 MB, fuera del repositorio). Sin conexión o detrás de un proxy:
+  `$env:PUPPETEER_SKIP_DOWNLOAD='true'` antes de `npm ci` y después
+  `node frontend/node_modules/puppeteer/lib/puppeteer/node/cli.js browsers install chrome`.
+  No llega al sitio publicado.
 
-`dev` arranca aunque todavía no exista la cuenta de administrador local y muestra en la terminal el
-comando para crearla. `dev` y `dev:demo` usan el puerto 5173: **no se ejecutan en paralelo**. La instalación completa, la
-configuración, la base de investigación, la carga de datos, los paquetes y las pruebas están en
-el [manual de instalación](docs/manuales/manual-instalacion.md).
+Detalle (configuración, base de investigación, carga de datos, paquetes offline y pruebas):
+[manual de instalación](docs/manuales/manual-instalacion.md).
+
+## Levantar todo
+
+```powershell
+npm.cmd --prefix frontend run dev        # entorno de trabajo → http://127.0.0.1:5173/
+npm.cmd --prefix frontend run dev:demo   # demostración ficticia descartable → http://127.0.0.1:5173/
+```
+
+| Comando | Qué levanta | Requiere datos privados |
+|---|---|---|
+| `run dev` | Vite + la API administrativa local: sitio público, Administración completa con SQLite privado persistente y visor predictivo con sesión de administrador | Sí, para el visor (paquetes offline instalados). Sin ellos arranca igual y el visor responde 503 |
+| `run dev:demo` | Vite + API ficticia con SQLite temporal y una cuenta generada por sesión (se muestra una vez en la terminal). **Ctrl+C** borra todo | No |
+| `run dev:alerts` | **Obsoleto**: alias de `dev` | Sí |
+
+`dev` y `dev:demo` comparten el puerto 5173: **no se ejecutan a la vez**. **Ctrl+C** cierra sólo
+los procesos que inició el comando; si un puerto está ocupado, el inicio se detiene con un mensaje
+(no se detienen procesos ajenos).
+
+### Puertos
+
+| Puerto (sólo `127.0.0.1`) | Qué atiende | Quién lo usa |
+|---|---|---|
+| 5173 | Sitio React/Vite | `dev`, `dev:demo` y las pruebas de navegador |
+| 8767 | API administrativa local (`backend/app/alerts_local.py serve`): login, reportes, contenido, cuentas, alertas, auditoría, visor predictivo y rutas públicas | `dev` |
+| 8766 | API ficticia de la demostración (SQLite temporal) | `dev:demo` y algunas pruebas |
+| 5174 | Vite propio de las pruebas de reportes, cuentas y ciudadanía | Pruebas de navegador |
+| 8000 | API pública FastAPI (`VITE_API_URL` en `frontend/.env`) | Modo habitual / producción; no la inicia `dev` |
+| 55439 | Base de investigación PostgreSQL/PostGIS (WSL, manual) | Preparación de datos y ML; nunca el navegador |
+
+El puerto 8765 (antiguo lector A/B sin autenticación) no se usa desde F2.
+
+## Entrar a Administración
+
+1. Con `dev` en marcha, crear **una sola vez** la cuenta local, en otra terminal (la contraseña se
+   pide sin mostrarla; puede hacerse con `dev` funcionando):
+   `.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin`.
+   En `dev:demo` no hace falta: usar el correo y la contraseña que muestra la terminal, sin
+   guardarlos.
+2. Abrir `http://127.0.0.1:5173/admin` (o **Administración** en el menú superior) e ingresar.
+3. La sesión dura 60 minutos; **Cerrar sesión** está en la barra superior.
+
+El menú lateral tiene siete secciones:
+
+| Sección | Ruta | Qué muestra |
+|---|---|---|
+| **Inicio** | `/admin/inicio` | Lo que requiere una decisión (alertas pendientes, reportes «Recibido», contenido sin publicar), estado del sistema, los 10 pendientes más antiguos y accesos rápidos |
+| **Módulo predictivo** | `/admin/predictivo` | Reconstrucción 2021–2024 por radio censal y semana: ¿Dónde? (top-10) y ¿Cuántos?, modelo ML no promovido frente al método de referencia, panel por radio y desempeño por año. Siempre en modo protegido (< 5 oculto). Sólo con `dev` |
+| **Alertas internas** | `/admin/alertas` | Reglas con su frecuencia histórica, evaluación manual de una semana, candidatas para aprobar o descartar con motivo, e historial. Nada se publica a la ciudadanía |
+| **Reportes ciudadanos** | `/admin/reportes` | Bandeja de reportes anónimos con filtros, detalle protegido (ubicación exacta), cambio de estado, mensaje público, nota interna y exportación CSV |
+| **Contenido preventivo** | `/admin/contenido` | Editor de las secciones de «Prevención y ayuda» con vista previa, borrador, publicación con versión, despublicación e historial |
+| **Cuentas** | `/admin/cuentas` | Alta, rotación de contraseña y desactivación de cuentas, siempre con la contraseña de quien autoriza; la última cuenta activa no se puede desactivar |
+| **Auditoría** | `/admin/auditoria` | Registro de sólo lectura de quién hizo qué y cuándo, con filtros en la dirección; nunca muestra contraseñas, textos ni valores del visor. Sólo con `dev` |
+
+Uso detallado: [manual del administrador](docs/manuales/manual-administrador.md).
 
 ## Documentación
 

@@ -138,7 +138,7 @@ wsl.exe -d Ubuntu -u root -- bash /mnt/c/RUTA/AL/REPO/backend/database/epidemiol
 | Comando | Qué levanta | Puertos | Requisitos |
 |---|---|---|---|
 | `npm.cmd --prefix frontend run dev:demo` | Sitio completo con API **ficticia**, SQLite temporal y cuenta generada | 5173 · 8766 | Ninguno privado |
-| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: sitio con el **visor predictivo** en Administración (`/admin/predictivo`; API de investigación de sólo lectura) y la **Administración completa** (login, reportes, contenido preventivo, cuentas y alertas internas) con SQLite privado persistente | 5173 · 8765 · 8767 | Paquetes privados instalados (§8); para ingresar a Administración, una cuenta local (§6) |
+| `npm.cmd --prefix frontend run dev` | Entorno de trabajo: sitio con el **visor predictivo** en Administración (`/admin/predictivo`, con sesión de administrador) y la **Administración completa** (login, reportes, contenido preventivo, cuentas, alertas internas y auditoría) con SQLite privado persistente, todo en la API administrativa 8767 | 5173 · 8767 | Paquetes privados instalados (§8); para ingresar a Administración, una cuenta local (§6) |
 | `npm.cmd --prefix frontend run dev:alerts` | **Obsoleto**: alias de `dev` (avisa al iniciar) | Igual que `dev` | Igual que `dev` |
 
 - Abrir siempre `http://127.0.0.1:5173/`.
@@ -147,7 +147,7 @@ wsl.exe -d Ubuntu -u root -- bash /mnt/c/RUTA/AL/REPO/backend/database/epidemiol
 - Antes de cambiar de entorno, detener el anterior. Para comprobar que los puertos estén libres:
 
   ```powershell
-  Get-NetTCPConnection -LocalPort 5173,8000,8765,8766,8767 -State Listen -ErrorAction SilentlyContinue
+  Get-NetTCPConnection -LocalPort 5173,5174,8000,8766,8767 -State Listen -ErrorAction SilentlyContinue
   ```
 
 - El visor arranca siempre en **modo protegido**. El selector de valores exactos sólo existe si

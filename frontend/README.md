@@ -1,324 +1,173 @@
-# Frontend de SIGARD v1.0 académica
+# Frontend de SIGARD
 
-Cierre funcional para tesis: `npm.cmd run dev:demo` inicia una demostración
-ficticia integral con SQLite descartable; `npm.cmd run dev` conserva el entorno
-privado del módulo predictivo final. Abrir `http://127.0.0.1:5173/`. **Ctrl+C** elimina la base temporal
-de demo. No habilita operación sanitaria ni promueve ML frente a persistencia.
-Ver [cierre, matriz de requisitos y aceptación](../docs/cierre-funcional-tesis.md).
-Para otro equipo, seguir la [instalación de la demo desde un clon](../docs/publication-and-demo.md).
+SPA React 19 + Vite 8 + Leaflet. Se despliega en Vercel como sitio estático; la API FastAPI y las
+bases de datos se ejecutan aparte. En el equipo local, `npm run dev` agrega la API administrativa
+con el visor predictivo.
 
-SPA React/Vite con dos dominios visuales explícitamente separados:
+Visión general, criterios y documentación: [README del repositorio](../README.md).
 
-- vigilancia epidemiológica experimental: `/`, `/mapa`, `/validacion` y
-  `/metodologia`;
-- prevención y servicios ciudadanos: `/prevencion`;
-- operación privada de reportes: `/admin/reportes`.
+## Rutas
 
-Las vistas epidemiológicas consultan la API pública configurada mediante
-`VITE_API_URL`. Durante la Iteración 11 conservan los contratos de
-`public/data/` como respaldo local explícito cuando la API no está disponible.
-El pie de la aplicación identifica cuál de las dos fuentes técnicas se utilizó.
+| Ruta | Para quién | Qué es |
+|---|---|---|
+| `/` | Público | Situación actual (dashboard epidemiológico agregado, con su fuente técnica en el pie) |
+| `/mapa` | Público | Mapa público agregado por radio censal. Siempre es el mapa público; un enlace viejo `/mapa?…` con estado del visor redirige a `/admin/predictivo?…` sólo con sesión de administrador |
+| `/actividad` | Público | «Actividad registrada» con supresión de valores pequeños. Oculta salvo con un paquete autorizado o la fixture ficticia (`SIGARD_PUBLIC_ACTIVITY=fixture`) |
+| `/prevencion` | Público | Prevención y ayuda: contenido publicado desde Administración, centros de salud, teléfonos, reporte ciudadano anónimo y seguimiento por código |
+| `/validacion`, `/metodologia` | Público | Validación temporal y explicación del método |
+| `/admin/*` | Administradores | Siete secciones con menú lateral y barra de sesión (ver abajo) |
 
-## Desarrollo
+Las vistas epidemiológicas consultan la API pública de `VITE_API_URL` y, si no responde, usan el
+respaldo estático aprobado de `public/data/`; el pie indica cuál se usó.
 
-Desde la raíz del repositorio, instalar las dependencias del frontend una vez:
+## Instalación
+
+Desde la raíz del repositorio:
 
 ```powershell
 npm.cmd --prefix frontend ci
-```
-
-Se utiliza el entorno Python existente en `backend/.venv`, con las dependencias
-de `backend/requirements.research.txt`. Si todavía no existe:
-
-```powershell
 python -m venv backend/.venv
-.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.research.txt
+.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.lock.txt
 ```
 
-Iniciar ambos servicios con un solo comando desde la raíz:
+- `npm ci` instala también **Puppeteer 25.9.0** (versión exacta, sólo desarrollo) y descarga
+  Chrome for Testing 152 en `%USERPROFILE%\.cache\puppeteer\` (≈700 MB, fuera del repositorio).
+  Sin conexión: `$env:PUPPETEER_SKIP_DOWNLOAD='true'` y luego
+  `node frontend/node_modules/puppeteer/lib/puppeteer/node/cli.js browsers install chrome`.
+  `SIGARD_BROWSER_MODULE` permite usar otra instalación de Puppeteer.
+- `backend/requirements.lock.txt` fija el entorno Python probado (CPython 3.12, Windows x64). En otro
+  sistema operativo, usar `backend/requirements.research.txt`.
+- `frontend/.env` (copia de `.env.example`) sólo hace falta para el modo habitual o producción:
+  `VITE_API_URL` apunta a la API pública (por defecto `http://localhost:8000`). Se incorpora al
+  build y es público: nunca debe contener secretos.
+
+## Levantar el sistema
 
 ```powershell
-npm.cmd --prefix frontend run dev
+npm.cmd --prefix frontend run dev        # entorno de trabajo
+npm.cmd --prefix frontend run dev:demo   # demostración ficticia descartable
 ```
 
-Desde `frontend/` también se puede ejecutar `npm.cmd run dev`.
-El coordinador `scripts/dev.mjs` inicia la API administrativa local
-(`backend/app/alerts_local.py serve`) en **127.0.0.1:8767** y la configuración existente
-de Vite para servir React en **127.0.0.1:5173**. Desde F2 esa misma API sirve el
-**Módulo predictivo experimental** (`/api/v1/research/predictive/*`) sólo a un
-administrador autenticado. Desde F3 el visor está en Administración:
-**http://127.0.0.1:5173/admin/predictivo** (en desarrollo local autorizado `/` redirige ahí;
-también se llega con **Módulo predictivo** en la bandeja de `/admin/reportes`). Sin sesión,
-o con la sesión vencida (60 min) o revocada, la ruta muestra el ingreso de Administración y,
-al ingresar, abre el visor en la misma URL (`anio`, `se`, `vista`, `metodo`, `capa`, `radio`,
-`modelo`). `/mapa` es siempre el mapa público; un enlace viejo `/mapa?…` con estado del visor
-redirige a `/admin/predictivo?…` si hay sesión de administrador y, si no, muestra el mapa
-público con el enlace «El módulo predictivo está en Administración».
-Ya no existe una API predictiva separada en 8765.
-Presencia, cantidad y evaluación histórica reutilizan un solo panel, con
-presentación protegida predeterminada y consulta privada exacta explícita.
-**Situación actual** abre el dashboard de demostración en `/dashboard`.
-En producción, `/` conserva el dashboard, `/mapa` es el mapa público y `/admin/predictivo`
-sólo indica que el visor existe únicamente en el entorno local.
-No requiere Docker ni PostgreSQL.
+Abrir siempre **http://127.0.0.1:5173/**. Desde `frontend/` también vale `npm run dev`.
 
-**Ctrl+C** cierra Vite y únicamente el árbol de procesos Python iniciado por el
-coordinador. La ocupación de 5173 u 8767 bloquea el inicio con un mensaje; no se
-detienen procesos ajenos ni se cambia de puerto. No se admiten argumentos para cambiar host/puerto.
+| Puerto (`127.0.0.1`) | Servicio | Comando |
+|---|---|---|
+| 5173 | Vite (este frontend) | `dev`, `dev:demo` |
+| 8767 | API administrativa local (`backend/app/alerts_local.py serve`): sesión, reportes, contenido, cuentas, alertas, auditoría, visor predictivo (`/api/v1/research/predictive/*`) y rutas públicas | `dev` |
+| 8766 | API ficticia de la demo con SQLite temporal | `dev:demo` |
+| 5174 | Vite propio de algunas pruebas de navegador | pruebas |
 
-El paquete histórico final y su registro privado deben existir y superar las
-validaciones al iniciar; no se crean ni reparan automáticamente. Si no pueden
-verificarse, la API administrativa arranca igual, la terminal lo avisa y el visor
-responde 503. Si falta el entorno o una dependencia, el inicio falla y muestra el motivo.
-Este comando sólo coordina desarrollo: build, preview y producción conservan
-su comportamiento. Ver [arquitectura y cierre del módulo final](../docs/predictive-module-final.md).
+- `scripts/dev.mjs` coordina Vite y la API 8767. Si 5173 u 8767 están ocupados, no arranca y lo
+  dice; no detiene procesos ajenos ni cambia de puerto. **Ctrl+C** cierra sólo lo que inició.
+- La Administración local guarda reportes, contenido, cuentas y alertas en un SQLite privado
+  persistente (`data/interim/official/internal-alerts-v1/`, ignorado por Git).
+- El visor necesita el paquete histórico final y su registro privado. Si faltan o no pasan la
+  verificación SHA-256, la API arranca igual, la terminal lo avisa y el visor responde 503. Si
+  existe la historia anual precalculada (`data/interim/official/predictive-history-v1/`), se sirve
+  sin recalcular. Ver [módulo predictivo](../docs/predictive-module-final.md).
+- `dev` y `dev:demo` comparten 5173: no se ejecutan a la vez. `dev:alerts` es un alias obsoleto de
+  `dev`. El puerto 8765 (lector A/B sin autenticación) no existe desde F2.
 
-Si existe el paquete privado de historia anual precalculada
-(`data/interim/official/predictive-history-v1/`, ver «Historia anual precalculada» en el mismo
-documento), la API lo instala y sirve la serie anual sin recalcularla.
+### Entrar a Administración
 
-Medición de rendimiento (criterio c, p95 < 5 s): `npm.cmd --prefix frontend run test:performance`
-mide sobre el servidor de desarrollo; `-- --target production` repite las mismas operaciones con
-`vite build` + `vite preview` (bundles de medición en la carpeta privada, nunca en `dist`). Desde F2
-el visor se mide en la fase de la API administrativa (sesión generada); `-- --label NOMBRE` escribe
-`results-NOMBRE.json` sin tocar resultados anteriores y `-- --after-warm` espera la precarga de
-alertas. Resultados en [verificación final](../docs/verificacion-final.md) §3 y, para F2, en
-[módulo predictivo](../docs/predictive-module-final.md) («Decisión F2»).
+1. Con `dev`, crear una vez la cuenta local, en otra terminal (puede ser con `dev` en marcha):
+   `.\backend\.venv\Scripts\python.exe -B backend/app/alerts_local.py create-admin`.
+   `dev` arranca sin cuenta y muestra ese comando. En `dev:demo` la cuenta se genera en cada inicio
+   y se muestra una sola vez en la terminal: copiarla al login sin guardarla.
+2. Abrir **Administración** (`/admin`) e ingresar. La sesión dura 60 minutos.
 
-### Demostración integral descartable
+| Sección | Ruta | Contenido |
+|---|---|---|
+| Inicio | `/admin/inicio` | Pendientes que requieren decisión, estado del sistema, 10 pendientes más antiguos, accesos rápidos |
+| Módulo predictivo | `/admin/predictivo` | Reconstrucción 2021–2024: ¿Dónde? (top-10) y ¿Cuántos?, ML no promovido frente a referencia, panel por radio, desempeño por año; modo protegido (< 5 oculto). Sólo en `dev` |
+| Alertas internas | `/admin/alertas` | Reglas con frecuencia histórica, evaluación manual, candidatas para aprobar o descartar, historial. Sin publicación ciudadana |
+| Reportes ciudadanos | `/admin/reportes` | Bandeja con filtros, detalle protegido, estado, mensaje público, nota interna, CSV |
+| Contenido preventivo | `/admin/contenido` | Borrador con vista previa, publicación versionada, despublicación, historial |
+| Cuentas | `/admin/cuentas` | Alta, rotación de contraseña, desactivación (sin reactivación; la última activa está protegida) |
+| Auditoría | `/admin/auditoria` | Registro de sólo lectura con filtros en la URL; sin contraseñas, textos ni valores del visor. Sólo en `dev` |
 
-Desde `frontend/`:
+En producción (build estático) y en la demo, el visor y la auditoría indican que sólo existen en
+el entorno local. Uso detallado: [manual del administrador](../docs/manuales/manual-administrador.md).
+
+### Modo privado del visor
+
+El visor muestra siempre el modo protegido. El selector de valores exactos sólo existe si `dev` se
+inicia con `$env:SIGARD_PRIVATE_VIEW='1'`; el build de producción nunca lo incluye y la API aplica
+su propia protección. No se usa en demostraciones.
+
+## Demostración integral descartable (`dev:demo`)
+
+Coordina Vite 5173 y FastAPI 8766 (`backend/app/demo_local.py`) con SQLite temporal en
+`backend/.tmp/sigard-demo-*/`. Arranca con Python aislado: no lee `.env`, secretos ni
+`DATABASE_URL`, y no conecta a PostgreSQL. Comprueba puertos y no reutiliza 8766.
+
+- La franja **Demo integral** enlaza al reporte y al seguimiento en `/prevencion` y a
+  `/admin/reportes`. Todo es ficticio: no se cargan resultados privados ni el visor predictivo.
+- Sin geocodificación ni geolocalización (el servidor bloquea el geocodificador); el punto se
+  elige a mano con clic o con Tab/flechas/Enter. Sin teselas remotas: polígonos, marcadores y
+  selector funcionan sin Internet.
+- **Ctrl+C** cierra los procesos, espera el cierre de SQLite y borra su directorio. Una caída o un
+  cierre forzado pueden dejar un directorio temporal ignorado, que nunca se reutiliza.
+
+## Pruebas
+
+Con los puertos libres (no correr dos suites de navegador ni una demo a la vez):
 
 ```powershell
-npm run dev:demo
+# Rápidas
+npm.cmd --prefix frontend run lint
+npm.cmd --prefix frontend run build
+npm.cmd --prefix frontend run security:check
+npm.cmd --prefix frontend run test:guard
+npm.cmd --prefix frontend run test:dev
+# Suites Node (sin navegador)
+npm.cmd --prefix frontend run test:security        # y test:research, test:backtest, test:public-map,
+                                                  # test:public-activity, test:citizen, test:prevention,
+                                                  # test:alerts, test:read-retry, test:admin, test:demo
+# Navegador (Puppeteer, sin ventanas; cada una levanta y cierra su propio entorno)
+npm.cmd --prefix frontend run test:predictive:browser          # visor con fixture ficticia ( -- --real: agregados locales)
+npm.cmd --prefix frontend run test:predictive:layout:browser
+npm.cmd --prefix frontend run test:admin:browser               # y test:admin:home:browser
+npm.cmd --prefix frontend run test:demo:browser                # demo completa con cierre
 ```
 
-Desde la raíz: `npm.cmd --prefix frontend run dev:demo`. Requiere las mismas
-dependencias del inicio habitual; no instala otras ni modifica producción.
-Coordina Vite **127.0.0.1:5173** y FastAPI ciudadana/administrativa en
-**127.0.0.1:8766**, con SQLite temporal propia. Comprueba requisitos y puertos;
-no reutiliza 8766 ni detiene servicios desconocidos. **No inicia ni consulta A/B**.
-`npm run dev` sirve el módulo predictivo privado de lectura en 8767, con sesión de administrador.
+Las suites `*-layout` de cada sección (`test:alerts:layout:browser`, `test:reports:layout:browser`,
+`test:content:layout:browser`, `test:accounts:layout:browser`, `test:audit:layout:browser`) y las de
+recorrido (`test:alerts:browser`, `test:citizen:browser`, `test:prevention:browser`) usan SQLite
+descartable y datos ficticios. `test:public-activity:browser` necesita `dev` en marcha.
+`test:performance` mide el criterio de respuesta (p95 < 5 s) en desarrollo o, con
+`-- --target production`, sobre `vite build` + `vite preview`.
 
-Abrir **http://127.0.0.1:5173/**. La franja **Demo integral** enlaza al reporte y
-seguimiento en `/prevencion` y a `/admin/reportes`. El usuario y la contraseña
-de administrador se generan nuevamente por sesión y se muestran una sola vez
-en la terminal local. Copiarlos al login sin guardarlos, fotografiarlos ni
-incluirlos en grabaciones/informes. No hay contraseña predeterminada ni acceso
-sin autenticación; se mantienen permisos, revocación y límites existentes.
+Las capturas van a carpetas privadas ignoradas por Git, una nueva por corrida
+(`SIGARD_SHOTS_LABEL`); con `SIGARD_DIAG_PHASE=<fase>` van a `frontend/.tmp/diag/<fase>/`.
 
-El proceso `app/demo_local.py` reutiliza `app.main`, modelos y contratos de la
-fixture SQLite existente; no crea otro circuito de reportes. Arranca con Python
-aislado, configuración sólo por parámetros internos, sin leer `.env`, secretos
-guardados o `DATABASE_URL` heredada. Un guard rechaza otros drivers/archivos antes
-de crear el engine y otro impide conexiones SQLAlchemy ajenas al SQLite propio.
-No conecta a PostgreSQL. La base comienza vacía, con una sola cuenta inventada,
-en `backend/.tmp/sigard-demo-*/demo.sqlite3`, excluida de Git.
+## Privacidad del formulario ciudadano
 
-Sólo este coordinador activa la marca interna de demo y la URL ciudadana 8766.
-El MVP/contexto usa directamente el respaldo estático aprobado, sin consultar
-otra API pública. A/B permanece fuera de esta demostración, sin modificaciones.
-Los reportes no alimentan modelos ni aparecen en el mapa A/B. Los centros de
-salud conservan sus fuentes/límites de vigencia y son contexto público, no datos
-ficticios. No se cargan modelos serializados ni se recalculan scores/métricas.
+El formulario nunca pide identificadores directos. La geolocalización sólo se activa con su botón
+y los reportes no aparecen en ningún mapa público. La búsqueda de dirección es opcional, con
+consentimiento aparte, y pasa por la API de SIGARD, que consulta Nominatim/OpenStreetMap sin
+reenviar la IP del navegador. Las teselas de OpenStreetMap se piden con
+`referrerPolicy="strict-origin"` (sólo viaja el origen); el resto del sitio usa
+`Referrer-Policy: no-referrer` (`vercel.json`).
 
-La demo deshabilita geocodificación y geolocalización; elegí un punto manual
-ficticio con clic o Tab/flechas/Enter sobre el mapa. El servidor también bloquea
-la ruta del geocodificador. Se omiten teselas y la fuente tipográfica remotas
-únicamente durante esta sesión; polígonos, marcadores, listado y selector manual
-funcionan sin Internet. Los enlaces externos voluntarios conservan sus destinos.
+El directorio sanitario (`public/data/`) tiene 24 CAPS y 3 hospitales; 23 CAPS conservan
+`vigencia_por_confirmar` y no indican atención disponible en tiempo real.
 
-**Recorrido:** mapa público aprobado → prevención/directorio → reporte inventado
-→ seguimiento → login en Administración → **Análisis y alertas demo**.
-La consulta permite fecha, radio D01–D06, horizonte t+1/t+2/t+4 y persistencia;
-la opción V3 usa valores ficticios del contrato, nunca ejecuta V3 real.
-Probabilidad validada y superioridad ML siguen pendientes. Una fecha de 2026
-devuelve datos insuficientes. Los seis rectángulos son ajenos a La Rioja.
+## Docker local (opcional)
 
-**Ingestión ficticia** valida/carga 48 claves del ejemplo CSV (vacío = desconocido)
-y rechaza campos adicionales. **Alertas experimentales** permite crear/editar
-reglas, habilitarlas/deshabilitarlas, evaluar manualmente por fecha/horizonte y
-marcar candidatas revisadas. Hay auditoría en SQLite, sin notificaciones ni
-publicación oficial. Todo requiere rol administrador verificado por el servidor.
-Volver a reportes permite revisar/actualizar el reporte; el seguimiento público
-nunca revela notas, descripción o coordenadas exactas.
+La imagen multietapa compila con Node y sirve sólo `dist/` con Nginx sin privilegios
+(`docker compose -f compose.yaml build frontend`). Docker Desktop permanece apagado en el trabajo
+habitual del proyecto; el despliegue previsto es Vercel.
 
-**Ctrl+C** cierra los procesos propios, espera al cierre de SQLite y elimina su
-directorio, también ante fallos de inicio. Una API A/B preexistente
-permanece intacta porque la demo no la consulta ni controla. Al reiniciar cambian cuenta, contraseña y clave de tokens; los
-reportes anteriores no existen. La eliminación se garantiza en el cierre
-coordinado; una caída del sistema o terminación forzada del coordinador puede
-dejar un directorio temporal ignorado. Nunca se recupera/reutiliza como sesión.
-No abrir dos demos ni ejecutar sus pruebas simultáneamente: comparten puertos.
+## Visor predictivo autocontenido (privado)
 
-Pruebas reproducibles, con los puertos libres:
+`npm.cmd --prefix frontend run build:predictive-viewer` compila sólo código genérico en `.tmp`; los
+datos se incorporan después bajo `data/interim/official`, nunca en `public/` ni en la distribución.
+Ver [demo predictiva privada](../docs/predictive-experimental-demo.md).
 
-```powershell
-npm run test:demo
-npm run build
-npm run test:demo:browser
-```
+## Histórico
 
-La prueba de navegador requiere Puppeteer ya disponible (o su ruta en
-`SIGARD_BROWSER_MODULE`). Inicia FastAPI/Vite reales con fixtures ficticias;
-comprueba navegación, consulta, ingestión, alertas, reportes, seguimiento,
-roles, reinicio vacío y preview de producción. No simula respuestas HTTP ni
-guarda credenciales o códigos de seguimiento. Conserva capturas públicas o
-ficticias y mediciones de respuesta en `frontend/.tmp/thesis-closure-ui/`.
-La selección aislada
-`backend/tests/demo_isolated.py` prueba configuración hostil, guards SQLite,
-autenticación y geocodificador bloqueado. No usa Docker ni evalúa ML.
-
-Copiar `.env.example` a `.env` y configurar `VITE_API_URL` **para el modo habitual
-o producción; no es necesario en `dev:demo`**. Para producción, la
-SPA puede desplegarse en Vercel y debe apuntar a una API FastAPI servida por
-HTTPS. Los datos sanitarios estáticos se cargan desde `public/data/` y se
-validan antes de mostrarse. El directorio contiene 24 CAPS públicos y 3
-hospitales de referencia; 23 CAPS conservan `vigencia_por_confirmar`, por lo que
-no deben interpretarse como atención disponible en tiempo real.
-
-## Verificación
-
-```bash
-npm run test:dev
-npm run test:research
-npm run test:public-map
-npm run test:public-activity
-npm run test:citizen
-npm run lint
-npm run build
-```
-
-El visor predictivo (`/mapa` en desarrollo local) muestra sólo el modo protegido. El
-control de valores exactos aparece únicamente si `dev` se inicia con `SIGARD_PRIVATE_VIEW=1`
-(`$env:SIGARD_PRIVATE_VIEW='1'; npm.cmd --prefix frontend run dev`); el build de producción
-nunca lo incluye y la API local mantiene su propia protección (modo `presentation` por defecto,
-`private` sólo con la cabecera local).
-
-La vista `/actividad` («Actividad registrada») está desactivada por defecto. Sólo
-aparece si la API pública sirve un paquete autorizado o la fixture ficticia
-(`SIGARD_PUBLIC_ACTIVITY=fixture`). Con Vite activo, `npm run test:public-activity:browser`
-la recorre con la fixture. Contrato y reglas de supresión en
-[docs/actividad-registrada-publica.md](../docs/actividad-registrada-publica.md).
-
-El cierre del recorrido ciudadano incluye validación/recuperación del formulario,
-código copiable y seguimiento sin resultados obsoletos; la bandeja administrativa
-ofrece reintento, filtros restablecibles y exportación de esos resultados. Son
-recorridos de la API independiente; el comando habitual de desarrollo no la inicia.
-
-`npm.cmd --prefix frontend run test:citizen:browser` verifica la interfaz real con
-la fixture existente `backend/tests/browser_admin_fixture.py`, SQLite descartable
-y Vite propio en 5174. Requiere Puppeteer ya instalado, resoluble normalmente o
-mediante `SIGARD_BROWSER_MODULE`; no instala dependencias. Rechaza 5174 ocupado,
-bloquea A/B/solicitudes externas, no usa PostgreSQL/Docker y cierra sus procesos.
-Sólo inyecta fallos/respuestas tardías explícitas sobre datos ficticios; las
-operaciones de alta, seguimiento, revisión y CSV llegan al backend real del ensayo.
-Recibos/capturas en `frontend/.tmp/citizen-flow/`, sin publicar fixtures. Ver
-[estado y límites](../docs/mvp-functional-status.md#mejoras-completadas-del-recorrido-ciudadano-y-administrativo).
-
-En `/mapa`, **Investigación local A/B** se selecciona inicialmente sólo en
-desarrollo y con el origen exacto `http://127.0.0.1:5173`, para consultar el panel
-**Análisis de modelos**, debajo del mapa. Permite comparar seis métricas
-congeladas por partición y consultar qué representa cada una. Seleccionar un
-radio en el mapa o en el selector conserva la comparación A/B al cambiar
-modelo o semana; **Ver evolución temporal** muestra sus scores ya calculados,
-con una tabla desplegable de valores y huecos en semanas sin resultado.
-Los identificadores técnicos quedan en un detalle secundario.
-
-**Vista del mapa** permite alternar A, B y **Diferencia B − A**, conservando
-semana y radio. La diferencia sólo resta dos scores disponibles y validados:
-azul es B menor, ocre B mayor, blanco igualdad y gris ausencia. No se guarda ni
-equivale a casos/incidencia/riesgo sanitario. El detalle y el mapa comparten los
-scores; las respuestas tardías se descartan. La síntesis de desempeño sigue las
-métricas de cada partición, sus direcciones y compromisos, sin un ganador fijo.
-
-El recorrido de navegador de este panel (`scripts/research-panel.browser.mjs`) se eliminó en
-F7a: dependía de la API de investigación en 127.0.0.1:8765, que `dev` no inicia desde F2 (ver
-`docs/diseno/admin-v2/inventario.md`, «F7a · Limpieza»).
-
-El panel es exclusivo de la API local: no agrega resultados experimentales a
-`public/` ni al build estático. Sin métricas autorizadas, muestra su ausencia
-y mantiene disponible el mapa. Son scores sin calibración clínica y evaluación
-retrospectiva sobre positivos provisionales y negativos asumidos; no casos
-confirmados ni evidencia de superioridad de un modelo. Ver alcance, consultas
-y límites en la [guía experimental](../docs/experimental-spatial-local.md).
-
-La comprobación visual de etapa 10 cubrió el mapa, los selectores y el panel
-en escritorio (1440 px) y móvil (390 px). No sustituye una auditoría de
-accesibilidad con lector de pantalla.
-
-En el mapa público, **Consultar un radio censal** permite elegir cualquiera de
-los 263 códigos con teclado o clic. El mapa enfoca y marca el radio; el detalle
-anuncia sus datos agregados y conserva la selección al cambiar capa o semana,
-actualizando los valores. La opción vacía limpia el detalle. Etapa 13 verificó
-este recorrido, los estados de error, la navegación y la regresión A/B en
-Chromium a 1440 y 390 px. Ver [matriz y evidencias](../docs/mvp-functional-status.md).
-
-En `/admin/reportes`, **Gestionar cuentas** abre el listado protegido de cuentas
-administrativas. Permite alta, desactivación y cambio/restablecimiento de
-contraseña con confirmación y contraseña del administrador que autoriza. La
-última cuenta activa está protegida en el servidor; los cambios propios cierran
-la sesión cuando revocan el token. No hay registro público ni recuperación por
-correo. Requiere la API habitual y la migración de etapa 14; el inicio local A/B
-continúa independiente. Ver el [contrato de cuentas](../backend/README.md#cuentas-administrativas-y-autenticación--etapa-14).
-
-La prueba `npm.cmd --prefix frontend run test:accounts:browser` usa una API y
-SQLite descartables, con usuarios ficticios. Requiere Vite activo mediante el
-comando habitual y Puppeteer ya disponible; puede indicarse su ruta con
-`SIGARD_BROWSER_MODULE`. El script no instala dependencias ni inicia Docker.
-
-Para la revisión integral de etapa 15, con Vite ya activo, usar el mismo harness:
-
-```powershell
-$env:SIGARD_INTEGRAL_REVIEW = '1'
-$env:SIGARD_EXPECT_STABLE = '1'
-npm.cmd --prefix frontend run test:accounts:browser
-```
-
-Incluye API pública con SQLite temporal/artefactos aprobados, reporte ciudadano
-ficticio y seguimiento, revisión/exportación administrativa, rechazos de sesión,
-cuentas, A/B y comprobaciones limitadas del árbol accesible de Chromium y contraste.
-No sustituye PostGIS, lector de pantalla ni móvil físico. Los recibos y capturas
-quedan en `.tmp/stage15-*`; no se incorporan al frontend público. El formulario
-permite marcar el centro del mapa con Enter tras desplazarlo con flechas. Las
-vistas territoriales compartidas mantienen zoom sin transición animada para
-evitar el error de Leaflet al desmontar durante una navegación rápida.
-
-En etapa 16 se comprobó el arranque nuevo, la navegación pública con respaldo
-estático, el ciclo ficticio HTTP/SQLite y A/B. Las vistas completas con selector
-textual excluyen los polígonos de la tabulación para evitar 263 paradas de tooltip;
-conservan clic/hover. El harness integral comprueba Tab del mapa al selector.
-El [guion académico y checklist](../docs/SIGARD-resumen-desarrollo.md#8-guion-académico-de-siete-minutos)
-describe el circuito integrado con `dev:demo`, que prepara la sesión manual
-descartable. El harness de cuentas usa su propia API ficticia y limpia al cerrar;
-su comprobación SQLite no acredita PostgreSQL/PostGIS.
-
-## Docker local
-
-La imagen multietapa compila con Node y sirve solamente `dist/` mediante Nginx
-sin privilegios. Desde la raíz del repositorio:
-
-```powershell
-docker compose -f compose.yaml build frontend
-docker compose -f compose.yaml up -d --wait frontend
-```
-
-La aplicación queda disponible en `http://localhost:5173`. El valor de
-`SIGARD_FRONTEND_API_URL` se incorpora al build y es público; nunca debe
-contener secretos. El despliegue previsto en Vercel continúa siendo
-independiente del contenedor local, de FastAPI y de PostgreSQL.
-
-El formulario nunca solicita identificadores directos. La geolocalización sólo
-se activa al pulsar el botón correspondiente y los reportes no se representan
-en el mapa epidemiológico. La búsqueda opcional requiere un consentimiento
-separado y envía la referencia a la API de SIGARD, que actúa como intermediaria
-ante Nominatim/OpenStreetMap sin reenviar la IP del navegador. Si la persona no
-quiere compartir esa referencia puede ubicar el marcador manualmente.
-## Demostración predictiva privada
-
-La [guía de cierre experimental](../docs/predictive-experimental-demo.md) explica
-el mapa Leaflet autocontenido generado desde `local_query --map-output`.
-`npm.cmd --prefix frontend run build:predictive-viewer` compila sólo código genérico
-en `.tmp`; los datos se incorporan después bajo `data/interim/official`, nunca en
-`public` ni en la distribución. Abrir el HTML privado directamente como archivo
-local: no necesita servidor y no habilita una ruta pública ni alertas.
+El panel «Investigación local A/B» de `/mapa` (API sin autenticación en 8765) se retiró en F2 y su
+código en F7b. Su descripción y la de las etapas 10–16 quedan en
+[estado del MVP](../docs/mvp-functional-status.md) y
+[cierre funcional](../docs/cierre-funcional-tesis.md).
