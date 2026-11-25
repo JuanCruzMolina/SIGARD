@@ -367,7 +367,7 @@ try {
     for(const width of [1440,390]) {
       await page.setViewport({width,height:1000})
       assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1))
-      assert.ok(await page.$eval('.account-list .table-scroll',e=>e.scrollWidth<=e.clientWidth+1))
+      assert.ok(await page.$eval('.account-list .ui-table-scroll',e=>e.scrollWidth<=e.clientWidth+1))
       if(integral) await accessibility('accounts-'+width)
       await page.screenshot({path:resolve(output,`stage${stage}-accounts-${width}.png`),fullPage:true})
     }
