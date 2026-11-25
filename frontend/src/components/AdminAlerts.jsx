@@ -7,7 +7,7 @@ import { AdminCountersContext } from './adminFrame'
 import { Badge, Card, Notice, ScreenHeader, UiButton, UiTable } from './AdminUI'
 import {
   ACTION_LABELS, CAPABILITY_LABELS, CHANNEL_NOTE, FLOW_STEPS, MINIMUM_COUNT, PERIODICITY_NOTE, PREVIEW_LABEL, REASON_LABELS,
-  RETROSPECTIVE_NOTE, STATUS_LABELS, evaluationText, formatValue, formatWeek, modelName, modelsFor, previewText,
+  RETROSPECTIVE_NOTE, STATUS_LABELS, countText, evaluationText, formatValue, formatWeek, modelName, modelsFor, previewText,
   rulePayload, ruleSummary, validateRuleForm,
 } from '../services/internalAlerts.mjs'
 import './AdminAlerts.css'
@@ -50,7 +50,7 @@ function viewerLink(candidate, models) {
 function Evidence({ candidate }) {
   const presence = candidate.rule.capability === 'presence'
   return <UiTable className="alerts-evidence">
-    <caption>Evidencia de {candidate.evidence.length} semana(s) · *observado en la reconstrucción retrospectiva · valores menores a {MINIMUM_COUNT} se muestran como «protegido»</caption>
+    <caption>Evidencia de {countText(candidate.evidence.length, 'semana', 'semanas')} · *observado en la reconstrucción retrospectiva · valores menores a {MINIMUM_COUNT} se muestran como «protegido»</caption>
     <thead><tr><th scope="col">Semana</th><th scope="col">{presence ? `Posición (top-${candidate.rule.k})` : 'Esperados'}</th><th scope="col">Observado*</th><th scope="col">Cumple</th></tr></thead>
     <tbody>{candidate.evidence.map(item => <tr key={item.target_week}>
       <td>{formatWeek(item.target_week)}</td>

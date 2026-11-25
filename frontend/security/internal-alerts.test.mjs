@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import {
-  CHANNEL_NOTE, PERIODICITY_NOTE, PREVIEW_LABEL, PROTECTED, formatValue, modelName, previewText, rulePayload,
+  CHANNEL_NOTE, PERIODICITY_NOTE, PREVIEW_LABEL, PROTECTED, countText, evaluationText, formatValue, modelName, previewText, rulePayload,
   ruleSummary, validateRuleForm,
 } from '../src/services/internalAlerts.mjs'
 
@@ -36,12 +36,21 @@ test('payload sends no threshold for ¿Dónde? and null radios for the whole ter
   assert.deepEqual(rulePayload({ ...form, scope: 'selected', radio_ids: ['FX0000001'] }).radio_ids, ['FX0000001'])
 })
 
-test('summaries, preview label and policy texts', () => {
+test('summaries, preview label and policy texts', async () => {
   assert.match(ruleSummary({ ...rulePayload(form), radio_ids: null }), /¿Cuántos\? 5 o más registros esperados durante 2 semanas consecutivas · todo el territorio común/)
   assert.match(ruleSummary({ capability: 'presence', model: 'rf_v2_city_propensity', consecutive_weeks: 1, radio_ids: ['FX0000001'] }, 3), /entre los 3 radios con mayor prioridad en la semana evaluada · 1 radio/)
   assert.equal(modelName('count_latest'), 'Método de referencia: repetir la semana anterior')
   assert.equal(PREVIEW_LABEL, 'Frecuencia de activación en 2021–2024 (reconstrucción retrospectiva; 2024 ya observado)')
   assert.match(previewText({ activations: 14, weeks_with_activation: 14, evaluable_weeks: 29, with_observed_records: PROTECTED }), /14 veces en 14 de 29 semanas.*protegida/)
+  // F7a: correct singular and plural, never «(s)»; 0 takes the plural.
+  assert.equal(countText(1, 'semana', 'semanas'), '1 semana'); assert.equal(countText(0, 'semana', 'semanas'), '0 semanas')
+  const rules = (enabled, insufficient) => enabled.map((on, i) => ({ enabled: on, insufficient_data: insufficient[i] || 0 }))
+  assert.equal(evaluationText({ created: 1, rules: rules([true, false], [1]) }), '1 candidata nueva · 1 regla activa evaluada · 1 inactiva · 1 radio sin predicciones suficientes (no generan candidatas)')
+  assert.equal(evaluationText({ created: 2, rules: rules([true, true, false, false], [2, 1]) }), '2 candidatas nuevas · 2 reglas activas evaluadas · 2 inactivas · 3 radios sin predicciones suficientes (no generan candidatas)')
+  assert.equal(evaluationText({ created: 0, rules: [] }), '0 candidatas nuevas · 0 reglas activas evaluadas · 0 inactivas')
+  for (const path of ['../src/services/internalAlerts.mjs', '../src/components/AdminAlerts.jsx']) {
+    assert.doesNotMatch(await readFile(new URL(path, import.meta.url), 'utf8'), /[a-záéíóú]\((?:s|es)\)/, `${path}: sin «(s)»`)
+  }
   assert.match(CHANNEL_NOTE, /revisión de un administrador y la publicación ciudadana está bloqueada/)
   assert.equal(PERIODICITY_NOTE, 'El administrador ejecuta la evaluación al recibir la entrega semanal de datos; la automatización queda fuera del alcance del prototipo.')
 })

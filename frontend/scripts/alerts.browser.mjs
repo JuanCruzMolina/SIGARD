@@ -154,7 +154,7 @@ try {
   const weeks = await page.$$eval('.alerts-evaluate option', nodes => nodes.map(node => node.value))
   const first = real ? weeks.at(-1) : '2021-01-31'
   await page.select('.alerts-evaluate select', first)
-  await clickText('Evaluar semana'); await notice('candidata(s) nueva(s)')
+  await clickText('Evaluar semana'); await notice(' nueva')
   if (!real) {
     await page.waitForFunction(() => document.querySelectorAll('[data-status="pending"]').length === 2)
     const observed = await page.$$eval('[data-status="pending"] td[data-observed]', nodes => nodes.map(node => node.textContent))
@@ -166,7 +166,7 @@ try {
   let ids = await pendingIds()
   if (real && !ids.length) {
     for (const week of weeks.slice(0, -1).reverse().slice(0, 12)) {
-      await page.select('.alerts-evaluate select', week); await clickText('Evaluar semana'); await notice('candidata(s) nueva(s)')
+      await page.select('.alerts-evaluate select', week); await clickText('Evaluar semana'); await notice(' nueva')
       ids = await pendingIds(); if (ids.length >= 2) break
     }
   }
@@ -183,7 +183,7 @@ try {
   if (ids[1]) await decide(ids[1], 'discard', 'Sin respaldo de terreno (prueba)', 'false_alarm')
   if (!real) {
     await page.select('.alerts-evaluate select', '2021-02-21')
-    await clickText('Evaluar semana'); await notice('2 candidata(s) nueva(s)')
+    await clickText('Evaluar semana'); await notice('2 candidatas nuevas')
     await page.waitForFunction(() => document.querySelectorAll('[data-status="pending"]').length === 2)
     const radios = await page.$$eval('[data-status="pending"] h3', nodes => nodes.map(node => node.textContent))
     assert.ok(radios.some(text => text.includes('FX0000003')) && radios.some(text => text.includes('FX0000001')))

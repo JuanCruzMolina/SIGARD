@@ -85,10 +85,15 @@ export function previewText(preview) {
   return `Se habría activado ${preview.activations} ${preview.activations === 1 ? 'vez' : 'veces'} en ${preview.weeks_with_activation} de ${preview.evaluable_weeks} semanas evaluables; ${records}.`
 }
 
+// «1 candidata nueva» / «0 o 2 candidatas nuevas»: the count with its noun in singular or plural (F7a).
+export function countText(count, singular, plural) {
+  return `${count} ${count === 1 ? singular : plural}`
+}
+
 export function evaluationText(summary) {
   const rules = summary?.rules || []
   const active = rules.filter(rule => rule.enabled)
   const insufficient = active.reduce((total, rule) => total + (rule.insufficient_data || 0), 0)
-  return `${summary?.created ?? 0} candidata(s) nueva(s) · ${active.length} regla(s) activa(s) evaluada(s) · ${rules.length - active.length} inactiva(s)`
-    + (insufficient ? ` · ${insufficient} radio(s) sin predicciones suficientes (no generan candidatas)` : '')
+  return `${countText(summary?.created ?? 0, 'candidata nueva', 'candidatas nuevas')} · ${countText(active.length, 'regla activa evaluada', 'reglas activas evaluadas')} · ${countText(rules.length - active.length, 'inactiva', 'inactivas')}`
+    + (insufficient ? ` · ${countText(insufficient, 'radio', 'radios')} sin predicciones suficientes (no generan candidatas)` : '')
 }
