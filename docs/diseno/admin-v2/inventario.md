@@ -695,3 +695,24 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   paquetes, CPython 3.12.10, Windows x64). Verificado: un venv nuevo instalado sólo desde ese
   archivo da el mismo `pip freeze`, `pip check` sin problemas y la regresión del backend igual (399
   pasan, 6 omitidas). Uso y regeneración en `docs/manuales/manual-instalacion.md` §2.2.
+- **Regresión F7a** (25/11/2026, después de todos los puntos, sin `SIGARD_BROWSER_MODULE`; sin
+  medición de rendimiento). Todo en verde:
+  - **Rápidas**: lint, build (aviso de bloque > 500 kB, ver punto 8), `security:check`,
+    `test:guard` 271/271, `test:dev` 29/29 y las suites Node: `test:security` 15, `test:research` 22,
+    `test:backtest` 25, `test:public-map` 5, `test:public-activity` 5, `test:citizen` 4,
+    `test:prevention` 5, `test:alerts` 5, `test:read-retry` 6, `test:admin` 19, `test:demo` 13
+    (153 pruebas, 0 fallos). `git diff --check` limpio.
+  - **Backend completo**: 399 pasan, 6 omitidas (PostGIS en Docker, ver arriba).
+  - **Auditoría de seguridad del repositorio**: 197 controles, 707 archivos versionados, 0 candidatos
+    sensibles.
+  - **Navegador** (21 corridas): `test:admin:browser` 11 y `--real` 1, `test:admin:home:browser` 5,
+    `test:predictive:browser` ficticia y `--real` (0 errores, las 6 caras IBM Plex locales cargadas,
+    ningún pedido a Google Fonts), `test:predictive:layout:browser` 9, `test:predictive-viewer` 3,
+    `test:citizen:browser` 7, `test:prevention:browser` 10, `test:alerts:browser` 9 y `--real` 9, y
+    las de layout: alertas 6, reportes 7, contenido 5, cuentas 7, auditoría 6. Con `dev` en marcha:
+    `test:accounts:browser` 9 e integral 12 (0 defectos), `test:public-activity:browser` 11.
+    `test:demo:browser` 11, con las fuentes locales sin conexión y el cierre con Ctrl+C (SQLite y
+    escuchas propias eliminadas). Al terminar no quedaban puertos ni procesos propios.
+  - Evidencia: capturas en `<carpeta de cada suite>/f7a-regresion[-real]/` y resumen (auditorías npm,
+    fuentes sin conexión antes/después) en `data/interim/official/f7a-resumen/`; registros en
+    `frontend/.tmp/diag/f7a/`.
