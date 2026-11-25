@@ -27,6 +27,7 @@
     "test:reports:layout:browser": "node scripts/reports-layout.browser.mjs",
     "test:content:layout:browser": "node scripts/content-layout.browser.mjs",
     "test:accounts:layout:browser": "node scripts/accounts-layout.browser.mjs",
+    "test:audit:layout:browser": "node scripts/audit-layout.browser.mjs",
     "test:performance": "node scripts/performance.browser.mjs",
     "test:dev": "node --test scripts/dev.test.mjs scripts/browser-proxy.test.mjs scripts/private-output.test.mjs scripts/hidden-windows.test.mjs",
     "dev": "node scripts/dev.mjs",
@@ -38,7 +39,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test:read-retry": "node --test security/read-retry.test.mjs",
-    "test:admin": "node --test security/admin-shell.test.mjs",
+    "test:admin": "node --test security/admin-shell.test.mjs security/admin-audit.test.mjs",
     "test:admin:browser": "node scripts/admin-shell.browser.mjs",
     "test:admin:home:browser": "node scripts/admin-home.browser.mjs",
     "test:guard": "node ../tools/test_guard_destructive.mjs"

@@ -64,7 +64,8 @@ test('«Datos hasta» in local research = last evaluable week of the viewer, wit
 test('expiry inside the frame removes token and email; arrival with an expired token too', async () => {
   const has = (text, ...parts) => { for (const part of parts) assert.ok(text.includes(part), part) }
   has(await source('../src/components/AdminLayout.jsx'), 'const expire = () => { endSession(); (onExpire || onLogout)?.() }', 'setTimeout(expire, Math.min(sessionRemaining(token), 2 ** 31 - 1))')
-  has(await source('../src/pages/AdminArea.jsx'), 'useEffect(() => { if (!token && readSession()) endSession() }, [token])')
+  // F6.6: the Auditoría placeholder of AdminArea became its own screen, with the same arrival check.
+  for (const page of ['AdminAuditoria', 'AdminInicio']) has(await source(`../src/pages/${page}.jsx`), 'useEffect(() => { if (!token && readSession()) endSession() }, [token])')
   for (const page of ['AdminReports', 'AdminPredictivo']) has(await source(`../src/pages/${page}.jsx`), 'onExpire={')
 })
 

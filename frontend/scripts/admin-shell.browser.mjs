@@ -171,7 +171,7 @@ try {
     await page.goto(`${origin}/admin/inicio`, { waitUntil: 'networkidle0' }); await heading('Inicio')
     checkpoint(`caja de contexto: entorno, divulgación y «Datos hasta» ${week.expected} = última semana evaluable del visor`)
 
-    // Groups and items, in the design's order; the Inicio and Auditoría placeholders.
+    // Groups and items, in the design's order; every section opens its own screen.
     assert.deepEqual(await page.$$eval(`${nav} .admin-nav-group-title`, e => e.map(x => x.textContent)), ['Operación', 'Gestión'])
     assert.deepEqual(await page.$$eval(`${nav} a.admin-nav-item`, e => e.map(x => x.getAttribute('href'))), SECTIONS.map(s => s[0]))
     assert.match(await page.$eval('main', e => e.textContent), /Requiere tu atención/, 'Inicio tiene pantalla propia desde F5')
@@ -184,7 +184,11 @@ try {
       assert.deepEqual(await activeItems(), [path], `ítem activo en ${path}`)
       const style = await page.$eval(`${nav} a[href="${path}"]`, e => getComputedStyle(e).backgroundColor)
       assert.equal(style, 'rgb(220, 238, 231)', 'ítem activo en menta (#dceee7)')
-      if (path === '/admin/auditoria') assert.match(await page.$eval('main', e => e.textContent), /Próximamente/)
+      // F6.6: Auditoría has its own read-only screen (it replaced the «Próximamente» placeholder).
+      if (path === '/admin/auditoria') {
+        await page.waitForFunction(() => document.querySelector('.audit-results')?.getAttribute('aria-busy') === 'false')
+        assert.match(await page.$eval('main', e => e.textContent), /Sólo se muestran acciones y metadatos/)
+      }
       const audit = await auditAccessibility(page, '.admin-shell')
       assert.deepEqual(audit.unnamed, [], `${path}: controles con nombre`); assert.deepEqual(audit.lowContrast, [], `${path}: contraste AA`)
       await shoot(name)
