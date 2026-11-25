@@ -640,3 +640,15 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
   - Corregido: un fallo del manifiesto quedaba guardado como «sin semana» hasta recargar la página.
     Ahora sólo se guarda una semana encontrada (`rememberFound`); un fallo se vuelve a pedir en la
     próxima carga (cada sección monta su propio menú). Regresión en `test:admin`.
+- **Scripts de navegador sin comando** (no se borran):
+  - `scripts/thesis-workspace.browser.mjs`: **vigente**. No es una suite: es el módulo auxiliar que
+    importa `demo-flow.browser.mjs` (`test:demo:browser`) para medir el espacio de análisis de la
+    demo. Se ejecuta con esa suite; no lleva comando propio.
+  - `scripts/backtest.browser.mjs`: **obsoleto**. Recorre el visor de backtest anterior a F2 contra
+    `127.0.0.1:8765/api/v1/research/backtest`; 8765 no existe desde F2 y el visor actual
+    (`/api/v1/research/predictive/*` en 8767, con sesión) lo prueba `predictive.browser.mjs`
+    (`test:predictive:browser`, también llamado `test:backtest:browser`).
+  - `scripts/research-panel.browser.mjs`: **obsoleto**. Su recorrido real necesita la API de
+    investigación espacial A/B en `127.0.0.1:8765/api/v1/research/spatial`, que `dev` ya no inicia
+    desde F2; su parte ficticia cubre el panel A/B anterior. `services/experimentalResults.js`
+    conserva esa ruta a 8765 (ver pendientes).
