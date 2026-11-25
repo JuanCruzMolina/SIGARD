@@ -328,7 +328,28 @@ su fecha. La pestaña **Cómo funciona** resume el circuito para quien lo usa po
 - La publicación ciudadana está **bloqueada en el código y en la base de datos**: no existe el
   estado «publicada», y el intento de publicar se rechaza y queda auditado.
 
-## 7. Buenas prácticas de privacidad
+## 7. Auditoría
+
+En **Auditoría** (`/admin/auditoria`) se consulta, sólo para leer, quién hizo qué y cuándo:
+
+- altas, rotaciones y desactivaciones de cuentas;
+- consultas al detalle de reportes, exportaciones y cambios de estado;
+- borradores y publicaciones de contenido;
+- reglas, evaluaciones y decisiones de alertas;
+- consultas del visor con valores exactos.
+
+Se puede filtrar por categoría, acción, usuario y rango de fechas (en hora de Argentina; «Hasta»
+incluye el día completo). Los filtros y la página quedan en la dirección, así que se puede
+recargar o compartir la vista.
+
+- Nunca muestra contraseñas, notas, comentarios, descripciones ni valores del visor. De un cambio
+  se ve qué campos cambiaron, no su texto.
+- Cada consulta a esta pantalla también queda registrada (categoría «Auditoría», que sólo aparece
+  si se la elige).
+- Sólo está disponible en el entorno local de administración (`npm run dev`). En la demo y en
+  producción la pantalla lo indica.
+
+## 8. Buenas prácticas de privacidad
 
 1. **Nunca copies** ubicaciones exactas, descripciones ni exportaciones a mapas públicos, redes,
    chats o servicios de terceros.

@@ -494,3 +494,64 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f6-5`.
   - Capturas en `data/interim/official/ux-admin-v2-f6-5/<etiqueta>/`: antes en `f6-5-antes`,
     después en `f6-5-regresion`.
 - **Rendimiento**: no se midió; la pantalla no toca el servidor.
+
+## F6.6 · Auditoría
+
+Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f6-6`. Sin maqueta: estilo
+v2 con `AdminUI` y el criterio visual de Reportes ciudadanos. La propuesta se aprobó antes de
+implementar.
+
+- **Endpoint** (`backend/app/admin_audit.py`), `GET /api/v1/admin/audit`, montado sólo por
+  `alerts_local` (8767). `app.main` y la demo no lo exponen.
+  - **Protección:**
+    - control local (cliente loopback, `Host` y `Origin` exactos, sin encabezados reenviados) antes
+      del JWT verificado en base (rol, cuenta activa, `token_version`);
+    - CORS sólo para `http://127.0.0.1:5173`;
+    - respuesta sin caché.
+  - **Sin escritura:** no hay rutas para modificar ni borrar eventos; cualquier otro método recibe
+    405.
+  - **Sin importar el visor:** respeta el invariante F2 (sólo `alerts_local` importa
+    `predictive_admin`). Lee `predictive_view_audit` por reflexión cuando el visor la creó; sin esa
+    tabla, la categoría «visor» queda vacía.
+  - **Filtros:** `category`, `action`, `actor_id`, `date_from` y `date_to`, en días de Argentina con
+    UTC−3 fijo. `date_to` incluye el día completo.
+  - **Orden y paginación:** del más reciente al más antiguo, con `page` y `page_size` (25 por
+    defecto, máximo 100).
+  - **Resúmenes con listas cerradas:**
+    - de los reportes, el código y el estado anterior y nuevo dentro de la lista de estados, y sólo
+      los nombres de los campos cambiados;
+    - del contenido, la sección, los campos cambiados y la versión;
+    - de las alertas, la regla, la semana, el radio, el motivo y si hubo comentario;
+    - del visor, la ruta, el período y el radio.
+    - Un campo nuevo en una tabla de auditoría no aparece hasta agregarlo explícitamente.
+  - **Registro de la consulta:** cada consulta queda en `admin_audit_view` (actor, fecha y filtros;
+    nunca resultados) y falla cerrada. La categoría «auditoría» sólo aparece al elegirla.
+- **Pantalla** (`pages/AdminAuditoria.jsx`):
+  - encabezado con ruta;
+  - aviso de privacidad;
+  - filtros (categoría, acción, usuario, desde, hasta) que, con la página, se reflejan en la URL;
+  - tabla con fecha y hora de Argentina (24 h), categoría con insignia, acción, usuario, objeto y
+    detalle; en móvil, tarjetas;
+  - paginación de 44 px;
+  - estados de carga, vacío y error con «Reintentar».
+
+  En la demo y en producción muestra el aviso del entorno local, sin consultar. Reemplaza el
+  marcador «Próximamente». `ScreenHeader` ahora deja el bloque del título en bloque también sin
+  acciones a la derecha.
+- **Limitaciones documentadas** en `docs/tecnica/arquitectura.md` §6:
+  - sin pantalla en un despliegue;
+  - ingresos, intentos fallidos y cierres de sesión no auditados;
+  - el historial de un reporte se borra con el reporte al vencer la retención;
+  - desfase fijo UTC−3.
+- **Pruebas**:
+  - `backend/tests/test_admin_audit.py`, 12 pruebas: acceso, control local, CORS, sin rutas de
+    escritura, sin valores sensibles, listas cerradas, filtros, orden, paginación, un evento a las
+    23:30 del día límite, la consulta registrada con falla cerrada, y que `app.main` y la demo no lo
+    expongan.
+  - `security/admin-audit.test.mjs`, en `test:admin`.
+  - `test:audit:layout:browser`: lista, filtros en la URL que se conservan al recargar, página 2,
+    vacío, categoría «auditoría», error de API, hora de Argentina, teclado, 1440 y 390 px, AA, 44 px,
+    textos de 14 px o más, sin secretos en el DOM, y la demo con el aviso.
+  - `test:admin:browser`: la sección ya no es «Próximamente».
+  - Capturas en `data/interim/official/ux-admin-v2-f6-6/`: antes en `f6-6-antes`, después en
+    `f6-6-regresion`.
