@@ -555,3 +555,60 @@ implementar.
   - `test:admin:browser`: la sección ya no es «Próximamente».
   - Capturas en `data/interim/official/ux-admin-v2-f6-6/`: antes en `f6-6-antes`, después en
     `f6-6-regresion`.
+
+## Cierre F6
+
+Regresión y rendimiento sobre `6db3b5e`, etiqueta `cierre-f6` (25/11/2026), sin cambios de código.
+Evidencia en `data/interim/official/`: capturas en `<carpeta de cada suite>/cierre-f6-regresion[-real]/`,
+rendimiento en `performance-v1/production/cierre-f6-rendimiento-{1,2,3}/`, resumen en
+`cierre-f6-resumen/`; registros de cada suite en `frontend/.tmp/diag/cierre-f6/`.
+
+- **Rápidas** (en verde): lint, build (con el aviso de bloque > 500 kB de siempre), `security:check`,
+  `test:guard` 271/271, `test:dev` 28/28 y las suites Node: `test:security` 15, `test:research` 22,
+  `test:backtest` 25, `test:public-map` 5, `test:public-activity` 5, `test:citizen` 4,
+  `test:prevention` 5, `test:alerts` 5, `test:read-retry` 6, `test:admin` 18, `test:demo` 13
+  (151 pruebas, 0 fallos). `git diff --check` limpio.
+- **Backend completo** (`publication_isolated.py --backend-regression`): 399 pasan, 6 omitidas
+  (requieren un PostgreSQL/PostGIS descartable, que no se inicia).
+- **Auditoría de seguridad del repositorio**: 197 controles, 690 archivos versionados, 0 candidatos
+  sensibles.
+- **Navegador** (21 corridas, todas en verde; Puppeteer existente vía `SIGARD_BROWSER_MODULE`):
+  `test:admin:browser` 11 y `--real` 1, `test:admin:home:browser` 5, `test:predictive:browser`
+  ficticia y `--real` (0 errores de navegador), `test:predictive:layout:browser` 9,
+  `test:predictive-viewer` 3, `test:citizen:browser` 7, `test:prevention:browser` 10,
+  `test:alerts:browser` 9 y `--real` 9, y las de layout: alertas 6, reportes 7, contenido 5,
+  cuentas 7, auditoría 6. Con `dev` en marcha: `test:accounts:browser` 9 e integral 12 (0
+  defectos), `test:public-activity:browser` 11. `test:demo:browser` 11, incluido el cierre con
+  Ctrl+C (SQLite y escuchas propias eliminadas). Al terminar cada bloque no quedaban puertos ni
+  procesos propios.
+- **Rendimiento** (`performance.browser.mjs --target production`, completo, 3 corridas seguidas
+  sin otras suites; p95 en ms por corrida, 1 / 5 usuarios):
+
+  | Operación | Corrida 1 | Corrida 2 | Corrida 3 | Mediana |
+  |---|---|---|---|---|
+  | actividad (fixture) | 384 / 1.193 | 700 / 1.651 | 395 / 1.220 | 395 / 1.220 |
+  | prevención | 421 / 1.656 | 563 / 2.419 | 446 / 1.649 | 446 / 1.656 |
+  | visor: carga | 1.558 / **7.601** | 1.241 / 4.242 | 1.251 / 4.333 | 1.251 / 4.333 |
+  | visor: cambio de semana | 220 / 742 | 363 / 711 | 213 / 716 | 220 / 716 |
+  | visor: consulta de radio | 87 / 345 | 120 / 389 | 95 / 283 | 95 / 345 |
+  | panel de alertas | 173 / 474 | 151 / 451 | 253 / 452 | 173 / 452 |
+
+  Comparación (cierre F6 = mediana de las 3 corridas):
+
+  | Operación | F0 | F2 | F5 | F6.1 | F6.2 | F6.3 | Cierre F6 |
+  |---|---|---|---|---|---|---|---|
+  | actividad (fixture) | 604 / 1.146 | 344 / 1.297 | 314 / 1.313 | 390 / 1.281 | 353 / 931 | 305 / 802 | 395 / 1.220 |
+  | prevención | 350 / 1.415 | 426 / 1.359 | 326 / 1.312 | 403 / 1.312 | 335 / 1.202 | 307 / 1.065 | 446 / 1.656 |
+  | visor: carga | 815 / 2.949 | 1.083 / 3.828 | 1.079 / 4.069 | 1.075 / 3.675 | 917 / 2.905 | 946 / 2.783 | 1.251 / 4.333 |
+  | visor: cambio de semana | 180 / 569 | 190 / 826 | 190 / 685 | 171 / 741 | 148 / 514 | 192 / 534 | 220 / 716 |
+  | visor: consulta de radio | 81 / 279 | 100 / 350 | 89 / 260 | 82 / 261 | 69 / 221 | 71 / 208 | 95 / 345 |
+  | panel de alertas | 174 / 267 | 141 / 428 | 3.677 / 385 | 1.750 / 505 | 143 / 293 | 111 / 362 | 173 / 452 |
+
+  Ninguna mediana supera 5 s. La corrida 1 sí: visor, carga con 5 usuarios, p95 7.601 ms
+  (máx. 9.014). La mediana de esa operación (4.333) también supera el presupuesto de F6.1
+  (≤ 4.069). Todas las operaciones quedaron más lentas que en F6.3; F6.4–F6.6 no se midieron y,
+  según este inventario, no tocan el visor, pero eso no se verificó. Condición de la máquina: durante la corrida 2
+  había un juego abierto (≈ 3 GB) y el sistema llegó a memoria crítica; al terminar la corrida 2 ya
+  estaba cerrado. No se sabe si estaba abierto en la corrida 1. Causa probable: carga externa de
+  la máquina, sin verificar; conviene repetir la medición con la PC libre antes de tomarla como
+  referencia.
