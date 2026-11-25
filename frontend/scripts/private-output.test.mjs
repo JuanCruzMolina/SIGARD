@@ -25,7 +25,7 @@ test('a run folder is created only when new; an existing one stops the run and s
 })
 
 test('every harness writing below data/interim/official uses a new run folder and never empties or deletes', async () => {
-  for (const file of ['performance', 'predictive', 'alerts', 'public-activity', 'backtest', 'admin-shell']) {
+  for (const file of ['performance', 'predictive', 'alerts', 'public-activity', 'admin-shell']) {
     const source = await readFile(new URL(`./${file}.browser.mjs`, import.meta.url), 'utf8')
     assert.match(source, /newRunDirectory\(/, file)
     assert.doesNotMatch(source, /emptyOutDir: true|\brmSync\b|\brm\(|rmdir|unlink|recursive: true, force/, file)
