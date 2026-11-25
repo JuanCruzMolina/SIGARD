@@ -1,6 +1,6 @@
 # Arquitectura de SIGARD
 
-Estado de la rama `entrenamiento-ML` · `v0.9.1-aceptacion` (noviembre de 2026). Este documento
+Estado de la rama `entrenamiento-ML` · `v1.0.0` (noviembre de 2026). Este documento
 reemplaza como referencia vigente a `docs/architecture.md`, que describe la versión `v0.1` y se
 conserva como registro histórico.
 

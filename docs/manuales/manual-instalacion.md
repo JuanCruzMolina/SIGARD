@@ -1,6 +1,6 @@
 # Manual de instalación y operación técnica
 
-SIGARD · Prototipo académico · `v0.9.1-aceptacion` (noviembre de 2026)
+SIGARD · Prototipo académico · `v1.0.0` (noviembre de 2026)
 Sistema operativo de referencia: **Windows 11** con PowerShell. Todos los comandos se ejecutan
 **desde la raíz del repositorio**, salvo que se indique otra carpeta.
 

@@ -13,7 +13,7 @@ SIGARD integra en un sitio:
 Es un **prototipo en evaluación**: no es un sistema operativo de vigilancia ni reemplaza las
 indicaciones sanitarias oficiales.
 
-Versión vigente: **`v0.9.1-aceptacion`** (rama `entrenamiento-ML`, noviembre de 2026).
+Versión vigente: **`v1.0.0`** (rama `entrenamiento-ML`, 25/11/2026). [Notas de versión](docs/versiones/v1.0.0.md).
 
 > **Contenido del repositorio.** Código, pruebas, fixtures ficticias, mapas públicos aprobados y
 > documentación. **No incluye** fuentes sanitarias, datos procesados, modelos entrenados,
