@@ -428,3 +428,69 @@ Implementado en `entrenamiento-ML` (24/11/2026). Etiqueta previa: `antes-f6-4`.
   - Capturas en `data/interim/official/ux-admin-v2-f6-4/<etiqueta>/`: antes en `f6-4-antes`,
     después en `f6-4-regresion`.
 - **Rendimiento**: no se midió; la pantalla no toca el servidor ni el visor.
+
+## F6.5 · Pestañas de Alertas en móvil y Cuentas
+
+Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f6-5`.
+
+- **Paso 1 · Alertas internas en móvil**:
+  - Las pestañas (Pendientes, Reglas, Historial, Cómo funciona) quedan en una sola fila con
+    desplazamiento horizontal, como las secciones de Contenido preventivo.
+  - El subrayado de la pestaña activa queda dentro de cada pestaña.
+  - `test:alerts:layout:browser` lo comprueba: una fila, desplazable y con subrayado visible.
+  - Capturas: antes en `ux-admin-v2-f6-2/estab-regresion-2`, después en
+    `ux-admin-v2-f6-2/f6-5-regresion`.
+- **Corridas de diagnóstico fuera de `data/`**:
+  - Con `SIGARD_DIAG_PHASE=<fase>`, los arneses escriben en `frontend/.tmp/diag/<fase>/`, que Git
+    ignora.
+  - `data/` queda sólo para la evidencia final: `-antes`, `-regresion`, `-regresion-real` y
+    `-rendimiento`.
+- **Pantalla Cuentas** (`components/AdminAccounts.jsx` + `AdminAccounts.css`, `Cuentas.dc.html`).
+  Sólo presentación, con `AdminUI`:
+  - encabezado con ruta y «Crear cuenta» (antes estaba en la lista);
+  - la política de cuentas como aviso;
+  - tabla con correo (con «Tu cuenta»), estado (insignia con ícono «Activa» o «Inactiva»), fecha
+    de alta real (`created_at`) y acciones. En móvil, cada cuenta es una tarjeta;
+  - tarjeta de operación con el aviso de invalidación de sesiones (dorado para cambiar la
+    contraseña, rojo para desactivar), la contraseña actual y la casilla de confirmación explícita
+    (toda la línea es un objetivo de 44 px);
+  - botones deshabilitados con contraste AA (antes usaban opacidad).
+
+  Mismas peticiones, validaciones, protección del último administrador (botón deshabilitado y la
+  API responde 409), límites, auditoría y textos. Ninguna contraseña se muestra, se precarga ni
+  queda en el formulario después de una petición.
+- **Diferencias deliberadas con la maqueta**:
+  - **Reactivación**: la API no tiene un endpoint para reactivar cuentas y no se agregó. Una cuenta
+    inactiva muestra «Sin acciones», como la fila «Desactivada» de la maqueta.
+  - **«Último cambio»**: ese dato no existe en la API; se muestra «Creada» con la fecha de alta
+    real. Tampoco se muestra un último acceso.
+  - **Alta**: se conserva el flujo actual. «Crear cuenta» abre la tarjeta de operación con
+    contraseña nueva, su confirmación, tu contraseña actual y la casilla de confirmación. La
+    maqueta muestra un formulario de alta siempre visible, sin confirmación de la contraseña nueva
+    ni casilla.
+  - **Textos**: se conservan los reales. El título es «Cuentas administrativas» y el subtítulo el
+    actual. La política dice «Cada cambio requiere tu contraseña actual y una confirmación. Debe
+    quedar al menos una cuenta administrativa activa.». Los botones son «Rotar contraseña» (no
+    «Cambiar» ni «Asignar contraseña»), «Desactivar» y «Crear cuenta administrativa».
+  - Estados «Activa» e «Inactiva», no «Desactivada».
+- **Pruebas**:
+  - `test:accounts:browser` (normal e integral) pasa cambiando sólo el selector de la tabla
+    (`.ui-table-scroll`).
+  - La corrida integral estaba rota desde F3 (`67cbd08`): buscaba en el menú público un enlace a
+    `/dashboard`, y desde entonces «Situación actual» apunta a `/` (`/dashboard` quedó como alias
+    local). Se actualizó la ruta del menú a `/`; la visita directa a `/dashboard` se mantiene.
+  - Nueva `test:accounts:layout:browser`, con API SQLite descartable y Vite propio; no usa
+    interceptación salvo en el estado de error. Cubre:
+    - lista y alta;
+    - cambio de contraseña;
+    - desactivación, que no avanza sin la confirmación explícita;
+    - cuenta desactivada sin acciones;
+    - último administrador bloqueado en la pantalla y en la API (409);
+    - error de API;
+    - 1440 y 390 px, con contraste AA, teclado, 44 px, textos de 14 px o más y la tabla dentro de su
+      tarjeta.
+  - En cada captura se comprueba que no haya contraseñas, hashes ni token en el DOM y que los
+    campos de contraseña sean `type=password`.
+  - Capturas en `data/interim/official/ux-admin-v2-f6-5/<etiqueta>/`: antes en `f6-5-antes`,
+    después en `f6-5-regresion`.
+- **Rendimiento**: no se midió; la pantalla no toca el servidor.

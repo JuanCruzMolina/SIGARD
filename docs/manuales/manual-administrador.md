@@ -75,6 +75,12 @@ En **Cuentas** (`/admin/cuentas`) podés:
 - **Desactivar**: bloquea el ingreso y cierra las sesiones de la cuenta. Se usa cuando alguien
   deja el equipo. Las cuentas no se borran.
 
+La tabla muestra cada cuenta con su correo (la tuya lleva **Tu cuenta**), su estado (**Activa** o
+**Inactiva**), la fecha de alta (**Creada**) y sus acciones. Las cuentas inactivas aparecen con
+**Sin acciones**: no se pueden reactivar desde el panel. **Crear cuenta** está arriba a la
+derecha; la operación elegida se completa en la tarjeta **Gestionar una cuenta**. En el celular,
+cada cuenta se muestra como una tarjeta.
+
 Cada acción pide **tu contraseña actual** y una confirmación. Siempre tiene que quedar **al menos
 una cuenta activa**, por lo que el sistema no te deja desactivar la última. Cada cambio queda
 auditado con quién lo hizo, sobre qué cuenta y cuándo. La auditoría nunca guarda contraseñas.
