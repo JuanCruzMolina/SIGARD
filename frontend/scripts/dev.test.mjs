@@ -236,3 +236,18 @@ test('dev serves the Google Fonts stylesheet (IBM Plex Sans) like before F1, and
   const origins = new Set([...css.matchAll(/https:\/\/([a-z0-9.-]+)/g)].map(match => match[1]))
   assert.deepEqual([...origins].filter(host => !GOOGLE_FONTS.includes(host)), [])
 })
+
+test('browser suites use the pinned Puppeteer devDependency (SIGARD_BROWSER_MODULE stays an override)', async () => {
+  const { readdir } = await import('node:fs/promises')
+  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
+  assert.equal(manifest.devDependencies.puppeteer, '25.9.0', 'exact version, no range')
+  assert.equal(manifest.dependencies.puppeteer, undefined, 'never a production dependency')
+  const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'))
+  assert.equal(lock.packages['node_modules/puppeteer'].version, '25.9.0')
+  const scripts = (await readdir(new URL('.', import.meta.url))).filter(name => name.endsWith('.browser.mjs') && name !== 'thesis-workspace.browser.mjs')
+  assert.ok(scripts.length >= 19)
+  for (const name of scripts) {
+    const source = await readFile(new URL(name, import.meta.url), 'utf8')
+    assert.match(source, /require\(process\.env\.SIGARD_BROWSER_MODULE \|\| 'puppeteer'\)/, `${name}: carga Puppeteer del proyecto o el override`)
+  }
+})

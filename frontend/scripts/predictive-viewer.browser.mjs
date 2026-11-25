@@ -6,12 +6,8 @@ import { resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const require = createRequire(import.meta.url)
-let puppeteer
-try { puppeteer = require('puppeteer') } catch {
-  const path = process.env.SIGARD_BROWSER_MODULE
-  if (!path) throw new Error('Use the existing Puppeteer installation via SIGARD_BROWSER_MODULE; no dependency installation required.')
-  puppeteer = require(path)
-}
+// Same as the other browser suites: the project's devDependency, or SIGARD_BROWSER_MODULE as an override.
+const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
 const out = fileURLToPath(new URL('../.tmp/predictive-viewer', import.meta.url))
 const ids = Array.from({ length: 256 }, (_, i) => `fictional_${String(i).padStart(3, '0')}`)
 const geometry = { type: 'FeatureCollection', features: ids.map((id, i) => {

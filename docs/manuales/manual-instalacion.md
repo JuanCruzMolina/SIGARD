@@ -21,7 +21,7 @@ Sistema operativo de referencia: **Windows 11** con PowerShell. Todos los comand
 | Node.js y npm | Node 24 (probado con 24.15.0) | Frontend React/Vite y pruebas de navegador |
 | Python | 3.12 (el paquete ML exige ≥ 3.11) | Backend FastAPI y paquete ML |
 | WSL con Ubuntu | WSL 2 | Sólo para la base de investigación PostgreSQL 16 / PostGIS 3 |
-| Chromium para Puppeteer | instalación existente | Sólo para las pruebas de navegador |
+| Puppeteer 25.9.0 y su Chrome | se instalan con el frontend (§2.1) | Sólo para las pruebas de navegador |
 
 Para la demostración ficticia (`dev:demo`) alcanza con Node y Python: no hace falta PostgreSQL.
 
@@ -38,6 +38,15 @@ git switch entrenamiento-ML
 ```powershell
 npm.cmd --prefix frontend ci
 ```
+
+`npm ci` instala también Puppeteer **25.9.0** (dependencia de desarrollo con versión exacta; no
+llega al bundle publicado). Su paso de instalación descarga el navegador de las pruebas en la caché
+del usuario, fuera del repositorio: Chrome for Testing y Chrome Headless Shell 152.0.7977.54 en
+`%USERPROFILE%\.cache\puppeteer\` (unos 700 MB en total); si ya están, los reutiliza. Sin conexión o
+detrás de un proxy, se puede instalar sin la descarga (`$env:PUPPETEER_SKIP_DOWNLOAD='true'`) y
+bajar el navegador después con
+`node frontend/node_modules/puppeteer/lib/puppeteer/node/cli.js browsers install chrome`.
+Sólo lo usan las pruebas de navegador (§9).
 
 ### 2.2 Backend (API y herramientas locales)
 
@@ -290,8 +299,8 @@ npm.cmd --prefix frontend run test:demo
 git diff --check
 ```
 
-**Pruebas de navegador.** Requieren Puppeteer. Si no está en el proyecto, se indica su ruta con
-`$env:SIGARD_BROWSER_MODULE`.
+**Pruebas de navegador.** Usan el Puppeteer del proyecto (§2.1). `$env:SIGARD_BROWSER_MODULE` sigue
+sirviendo para usar otra instalación (ruta al paquete `puppeteer`).
 
 | Prueba | Requisito previo |
 |---|---|
