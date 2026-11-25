@@ -7,7 +7,7 @@ import { ACTIONS, AUDIT_PAGE_SIZE, CATEGORIES, LOCAL_ONLY_NOTICE, PRIVACY_NOTICE
   filtersFromSearch, objectText, searchFromFilters } from '../services/adminAudit.mjs'
 import { endSession, readSession, sessionExpired } from '../services/adminSession.mjs'
 import { listAdminAccounts, listAdminAudit } from '../services/citizenReports'
-import { localResearchEnabled } from '../services/experimentalResults'
+import { localResearchEnabled } from '../services/localResearch'
 import './AdminAuditoria.css'
 
 // F6.6: read-only audit trail. The API exists only on the local administrative API (npm run dev);

@@ -1,7 +1,7 @@
 import { useCallback, useContext, useEffect, useState } from 'react'
 import { alertsRequest, downloadAlertsExport } from '../services/citizenReports'
 import { epiWeekOf } from '../services/adminShell.mjs'
-import { localResearchEnabled } from '../services/experimentalResults'
+import { localResearchEnabled } from '../services/localResearch'
 import { Icon } from './AdminLayout'
 import { AdminCountersContext } from './adminFrame'
 import { Badge, Card, Notice, ScreenHeader, UiButton, UiTable } from './AdminUI'

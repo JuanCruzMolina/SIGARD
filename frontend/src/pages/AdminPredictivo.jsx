@@ -6,7 +6,7 @@ import HistoricalBacktest from '../components/HistoricalBacktest'
 import { Badge, ScreenHeader } from '../components/AdminUI'
 import { clearBacktestCache } from '../services/backtestResults'
 import { adminSessionActive, endSession, readSession, ROLE_REQUIRED, SESSION_EXPIRED, SESSION_REQUIRED, sessionExpired, sessionRemaining } from '../services/adminSession.mjs'
-import { localResearchEnabled } from '../services/experimentalResults'
+import { localResearchEnabled } from '../services/localResearch'
 import '../Prevention.css'
 
 // F3: the predictive viewer inside Administración. Only an unexpired administrator session

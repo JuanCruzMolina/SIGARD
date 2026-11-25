@@ -24,7 +24,7 @@ propio proyecto (`src/fonts.css`, `src/assets/fonts/`) en todos los modos; hasta
 Google Fonts y `dev:demo` quitaba esa hoja para funcionar sin conexión. Antes de F1, `dev` no tenía API administrativa y el
 frontend apuntaba a `localhost:8000`.
 
-`localResearchEnabled()` (`services/experimentalResults.js`) cambia `/` → `/mapa` y
+`localResearchEnabled()` (`services/localResearch.js`; hasta F7b en `services/experimentalResults.js`) cambia `/` → `/mapa` y
 `/mapa` del mapa público al visor predictivo. Los datos de prevención salen de
 `/data/prevention_content.json` y `/data/health_facilities.geojson` (estáticos), con
 contenido publicado en `/api/v1/public/prevention`.
@@ -650,8 +650,8 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
     (`test:predictive:browser`, también llamado `test:backtest:browser`).
   - `scripts/research-panel.browser.mjs`: **obsoleto**. Su recorrido real necesita la API de
     investigación espacial A/B en `127.0.0.1:8765/api/v1/research/spatial`, que `dev` ya no inicia
-    desde F2; su parte ficticia cubre el panel A/B anterior. `services/experimentalResults.js`
-    conserva esa ruta a 8765 (ver pendientes).
+    desde F2; su parte ficticia cubre el panel A/B anterior. La ruta a 8765 de
+    `services/experimentalResults.js` se retiró en F7b.
 - **`npm audit`** (con Puppeteer ya instalado; 12 avisos: 9 altos, 3 moderados). Se aplicó
   `npm audit fix` sin `--force`: `package.json` no cambia (las versiones nuevas caben en los rangos
   declarados), cambia `package-lock.json`. Las dependencias directas suben sólo de versión menor;
@@ -740,5 +740,24 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
     pruebas: su `localResearchEnabled()` es la compuerta del entorno local. Lo único sin uso
     operativo son sus llamadas a 8765 (`researchCatalog`, `researchDate`, `researchDateQuery`,
     `researchEvaluation`, `researchHistory`), usadas por `ExperimentalSpatial` y
-    `ExperimentalAnalysis`; separarlas queda pendiente.
+    `ExperimentalAnalysis`; se separaron en F7b (ver abajo).
   - Zod 3 vía Puppeteer queda como se documentó en el punto 7a.
+
+## F7b · Código muerto del panel A/B
+
+- `localResearchEnabled()` pasa a `src/services/localResearch.js` (misma compuerta: `DEV`, origen
+  exacto `http://127.0.0.1:5173` y nunca en la demo). Lo importan `App.jsx`, `AdminLayout`,
+  `AdminAlerts`, `AdminInicio`, `AdminAuditoria`, `AdminPredictivo` y `backtestResults.js`.
+- `ExperimentalSpatial.jsx` y `ExperimentalAnalysis.jsx` no eran alcanzables: ninguna ruta de
+  `App.jsx`, página ni enlace los importaba desde F3 (sólo dos pruebas y un reemplazo de
+  `local-entry.test.mjs`). La búsqueda amplia (con y sin extensión, `research/spatial`,
+  `X-Sigard-Research`, `8765`) no encontró otros usos en `src`, `scripts` ni configuración. Se
+  borraron junto con `services/experimentalResults.js`, que tenía las únicas llamadas del frontend
+  a `127.0.0.1:8765`.
+- Pruebas: se quitaron las dos pruebas que renderizaban esos componentes y la del servicio a 8765;
+  se conservan los validadores de contrato (`experimentalContract.mjs`, `experimentalAnalysis.mjs`),
+  que siguen usando `SigardComponents` y la regresión backend (`test_experimental_results.py`).
+  `local-entry.test.mjs` agrega una prueba que recorre `src/` y falla si reaparece 8765,
+  `research/spatial` o los componentes borrados.
+- Las menciones en documentos históricos (`docs/mvp-functional-status.md`, `docs/technical-consolidation.md`,
+  `docs/experimental-spatial-local.md`) quedan como registro de su etapa.

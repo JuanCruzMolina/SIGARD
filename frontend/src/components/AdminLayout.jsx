@@ -5,7 +5,7 @@ import { adminSessionActive, endSession, readEmail, sessionRemaining } from '../
 import { loadDataWeek } from '../services/adminWeek'
 import { alertsRequest, listAdminReports } from '../services/citizenReports'
 import { demoMode } from '../services/demoMode'
-import { localResearchEnabled } from '../services/experimentalResults'
+import { localResearchEnabled } from '../services/localResearch'
 import { AdminCountersContext, AdminFrameContext } from './adminFrame'
 import './AdminLayout.css'
 

@@ -38,17 +38,16 @@ const replacements = {
     export const BrowserRouter=({children})=>React.createElement(MemoryRouter,{initialEntries:[globalThis.__sigardLocalEntry.path]},children);
     export const Navigate=({to,replace})=>React.createElement('div',{'data-redirect':to,'data-replace':String(replace)});
   `),
-  './services/experimentalResults': url('export const localResearchEnabled=()=>globalThis.__sigardLocalEntry.enabled;'),
+  './services/localResearch': url('export const localResearchEnabled=()=>globalThis.__sigardLocalEntry.enabled;'),
   './services/demoMode': url('export const demoMode=false;'),
   './services/sigardData': url('export const DATA_ERROR_MESSAGE="fixture error",formatDate=String,loadSigardData=()=>{};'),
   '../services/sigardData': url('export const getSelectedWeek=()=>({}),getSelectedPrediction=()=>({}),getExperimentalCollection=()=>({}),getDisclaimer=()=>"fictional";'),
   '../components/SigardComponents': url('export const MethodNotice=({children})=>children,PageIntro=({title})=>title,TemporalControls=()=>"simulation controls",TerritorialMap=()=>"simulation map";'),
-  '../components/ExperimentalSpatial': url('export default function Research(){return "research fixture"}'),
   '../components/HistoricalBacktest': url('export default function Backtest(){return "backtest fixture"}'),
   './App.css': url(''),
   './services/adminSession.mjs': url(`export * from ${JSON.stringify(new URL('../src/services/adminSession.mjs', import.meta.url).href)}`),
 }
-replacements['../services/experimentalResults'] = replacements['./services/experimentalResults']
+replacements['../services/localResearch'] = replacements['./services/localResearch']
 // The activity probe is disabled here (404 contract): the link must not appear.
 replacements['./services/publicActivity.mjs'] = url('export const loadActivity=()=>Promise.resolve({enabled:false});')
 for (const page of ['Dashboard', 'Mapa', 'Validacion', 'Metodologia', 'Prevencion', 'AdminArea', 'Actividad']) {
@@ -122,4 +121,15 @@ test('public menu has no predictive module; old /mapa viewer links redirect only
   // A plain /mapa (no viewer state) never redirects, even with a session; production never does.
   state.path = '/mapa'; assert.doesNotMatch(withSession(jwt({ role: 'admin', exp: future }), () => render(App, slots)), /data-redirect/)
   state.enabled = false; state.path = link; assert.doesNotMatch(withSession(jwt({ role: 'admin', exp: future }), () => render(App, slots)), /data-redirect/)
+})
+
+test('F7b: no source file calls the retired research API on 8765 or imports the removed A/B pages', async () => {
+  const { readdir } = await import('node:fs/promises')
+  const root = new URL('../src/', import.meta.url)
+  const files = (await readdir(root, { recursive: true })).filter(name => /\.(m?jsx?|css)$/.test(name))
+  assert.ok(files.length > 30)
+  for (const name of files) {
+    const source = await readFile(new URL(name.split(String.fromCharCode(92)).join('/'), root), 'utf8')
+    assert.doesNotMatch(source, /8765|research\/spatial|ExperimentalSpatial|ExperimentalAnalysis|experimentalResults/, name)
+  }
 })

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { BrowserRouter, Navigate, NavLink, Route, Routes, Link, useLocation } from 'react-router-dom'
 import { DATA_ERROR_MESSAGE, formatDate, loadSigardData } from './services/sigardData'
-import { localResearchEnabled } from './services/experimentalResults'
+import { localResearchEnabled } from './services/localResearch'
 import { demoMode } from './services/demoMode'
 import Dashboard from './pages/Dashboard'
 import Mapa from './pages/Mapa'

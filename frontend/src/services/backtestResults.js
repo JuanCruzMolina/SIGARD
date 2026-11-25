@@ -1,4 +1,4 @@
-import { localResearchEnabled } from './experimentalResults'
+import { localResearchEnabled } from './localResearch'
 import { discardBody, fetchRead } from './readRetry.mjs'
 import { endSession, PREDICTIVE_ROUTE, readSession, ROLE_REQUIRED, SESSION_EXPIRED, SESSION_REQUIRED, sessionError, sessionExpired } from './adminSession.mjs'
 import { validateBacktestCatalog, validateBacktestGeometry, validateBacktestMetadata, validateBacktestWeek, validateBacktestHistory } from './backtestContract.mjs'

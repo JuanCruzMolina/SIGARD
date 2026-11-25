@@ -89,25 +89,3 @@ test('chart breaks on missing scores and purged weeks, preserving real zeros', (
   assert.ok(segments.every(segment => segment.every((p, i) => !i || p.time - segment[i - 1].time === 7 * 86400000)))
   assert.equal(segments.flat().length, 19)
 })
-
-test('actual charts render accessible values, metric explanations and scientific limits', async () => {
-  const { readFile } = await import('node:fs/promises')
-  const { transformWithOxc } = await import('vite')
-  const React = await import('react')
-  const { renderToStaticMarkup } = await import('react-dom/server')
-  const url = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
-  const replacements = { react: new URL('../node_modules/react/index.js', import.meta.url).href,
-    'react/jsx-runtime': new URL('../node_modules/react/jsx-runtime.js', import.meta.url).href,
-    '../services/experimentalResults': url('export const researchEvaluation=()=>{},researchHistory=()=>{};'),
-    '../services/experimentalAnalysis.mjs': new URL('../src/services/experimentalAnalysis.mjs', import.meta.url).href }
-  const source = await readFile(new URL('../src/components/ExperimentalAnalysis.jsx', import.meta.url), 'utf8')
-  const transformed = await transformWithOxc(source, 'ExperimentalAnalysis.jsx', { jsx: { runtime: 'automatic' } })
-  const code = transformed.code.replace(/(['"])([^'"]+)\1/g, (original, quote, value) => replacements[value] ? JSON.stringify(replacements[value]) : original)
-  const { EvaluationComparison, RadioTimeline } = await import(url(code))
-  const metrics = renderToStaticMarkup(React.createElement(EvaluationComparison, { evaluation: evaluation(), partition: 'test', onPartitionChange() {} }))
-  const temporal = renderToStaticMarkup(React.createElement(RadioTimeline, { history: history(), week: weeks[0].target_week_start }))
-  assert.ok(metrics.includes('Qué representa') && metrics.includes('Brier') && metrics.includes('Ninguna métrica por sí sola establece superioridad'))
-  assert.ok(metrics.includes('width:20%') && metrics.includes('width:40%'))
-  assert.ok(temporal.includes('role="img"') && temporal.includes('Consultar valores por semana'))
-  assert.ok(temporal.includes('incluidas las purgadas') && !temporal.includes('NaN'))
-})
