@@ -61,7 +61,6 @@ try {
     if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
     const bearer = (r.headers().authorization || '').replace(/^Bearer /, '')
     if (heldTokens.has(bearer)) { held.push(r); return }
-    if (u.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return r.continue()
     if (/^[abc]\.tile\.openstreetmap\.org$/.test(u.hostname)) return r.abort() // offline map, as predictive.browser
     if (u.hostname !== '127.0.0.1' || !['5173', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (!real && u.pathname.startsWith('/api/v1/research/predictive/')) {

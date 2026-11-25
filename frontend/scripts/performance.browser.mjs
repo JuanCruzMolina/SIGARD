@@ -32,7 +32,6 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { developmentRuntime, portAvailable, startDevelopment } from './dev.mjs'
 import { ALERTS_API, alertsRuntime } from './dev-alerts.mjs'
-import { demoOfflineStyles } from './dev-demo.mjs'
 import { newRunDirectory, runLabel } from './private-output.mjs'
 
 const require = createRequire(import.meta.url)
@@ -181,7 +180,7 @@ try {
     // Phase 2 (viewer and alerts panel) uses one bundle against the administrative API, like
     // `dev` (VITE_API_URL = 8767; a viewer bundle pointed at the stopped phase-1 fixture API
     // would add failed calls to every load).
-    bundles.admin = await buildBundle('admin', { define: { 'import.meta.env.VITE_API_URL': JSON.stringify(ALERTS_API), 'import.meta.env.DEV': 'true' }, plugins: [demoOfflineStyles()] })
+    bundles.admin = await buildBundle('admin', { define: { 'import.meta.env.VITE_API_URL': JSON.stringify(ALERTS_API), 'import.meta.env.DEV': 'true' } })
   }
   browser = await puppeteer.launch({ headless: true })
   const browserVersion = await browser.version()

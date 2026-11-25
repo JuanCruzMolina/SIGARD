@@ -204,7 +204,7 @@ try {
   checkpoint('error de la API: aviso con el detalle y sin secciones inventadas')
 
   assert.deepEqual(errors, [])
-  assert.deepEqual([...new Set(external)].filter(o => !['https://fonts.googleapis.com', 'https://fonts.gstatic.com'].includes(o)), [], 'sólo las fuentes tipográficas salen de 127.0.0.1 (y el resolvedor las bloquea)')
+  assert.deepEqual([...new Set(external)], [], 'nada sale de 127.0.0.1 (las fuentes son locales desde F7a)')
   const receipt = { status: 'passed', label, mode: before ? 'before (captures only)' : 'full', source: 'generated_fictional_only', sqlite: true, postgis: false, checks, browser_errors: errors }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify(receipt, null, 2))

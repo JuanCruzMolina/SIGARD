@@ -96,7 +96,14 @@ try {
   await page.setViewport({ width: 1440, height: 1000 })
   const disabled = await fetch(`${api}/api/v1/geocoding/address`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ address_reference: 'Referencia completamente ficticia' }) })
   assert.equal(disabled.status, 503)
-  checkpoint('Prevention and 27 public facilities work offline; desktop/mobile notice; external geocoder and geolocation disabled')
+  // F7a: offline, the page still draws with IBM Plex Sans/Mono served by the project itself.
+  const offlineFonts = await page.evaluate(async () => {
+    await document.fonts.ready
+    await Promise.all(['400 16px "IBM Plex Sans"', '700 16px "IBM Plex Sans"', '500 16px "IBM Plex Mono"'].map(font => document.fonts.load(font)))
+    return [...document.fonts].filter(face => face.status === 'loaded').map(face => `${face.family.replaceAll('"', '')} ${face.weight}`)
+  })
+  for (const face of ['IBM Plex Sans 400', 'IBM Plex Sans 700', 'IBM Plex Mono 500']) assert.ok(offlineFonts.includes(face), `offline font ${face}: ${offlineFonts.join(', ')}`)
+  checkpoint('Prevention and 27 public facilities work offline (local IBM Plex fonts loaded); desktop/mobile notice; external geocoder and geolocation disabled')
 
   await page.focus('.report-map'); await page.keyboard.press('Enter')
   await page.click('input[value="agua_acumulada"]')

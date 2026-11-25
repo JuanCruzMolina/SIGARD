@@ -232,7 +232,7 @@ try {
   }
 
   assert.deepEqual(errors, [])
-  assert.deepEqual([...new Set(external)].filter(o => !['https://fonts.googleapis.com', 'https://fonts.gstatic.com'].includes(o)), [])
+  assert.deepEqual([...new Set(external)], [])
   const receipt = { status: 'passed', label, mode: before ? 'before (captures only)' : 'full', source: 'generated_fictional_only', checks, browser_errors: errors }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify(receipt, null, 2))

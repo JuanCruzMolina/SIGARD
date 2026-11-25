@@ -103,7 +103,10 @@ test('screens keep their content; the frame replaces header navigation and the d
   for (const path of ['inicio', 'predictivo', 'alertas', 'reportes', 'contenido', 'cuentas', 'auditoria']) assert.match(area, new RegExp(`path="${path}"`))
   assert.match(area, /<Route index element={<Navigate to={ADMIN_HOME} replace\/>}\/>/)
   const css = await source('../src/index.css')
-  assert.match(css, /family=IBM\+Plex\+Sans:wght@400;500;600;700&family=IBM\+Plex\+Mono:wght@500;600&display=swap/)
+  // F7a: the same families and weights, served by the project (no Google Fonts).
+  assert.match(css, /^@import '\.\/fonts\.css';/)
+  const fonts = await source('../src/fonts.css')
+  for (const face of ['IBM Plex Sans\'; font-style: normal; font-weight: 400', 'IBM Plex Sans\'; font-style: normal; font-weight: 700', 'IBM Plex Mono\'; font-style: normal; font-weight: 500', 'IBM Plex Mono\'; font-style: normal; font-weight: 600']) assert.ok(fonts.includes(face), face)
 })
 
 test('counters only come from API answers (pending candidates and received reports), never from constants', async () => {

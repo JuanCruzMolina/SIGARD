@@ -45,7 +45,6 @@ try {
   page.on('request', async r => {
     const u = new URL(r.url())
     if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
-    if (u.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return r.continue()
     if (/^[abc]\.tile\.openstreetmap\.org$/.test(u.hostname)) return r.abort()
     if (u.hostname !== '127.0.0.1' || !['5173', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (u.pathname.startsWith('/api/v1/research/predictive/')) {

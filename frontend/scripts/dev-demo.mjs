@@ -10,16 +10,6 @@ const backend = join(repository, 'backend')
 const python = join(backend, '.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 const api = 'http://127.0.0.1:8766'
 
-export function demoOfflineStyles() {
-  return {
-    name: 'sigard-demo-offline-fonts', enforce: 'pre',
-    transform(code, id) {
-      if (id.split('?')[0].replaceAll('\\', '/') !== join(frontend, 'src/index.css').replaceAll('\\', '/')) return
-      return code.replace(/^@import url\('https:\/\/fonts\.googleapis\.com\/[^']+'\);\r?\n/m, '')
-    },
-  }
-}
-
 export function demoEnvironment(source = process.env) {
   const env = { ...source, PYTHONIOENCODING: 'utf-8' }
   for (const key of Object.keys(env)) {
@@ -129,7 +119,6 @@ export function demoRuntime() {
       const { createServer } = await import('vite')
       return createServer({
         root: frontend, configFile: join(frontend, 'vite.config.js'),
-        plugins: [demoOfflineStyles()],
         define: { 'import.meta.env.SIGARD_DEMO': 'true', 'import.meta.env.VITE_API_URL': JSON.stringify(api) },
       })
     },

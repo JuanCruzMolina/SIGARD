@@ -4,19 +4,16 @@ import { access, readFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { createDemoService, demoEnvironment, demoOfflineStyles, demoRuntime } from './dev-demo.mjs'
+import { createDemoService, demoEnvironment, demoRuntime } from './dev-demo.mjs'
 import { portAvailable, spawnOwned, startDevelopment } from './dev.mjs'
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))))
 const python = join(root, 'backend/.venv', process.platform === 'win32' ? 'Scripts/python.exe' : 'bin/python')
 
-test('demo removes the optional font request only from its own stylesheet in memory', async () => {
-  const path = join(root, 'frontend/src/index.css')
-  const source = await readFile(path, 'utf8')
-  const plugin = demoOfflineStyles()
-  assert.doesNotMatch(plugin.transform(source, path), /fonts.googleapis.com/)
-  assert.equal(plugin.transform(source, join(root, 'frontend/src/App.css')), undefined)
-  assert.equal(await readFile(path, 'utf8'), source)
+test('demo serves the same local fonts as dev, without rewriting the stylesheet (F7a)', async () => {
+  const source = await readFile(join(root, 'frontend/scripts/dev-demo.mjs'), 'utf8')
+  assert.doesNotMatch(source, /plugins:|fonts\.googleapis|offline-fonts/)
+  assert.match(await readFile(join(root, 'frontend/src/index.css'), 'utf8'), /^@import '\.\/fonts\.css';/)
 })
 
 test('demo child discards inherited DB, PostgreSQL, bootstrap and Python configuration', () => {

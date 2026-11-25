@@ -178,7 +178,7 @@ try {
 
   await check('calles atenuadas sin conexión y sin solicitudes externas permitidas', async () => {
     await page.waitForFunction(() => document.querySelector('.pa-basemap-offline')?.textContent.includes('sin conexión'))
-    assert.ok(report.external.every(o => /tile.openstreetmap.org|fonts.(googleapis|gstatic).com/.test(o)), [...new Set(report.external)].join(', '))
+    assert.ok(report.external.every(o => /tile.openstreetmap.org/.test(o)), [...new Set(report.external)].join(', '))
   })
 
   output = await newRunDirectory(outputBase, label)

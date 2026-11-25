@@ -69,7 +69,6 @@ try {
         return proxyRequest(request, api + url.pathname + url.search)
       }
       if (url.hostname === '127.0.0.1' && url.port === '5174') return request.continue()
-      if (url.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(url.hostname)) return request.continue()
       if (!(url.hostname === '127.0.0.1' && url.port === '8767')) external.push(url.origin) // the alerts API is not part of this run
       return request.abort()
     } catch (error) { if (!request.isInterceptResolutionHandled()) await request.abort().catch(() => {}); errors.push(error.message) }

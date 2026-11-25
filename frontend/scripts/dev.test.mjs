@@ -5,7 +5,7 @@ import { setTimeout as delay } from 'node:timers/promises'
 import { readFile } from 'node:fs/promises'
 import { fileURLToPath } from 'node:url'
 import { portAvailable, privateViewRequested, spawnOwned, startDevelopment } from './dev.mjs'
-import { ALERTS_API, alertsRuntime, developmentDefine, GOOGLE_FONTS, PREDICTIVE_MISSING } from './dev-alerts.mjs'
+import { ALERTS_API, alertsRuntime, developmentDefine, PREDICTIVE_MISSING } from './dev-alerts.mjs'
 
 
 async function serverFor(t, handler) {
@@ -226,15 +226,18 @@ for (const [admin, predictive] of [[false, true], [true, true], [true, false]]) 
   })
 }
 
-test('dev serves the Google Fonts stylesheet (IBM Plex Sans) like before F1, and no other external origin', async t => {
-  // Regression: F1 inherited dev:demo's offline-styles plugin and dev lost IBM Plex Sans.
+test('dev serves IBM Plex Sans/Mono from the project (F7a): local woff2 with their OFL, no external origin', async t => {
   const vite = await alertsRuntime().createVite()
   t.after(() => vite.close())
   const css = (await vite.transformRequest('/src/index.css')).code
-  assert.match(css, /@import url\('https:\/\/fonts\.googleapis\.com\/css2\?family=IBM\+Plex\+Sans/)
   assert.match(css, /:root \{ font-family: 'IBM Plex Sans', sans-serif;/)
-  const origins = new Set([...css.matchAll(/https:\/\/([a-z0-9.-]+)/g)].map(match => match[1]))
-  assert.deepEqual([...origins].filter(host => !GOOGLE_FONTS.includes(host)), [])
+  const fonts = (await vite.transformRequest('/src/fonts.css')).code
+  for (const code of [css, fonts]) assert.doesNotMatch(code, /https?:\/\/|fonts\.googleapis|fonts\.gstatic/)
+  const source = await readFile(new URL('../src/fonts.css', import.meta.url), 'utf8')
+  const files = [...source.matchAll(/url\('\.\/(assets\/fonts\/[a-z0-9-]+\.woff2)'\)/g)].map(match => match[1])
+  assert.equal(files.length, 12, 'Sans 400/500/600/700 y Mono 500/600, latin y latin-ext')
+  for (const file of files) assert.equal((await readFile(new URL(`../src/${file}`, import.meta.url))).subarray(0, 4).toString('latin1'), 'wOF2', file)
+  for (const family of ['Sans', 'Mono']) assert.match(await readFile(new URL(`../src/assets/fonts/OFL-IBM-Plex-${family}.txt`, import.meta.url), 'utf8'), /SIL OPEN FONT LICENSE Version 1\.1/)
 })
 
 test('browser suites use the pinned Puppeteer devDependency (SIGARD_BROWSER_MODULE stays an override)', async () => {

@@ -48,7 +48,7 @@ let environment = await startDevelopment(runtime)
 const intercept = !real
 const blocked = tilesOnline ? 'MAP * ~NOTFOUND, EXCLUDE 127.0.0.1, EXCLUDE *.tile.openstreetmap.org' : 'MAP * ~NOTFOUND, EXCLUDE 127.0.0.1'
 const browser = await puppeteer.launch({ headless: true, args: intercept ? [] : [`--host-resolver-rules=${blocked}`] }); let production
-const errors = [], external = [], requests = [], timings = [], tileRequests = [], devFontSheets = []
+const errors = [], external = [], requests = [], timings = [], tileRequests = []
 const PROTECTED_NOTE = 'En modo protegido sólo se muestran radios con 5 o más registros'
 // Unsigned JWT-shaped administrator values made here (never valid on the server): expired, about
 // to expire, and not expired but revoked. The fictional transport rejects them like the server does.
@@ -81,8 +81,6 @@ try {
       tileRequests.push(`${z}/${x}/${y}`)
       return tilesOnline ? act.continue(r) : act.abort(r)
     }
-    // The dev page itself must ask for the Google Fonts sheet (IBM Plex Sans), as before F1.
-    if (!production && u.protocol === 'https:' && u.hostname === 'fonts.googleapis.com' && u.pathname === '/css2') devFontSheets.push(u.searchParams.get('family'))
     if (u.hostname !== '127.0.0.1' || !['5173', '5174', '8767'].includes(u.port)) { external.push(u.origin); return act.abort(r) }
     if (u.pathname.startsWith('/api/v1/research/')) {
       assert.ok(u.pathname.startsWith('/api/v1/research/predictive/') && u.port === '8767', 'only the authenticated predictive viewer API')
@@ -380,7 +378,10 @@ try {
   await (await page.waitForSelector('.admin-nav a[href="/admin/predictivo"]')).click(); await ready()
   await shot('desktop-desde-administracion')
   assert.deepEqual(errors, [])
-  if (origin === 'http://127.0.0.1:5173') assert.ok(devFontSheets.some(family => family?.startsWith('IBM Plex Sans')), 'dev must request the Google Fonts sheet for IBM Plex Sans')
+  // F7a: IBM Plex Sans/Mono come from the project itself; no font request leaves 127.0.0.1.
+  const localFonts = await page.evaluate(async () => { await document.fonts.ready; return [...document.fonts].filter(f => f.status === 'loaded').map(f => `${f.family.replaceAll('"', '')} ${f.weight}`) })
+  assert.ok(localFonts.includes('IBM Plex Sans 400') && localFonts.some(f => f.startsWith('IBM Plex Mono')), `fuentes locales cargadas: ${localFonts.join(', ')}`)
+  assert.ok(external.every(o => !/fonts\.(googleapis|gstatic)\.com/.test(o)), 'sin pedidos a Google Fonts')
   if (!process.env.SIGARD_SKIP_PRODUCTION) {
     production = await preview({ root: frontendRoot, preview: { host: '127.0.0.1', port: 5174, strictPort: true } })
     // Count only once the dev viewer is idle: a background year load leaving as the page changes
@@ -396,7 +397,7 @@ try {
   const receipt = { status: 'passed', source: real ? 'private_real_aggregates_read_only' : 'generated_fictional_transport_only', browser_errors: errors,
     requests: requests.length, archived_calls: 0,
     tiles: tilesOnline ? 'osm_city_tiles_only' : 'blocked_offline', tile_requests_checked: tileRequests.length, external_requests_blocked: [...new Set(external)], no_private_api_in_production: !process.env.SIGARD_SKIP_PRODUCTION,
-    no_training: true, fixtures_in_project_metrics: false, origin, dev_font_sheet_requested: devFontSheets.length > 0, timings }
+    no_training: true, fixtures_in_project_metrics: false, origin, local_fonts_loaded: localFonts, timings }
   await writeFile(resolve(output, 'receipt.private.json'), JSON.stringify(receipt, null, 2))
   console.log(JSON.stringify({ ...receipt, timings: timings.filter(t => !t.sample).map(t => `${t.operation}: ${t.seconds.toFixed(2)} s`) }, null, 2))
 } finally {

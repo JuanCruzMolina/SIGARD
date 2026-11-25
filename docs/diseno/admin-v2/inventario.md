@@ -19,8 +19,9 @@ Sin cuenta local, `dev` arranca igual, el login responde «Credenciales inválid
 muestra `alerts_local.py create-admin`. En 8767, `/api/v1/public/weeks` responde 503 (el sitio
 usa los JSON estáticos), `/api/v1/public/activity` responde 404 salvo con
 `SIGARD_PUBLIC_ACTIVITY=fixture`, y `/api/v1/public/prevention` sirve lo publicado desde el panel.
-`/api/v1/geocoding/*` responde 503 en local. Como antes de F1, `dev` carga IBM Plex Sans desde Google Fonts
-(`fonts.googleapis.com` y `fonts.gstatic.com`); sólo `dev:demo` quita esa hoja para funcionar sin conexión. Antes de F1, `dev` no tenía API administrativa y el
+`/api/v1/geocoding/*` responde 503 en local. Desde F7a IBM Plex Sans e IBM Plex Mono se sirven desde el
+propio proyecto (`src/fonts.css`, `src/assets/fonts/`) en todos los modos; hasta F7a `dev` las pedía a
+Google Fonts y `dev:demo` quitaba esa hoja para funcionar sin conexión. Antes de F1, `dev` no tenía API administrativa y el
 frontend apuntaba a `localhost:8000`.
 
 `localResearchEnabled()` (`services/experimentalResults.js`) cambia `/` → `/mapa` y
@@ -99,7 +100,7 @@ Implementado en `entrenamiento-ML` (23/11/2026), sin rediseñar el contenido de 
 - **Encabezados**: se quitaron los botones de navegación («Módulo predictivo», «Alertas internas»,
   «Contenido preventivo», «Gestionar cuentas», «Volver a reportes») y el «Cerrar sesión» duplicado;
   se conservan «Exportar CSV» y «Análisis y alertas demo» (con su «Volver a reportes»).
-- **Tipografía**: IBM Plex Mono (500/600) por la misma hoja de Google Fonts que IBM Plex Sans;
+- **Tipografía**: IBM Plex Mono (500/600) por la misma hoja de Google Fonts que IBM Plex Sans (locales desde F7a);
   token `--font-mono` en `App.css` para semanas, códigos y cifras del marco.
 - **Pruebas**: `test:admin` (unitarias y contratos) y `test:admin:browser` (navegación, ítem
   activo, teclado, 390 px, barra, contexto, contadores; capturas privadas en

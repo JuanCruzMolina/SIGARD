@@ -50,7 +50,6 @@ try {
   page.on('request', r => {
     const u = new URL(r.url())
     if (!['http:', 'https:'].includes(u.protocol)) return r.continue()
-    if (u.protocol === 'https:' && ['fonts.googleapis.com', 'fonts.gstatic.com'].includes(u.hostname)) return r.continue()
     if (u.hostname !== '127.0.0.1' || !['5173', '8767'].includes(u.port)) { external.push(u.origin); return r.abort() }
     if (failCandidates && u.pathname === '/api/v1/admin/alerts/candidates' && r.method() === 'GET')
       return r.respond({ status: 500, contentType: 'application/json', headers: { 'Access-Control-Allow-Origin': origin }, body: '{"detail":"Fallo ficticio de la prueba"}' })
