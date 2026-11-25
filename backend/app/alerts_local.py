@@ -193,6 +193,12 @@ def mount_viewer(app, service):
     mount(app, service)
 
 
+def mount_audit(app):
+    # Read-only audit trail (F6.6): only on this local administrative API, never in app.main or the demo.
+    from app.admin_audit import mount
+    mount(app)
+
+
 def main():
     refuse_deployment()
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -217,6 +223,7 @@ def main():
         service = predictive_service()
         nonce = attach(app, LocalResearchSource(service), "persistent-private-sqlite")
         mount_viewer(app, service)
+        mount_audit(app)
         return serve(app, {"session": nonce, "storage": "persistent-private-sqlite", "admin": admin,
                            "predictive": service is not None})
     app = build_app(session_path(args.directory))
@@ -230,6 +237,7 @@ def main():
     source = FictionalSource() if args.source == "fictional" else LocalResearchSource(service)
     nonce = attach(app, source, "disposable-sqlite")
     mount_viewer(app, service)
+    mount_audit(app)
     serve(app, {"session": nonce, "storage": "disposable-sqlite", "email": email, "password": password,
                 "predictive": service is not None})
 
