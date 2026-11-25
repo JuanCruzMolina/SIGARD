@@ -139,7 +139,7 @@ export default function BacktestMaps({ geometry, panels, view, layer = 'expected
           className={showBase ? 'bt-map pv-map pv-map-streets' : 'bt-map pv-map'} aria-label={`${panel.title}. Usá Tab para recorrer los radios con datos y Enter para ver su detalle.`}>
           <ZoomControl position="topright" /><MapSync link={link} side={panel.key} bounds={bounds} reset={reset} />
           {streets && <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} className="pv-basetiles" bounds={maxBounds}
-            minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM} referrerPolicy="no-referrer" eventHandlers={tileEvents} />}
+            minZoom={MIN_ZOOM} maxZoom={MAX_ZOOM} referrerPolicy="strict-origin" eventHandlers={tileEvents} />}
           <GeoJSON key={key} data={geometry} style={feature => {
             const id = feature.properties.radio_id; const r = lookup.get(id); const category = cellCategory(r, view)
             let style = STYLES[category] || STYLES.nodata

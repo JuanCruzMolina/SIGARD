@@ -51,7 +51,7 @@ export default function HealthFacilitiesMap({ collection }) {
     <div className="facility-explorer">
       <div className="facility-map-wrap" aria-label="Mapa de establecimientos de salud">
         <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="facility-map">
-          {!demoMode && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />}
+          {!demoMode && <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" referrerPolicy="strict-origin" />}
           {filtered.map((feature) => <Marker
             key={feature.properties.id}
             position={[feature.geometry.coordinates[1], feature.geometry.coordinates[0]]}

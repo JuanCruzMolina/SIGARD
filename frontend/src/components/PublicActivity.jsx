@@ -65,7 +65,7 @@ function ActivityMap({ geometry, block, outside, radio, onRadio }) {
       className={showBase ? 'pa-map pa-map-streets' : 'pa-map'} aria-label={`Mapa de niveles por radio censal para ${blockLabel(block)}. Usá el selector de radio debajo del mapa para consultar cada zona con teclado.`}>
       <ZoomControl position="topright" /><FitBounds bounds={bounds} />
       {streets && <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} className="pa-basetiles" bounds={maxBounds}
-        minZoom={10} maxZoom={17} referrerPolicy="no-referrer" eventHandlers={tileEvents} />}
+        minZoom={10} maxZoom={17} referrerPolicy="strict-origin" eventHandlers={tileEvents} />}
       <GeoJSON key={`${block.id}/${radio}/${showBase}`} data={geometry} style={feature => {
         const id = feature.properties.radio_id, state = stateOf(id, block, outside), style = STYLES[state]
         const fillOpacity = style.pattern ? 1 : showBase ? .62 : .9
