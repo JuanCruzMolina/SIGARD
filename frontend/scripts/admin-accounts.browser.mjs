@@ -175,7 +175,8 @@ try {
         await page.screenshot({path:resolve(output,`stage15-public-map-${width}.png`),fullPage:false})
       }
       await page.setViewport({width:1440,height:1000})
-      for(const route of ['/dashboard','/validacion','/metodologia','/mapa']) {
+      // F3: «Situación actual» in the main menu points to / (/dashboard stays a local alias, visited above).
+      for(const route of ['/','/validacion','/metodologia','/mapa']) {
         await page.click(`.main-nav a[href="${route}"]`)
         await page.waitForFunction(route=>location.pathname===route,{},route)
         await page.waitForSelector('.page-intro h1')
