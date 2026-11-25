@@ -58,6 +58,23 @@ python -m venv backend/.venv
 `requirements.research.txt` incluye las dependencias de ejecución, de prueba y el lector local
 de la API predictiva.
 
+**Entorno exacto (recomendado para reproducir resultados).** `backend/requirements.lock.txt` fija
+la versión de cada paquete del entorno con el que se probó (incluidas las dependencias
+indirectas), generado con `pip freeze` sobre CPython 3.12 en Windows x64:
+
+```powershell
+python -m venv backend/.venv
+.\backend\.venv\Scripts\python.exe -m pip install -r backend/requirements.lock.txt
+.\backend\.venv\Scripts\python.exe -m pip check
+```
+
+Con un entorno nuevo, `pip freeze` debe coincidir con el archivo (sin contar sus comentarios).
+`colorama`, `httptools`, `watchfiles` y `websockets` dependen de la plataforma: en otro sistema
+operativo conviene instalar `requirements.research.txt` y comparar. Al cambiar las dependencias, se
+actualiza `requirements.research.txt` (o los que incluye), se instala en un venv nuevo, se corre la
+regresión del backend y se regenera el archivo con
+`.\backend\.venv\Scripts\python.exe -m pip freeze`, conservando el encabezado.
+
 ### 2.3 Paquete ML (preparación offline, sin entrenamiento al navegar)
 
 ```powershell

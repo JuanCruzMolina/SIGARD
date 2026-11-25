@@ -691,3 +691,7 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
     iniciar Docker, que `AGENTS.md` prohíbe. Ejecutarlas requiere una decisión del responsable:
     autorizar Docker para ese contenedor descartable, o adaptarlas a la base de prueba del clúster
     WSL (55439), lo que exige iniciar WSL/PostgreSQL.
+- **Versiones exactas del backend**: `backend/requirements.lock.txt` (`pip freeze` del `.venv`, 44
+  paquetes, CPython 3.12.10, Windows x64). Verificado: un venv nuevo instalado sólo desde ese
+  archivo da el mismo `pip freeze`, `pip check` sin problemas y la regresión del backend igual (399
+  pasan, 6 omitidas). Uso y regeneración en `docs/manuales/manual-instalacion.md` §2.2.
