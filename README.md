@@ -139,6 +139,7 @@ Uso detallado: [manual del administrador](docs/manuales/manual-administrador.md)
 
 ### Documentación técnica
 - [Arquitectura](docs/tecnica/arquitectura.md): diagramas de contexto y lógico, componentes, seguridad.
+- [Limitaciones y trabajo futuro](docs/tecnica/limitaciones.md): las 13 limitaciones conocidas de v1.0.0 con su impacto y posible solución.
 - [Modelo de datos](docs/tecnica/modelo-datos.md): entidad-relación de ambas bases, generado desde las migraciones (`tools/generate_erd.py`).
 - [Registro de decisiones técnicas (ADR)](docs/tecnica/decisiones.md).
 - [Módulo predictivo integrado](docs/predictive-module-final.md): fuentes, candidatos, endpoints, historia precalculada y límites.
