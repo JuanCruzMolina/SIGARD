@@ -672,3 +672,10 @@ Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
 
   Pendiente aparte: axios figura en `dependencies` pero no se usa; quitarlo es un cambio de
   dependencias que no se hizo en F7a.
+- **División del bundle por rutas** (opcional): **no se hizo; documentado**. `React.lazy` para
+  Administración y el visor obliga a cambiar el contrato de `security/local-entry.test.mjs`
+  (`test:research`): esa prueba reemplaza `react` por un sustituto sin `lazy` ni `Suspense` y
+  renderiza `App` en forma síncrona con `renderToStaticMarkup`, donde una ruta perezosa sólo
+  muestra el respaldo de `Suspense`. Además Leaflet lo usan también el mapa público y Prevención,
+  así que seguiría en el bloque principal y no está asegurado que baje de 500 kB. El aviso de Vite
+  (bloque principal de unos 642 kB, 194 kB comprimido) sigue y no rompe el build.
