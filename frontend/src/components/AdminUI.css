@@ -1,5 +1,7 @@
 /* Shared Administración v2 components (AdminUI.jsx). Colours from docs/diseno/admin-v2; tokens from App.css. */
 .ui-screen-header { align-items: flex-end; flex-wrap: wrap; gap: 16px; }
+/* The title block is always a plain block, also when there is no aside (a legacy rule flexes the header's last div). */
+.ui-screen-header > div:first-child { display: block; }
 .ui-breadcrumb { margin-bottom: 6px; color: var(--muted); font-size: .875rem; }
 .ui-breadcrumb a { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; color: var(--teal-deep); font-weight: 600; }
 .ui-breadcrumb [aria-current] { color: var(--muted); }
