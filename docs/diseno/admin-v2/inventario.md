@@ -613,3 +613,30 @@ rendimiento en `performance-v1/production/cierre-f6-rendimiento-{1,2,3}/`, resum
   estaba cerrado. No se sabe si estaba abierto en la corrida 1. Causa probable: carga externa de
   la máquina, sin verificar; conviene repetir la medición con la PC libre antes de tomarla como
   referencia.
+
+## F7a · Arreglos técnicos pendientes
+
+Implementado en `entrenamiento-ML` (25/11/2026). Etiqueta previa: `antes-f7`.
+
+- **Puppeteer**: dependencia de desarrollo exacta `25.9.0`; las suites de navegador funcionan sin
+  `SIGARD_BROWSER_MODULE`, que queda como override. Instalación y navegador descargado en
+  `docs/manuales/manual-instalacion.md` §2.1.
+- **Fuentes sin conexión**: IBM Plex Sans (400/500/600/700) e IBM Plex Mono (500/600), estilo
+  normal, subconjuntos latin y latin-ext, en `frontend/src/assets/fonts/` con su licencia OFL 1.1 y
+  procedencia (`README.md`, SHA-256). Sin Google Fonts ni el ajuste de `dev:demo` que quitaba la
+  hoja. Verificado sin conexión (build de producción con todo lo externo bloqueado): antes no había
+  ninguna cara cargada (respaldo del sistema); después se cargan las caras locales y no sale ningún
+  pedido de fuentes. `test:demo:browser` lo comprueba en la demo.
+- **Plurales**: «1 candidata nueva / 2 candidatas nuevas», «1 regla activa evaluada», «N
+  inactivas», «N radios sin predicciones suficientes» y «Evidencia de 1 semana»; ningún «(s)» en
+  Administración.
+- **«Datos hasta —»**: el guion aparece sólo cuando la fuente no tiene semana.
+  - Con el visor y el fixture ficticio completo, y con `--real`, la caja muestra la última semana
+    evaluable del visor (`test:admin:browser` y su `--real` lo comparan con `/calendar`).
+  - Sin visor (Reportes y Cuentas con la API SQLite descartable, demo, producción) muestra la semana
+    del manifiesto público (p. ej. «SE 25/2024»).
+  - En los entornos de `alerts-layout`, `audit-layout` y `alerts` ficticio (`--source fictional`),
+    las rutas del visor responden 503: no hay semana y el guion es correcto.
+  - Corregido: un fallo del manifiesto quedaba guardado como «sin semana» hasta recargar la página.
+    Ahora sólo se guarda una semana encontrada (`rememberFound`); un fallo se vuelve a pedir en la
+    próxima carga (cada sección monta su propio menú). Regresión en `test:admin`.

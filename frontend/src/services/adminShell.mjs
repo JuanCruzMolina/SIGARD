@@ -51,3 +51,16 @@ export function environmentLabel({ demo, localResearch, dev }) {
   if (localResearch) return 'Local'
   return dev ? 'Desarrollo' : 'Producción'
 }
+
+// «Datos hasta» (F7a): keeps a week that was found, but never a failure or an empty answer, so a
+// source that failed once is asked again on the next load instead of showing «—» until a reload.
+export function rememberFound(load) {
+  let pending
+  return () => {
+    pending ||= Promise.resolve().then(load).then(value => {
+      if (value == null) pending = undefined
+      return value
+    }, () => { pending = undefined; return null })
+    return pending
+  }
+}

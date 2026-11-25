@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { catalog } from './predictive.fixture.mjs'
-import { ADMIN_GROUPS, ADMIN_HOME, ADMIN_SECTIONS, environmentLabel, epiWeekLabel, epiWeekOf, minutesLeft, sectionForPath, visibleSections } from '../src/services/adminShell.mjs'
+import { ADMIN_GROUPS, ADMIN_HOME, ADMIN_SECTIONS, environmentLabel, epiWeekLabel, epiWeekOf, minutesLeft, rememberFound, sectionForPath, visibleSections } from '../src/services/adminShell.mjs'
 import { EMAIL_KEY, endSession, readEmail, SESSION_KEY } from '../src/services/adminSession.mjs'
 import { lastEvaluableWeek } from '../src/services/predictiveView.mjs'
 
@@ -119,6 +119,18 @@ test('counters only come from API answers (pending candidates and received repor
   assert.match(layout, /loadDataWeek\(viewerWeek\)/)
   assert.match(week, /fetch\('\/data\/available_weeks\.json'/)
   for (const code of [layout, week]) assert.doesNotMatch(code, /SE \d+\/\d{4}/, 'no hand-written week')
+})
+
+test('«Datos hasta»: «—» only while the source has no week; a failure is asked again, a week is kept (F7a)', async () => {
+  const answers = [new Error('red caída'), null, { label: 'SE 25/2024' }, { label: 'otra' }]
+  let calls = 0
+  const load = rememberFound(async () => { const answer = answers[calls++]; if (answer instanceof Error) throw answer; return answer })
+  assert.equal(await load(), null, 'falla: sin semana (se muestra «—»)')
+  assert.equal(await load(), null, 'vuelve a preguntar; la fuente sin datos sigue sin semana')
+  assert.deepEqual(await load(), { label: 'SE 25/2024' }, 'en cuanto la fuente responde, la semana aparece')
+  assert.deepEqual(await load(), { label: 'SE 25/2024' }); assert.equal(calls, 3, 'una semana encontrada no se vuelve a pedir')
+  const week = await source('../src/services/adminWeek.js')
+  assert.ok(week.includes('const loadManifestWeek = rememberFound('))
 })
 
 // ---- Inicio (F5) ---------------------------------------------------------------------------
