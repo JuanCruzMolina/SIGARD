@@ -201,12 +201,3 @@ def get_metadata(response: Response, db: Session = Depends(get_db)):
     metadata = dict(batch.metadata_json.get("mvp", {}))
     metadata["publication"] = _publication_metadata(batch)
     return metadata
-
-
-@router.get("/model-evaluation")
-def get_model_evaluation(response: Response, db: Session = Depends(get_db)):
-    batch = _published_batch(db)
-    _cache(response, batch)
-    evaluation = dict(batch.model_evaluation_json)
-    evaluation["publication"] = _publication_metadata(batch)
-    return evaluation
