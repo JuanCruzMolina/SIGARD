@@ -187,3 +187,13 @@ test('Inicio: route, experimental label and no hand-written numbers in the scree
   assert.doesNotMatch(home, /SE \d+\/\d{4}/, 'la semana no se escribe a mano')
   assert.match(home, /loadDataWeek\(viewer\)/, 'misma fuente de semana que el menú')
 })
+
+test('side navigation stays sticky on desktop without being broken by .app-shell overflow', async () => {
+  const appCss = await source('../src/App.css')
+  const layoutCss = await source('../src/components/AdminLayout.css')
+  assert.match(appCss, /\.app-shell\s*\{[^}]*overflow-x:\s*clip;/, '.app-shell usa overflow-x: clip para no crear un scroll container')
+  assert.doesNotMatch(appCss, /\.app-shell\s*\{[^}]*overflow-x:\s*hidden/, '.app-shell no usa overflow-x: hidden')
+  assert.match(layoutCss, /\.admin-nav-inner\s*\{[^}]*position:\s*sticky;[^}]*top:\s*0;[^}]*max-height:\s*100svh;[^}]*overflow-y:\s*auto;[^}]*scrollbar-width:\s*none;/)
+  assert.match(layoutCss, /\.admin-nav-inner::-webkit-scrollbar\s*\{\s*display:\s*none;\s*\}/)
+  assert.match(layoutCss, /@media \(max-width: 900px\)[\s\S]*\.admin-nav-inner\s*\{[^}]*position:\s*static;/)
+})

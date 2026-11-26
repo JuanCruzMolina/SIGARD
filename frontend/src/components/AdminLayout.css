@@ -6,8 +6,9 @@
 .mono-week { word-spacing: -.3em; white-space: nowrap; }
 
 .admin-nav { flex: 0 0 256px; background: var(--navy); color: var(--admin-nav-ink); }
-.admin-nav-inner { position: sticky; top: 0; min-height: 100svh; max-height: 100svh; overflow-y: auto; display: flex; flex-direction: column;
-  gap: 22px; padding: 22px 14px; }
+.admin-nav-inner { position: sticky; top: 0; min-height: 100svh; max-height: 100svh; overflow-y: auto; overscroll-behavior: contain;
+  scrollbar-width: none; display: flex; flex-direction: column; gap: 22px; padding: 22px 14px; }
+.admin-nav-inner::-webkit-scrollbar { display: none; }
 .admin-nav-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .admin-brand { display: flex; align-items: center; gap: 12px; padding: 0 8px; color: #fff; }
 .admin-brand > span:last-child { display: flex; flex-direction: column; line-height: 1.2; }

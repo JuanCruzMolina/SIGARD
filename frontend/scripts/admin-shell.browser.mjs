@@ -210,6 +210,40 @@ try {
     await page.setViewport({ width: 1440, height: 1000 })
     checkpoint('subtítulo de las pantallas con el mismo estilo (≥ 14 px en móvil)')
 
+    // Sticky side navigation on desktop (> 900 px): stays pinned while content scrolls, and scrolls
+    // internally when the viewport is shorter than the menu items.
+    await page.goto(`${origin}/admin/predictivo`, { waitUntil: 'domcontentloaded' }); await viewerReady()
+    await page.setViewport({ width: 1440, height: 700 }); await settle()
+    const stickyScroll = await page.evaluate(() => {
+      window.scrollTo(0, 500)
+      const navInner = document.querySelector('.admin-nav-inner')
+      const topbar = document.querySelector('.admin-topbar')
+      return {
+        scrollY: Math.round(window.scrollY),
+        navPosition: getComputedStyle(navInner).position,
+        navTop: Math.round(navInner.getBoundingClientRect().top),
+        topbarTop: Math.round(topbar.getBoundingClientRect().top),
+      }
+    })
+    assert.ok(stickyScroll.scrollY >= 300, `la vista larga scrollea: ${stickyScroll.scrollY}`)
+    assert.equal(stickyScroll.navPosition, 'sticky', 'barra lateral sticky en escritorio')
+    assert.ok(Math.abs(stickyScroll.navTop) <= 1, `barra lateral fija en top=0 al scrollear: ${stickyScroll.navTop}`)
+    assert.ok(stickyScroll.topbarTop < 0, `la barra superior y el contenido scrollean normalmente: ${stickyScroll.topbarTop}`)
+    await page.screenshot({ path: resolve(output, 'predictivo-scrolled-desktop.private.png') })
+    await page.setViewport({ width: 1440, height: 480 }); await settle()
+    const innerScroll = await page.evaluate(() => {
+      const navInner = document.querySelector('.admin-nav-inner')
+      const maxScroll = navInner.scrollHeight - navInner.clientHeight
+      navInner.scrollTop = maxScroll
+      const contextBottom = Math.round(document.querySelector('.admin-context').getBoundingClientRect().bottom)
+      return { maxScroll, scrollTop: Math.round(navInner.scrollTop), contextBottom, clientHeight: navInner.clientHeight }
+    })
+    assert.ok(innerScroll.maxScroll > 0 && innerScroll.scrollTop > 0, `barra lateral scrollea internamente en viewport bajo: ${JSON.stringify(innerScroll)}`)
+    assert.ok(innerScroll.contextBottom <= innerScroll.clientHeight + 2, `caja de contexto visible al scrollear el menú: ${JSON.stringify(innerScroll)}`)
+    await page.evaluate(() => window.scrollTo(0, 0))
+    await page.setViewport({ width: 1440, height: 1000 })
+    checkpoint('barra lateral fija al scrollear en escritorio y con scroll interno en viewports bajos')
+
     // Counters: only numbers the API returns (/alerts/status «pending», total of received reports).
     const token = await page.evaluate(() => sessionStorage.getItem('sigard_admin_token'))
     const api = (path, options = {}) => fetch(`${ALERTS_API}/api/v1/admin${path}`, { ...options, headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' } })

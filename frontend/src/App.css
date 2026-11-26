@@ -25,7 +25,8 @@
 }
 
 #root { min-height: 100svh; }
-.app-shell { min-height: 100svh; overflow-x: hidden; background: var(--canvas); }
+/* clip (not hidden) preserves viewport-level position: sticky on .admin-nav-inner and .site-header. */
+.app-shell { min-height: 100svh; overflow-x: clip; background: var(--canvas); }
 
 .privacy-bar {
   min-height: 34px;
