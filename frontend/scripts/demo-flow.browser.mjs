@@ -76,7 +76,7 @@ try {
     await page.select('.public-radio-control select', radio)
     await page.waitForFunction(radio => document.querySelector('.radio-details h2')?.textContent.includes(radio), {}, radio)
   })
-  for (const [route, selector] of [['/', '.public-home'], ['/validacion', '.validation-panel'], ['/metodologia', '.content-wrap']]) {
+  for (const [route, selector] of [['/', '.public-home']]) {
     await page.click(`.main-nav a[href="${route}"]`); await page.waitForSelector(selector)
   }
   assert.equal((await fetch(`${api}/api/v1/admin/demo/catalog`)).status, 401)

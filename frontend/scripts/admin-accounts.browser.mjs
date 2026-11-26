@@ -176,10 +176,17 @@ try {
       }
       await page.setViewport({width:1440,height:1000})
       // F3: «Situación actual» in the main menu points to / (/dashboard stays a local alias, visited above).
-      for(const route of ['/','/validacion','/metodologia','/mapa']) {
+      for(const route of ['/','/mapa']) {
         await page.click(`.main-nav a[href="${route}"]`)
         await page.waitForFunction(route=>location.pathname===route,{},route)
         await page.waitForSelector('.page-intro h1')
+      }
+      // Validación and Cómo funciona were removed: not in the menu; their old URLs land on the home page.
+      assert.deepEqual((await page.$$eval('.main-nav a',n=>n.map(a=>a.textContent))).filter(t=>t!=='Actividad registrada'),['Situación actual','Mapa público','Prevención y ayuda','Administración'])
+      for(const route of ['/validacion','/metodologia']) {
+        await page.goto(`http://127.0.0.1:5173${route}`,{waitUntil:'networkidle0'})
+        await page.waitForSelector('.public-home')
+        assert.equal(await page.evaluate(()=>location.pathname),'/')
       }
     })
     await check('prevención, directorio, formulario y seguimiento ciudadano ficticio',async()=>{

@@ -50,7 +50,7 @@ const replacements = {
 replacements['../services/localResearch'] = replacements['./services/localResearch']
 // The activity probe is disabled here (404 contract): the link must not appear.
 replacements['./services/publicActivity.mjs'] = url('export const loadActivity=()=>Promise.resolve({enabled:false});')
-for (const page of ['Dashboard', 'Mapa', 'Validacion', 'Metodologia', 'Prevencion', 'AdminArea', 'Actividad']) {
+for (const page of ['Dashboard', 'Mapa', 'Prevencion', 'AdminArea', 'Actividad']) {
   replacements[`./pages/${page}`] = url(`export default function Page(){return ${JSON.stringify(page)}}`)
 }
 async function component(path) {
@@ -132,4 +132,23 @@ test('F7b: no source file calls the retired research API on 8765 or imports the 
     const source = await readFile(new URL(name.split(String.fromCharCode(92)).join('/'), root), 'utf8')
     assert.doesNotMatch(source, /8765|research\/spatial|ExperimentalSpatial|ExperimentalAnalysis|experimentalResults/, name)
   }
+})
+
+
+test('the Validación and Cómo funciona pages are gone: not in the menu, old URLs go to the home page', async () => {
+  const slots = [{ availableWeeks: {} }, '2030-01-06', null]
+  for (const enabled of [true, false]) {
+    state.enabled = enabled; state.path = '/'
+    const html = render(App, slots)
+    const menu = html.match(/<nav class="main-nav"[^]*?<\/nav>/)[0]
+    assert.deepEqual([...menu.matchAll(/>([^<>]+)<\/a>/g)].map(m => m[1]), ['Situación actual', 'Mapa público', 'Prevención y ayuda', 'Administración'])
+    assert.doesNotMatch(html, /href="\/(validacion|metodologia)"|>Validación<|>Cómo funciona</)
+    for (const path of ['/validacion', '/metodologia']) {
+      state.path = path
+      assert.match(render(App, slots), /<div data-redirect="\/" data-replace="true"><\/div>/, path)
+    }
+  }
+  const { readdir } = await import('node:fs/promises')
+  const pages = await readdir(new URL('../src/pages/', import.meta.url))
+  assert.ok(!pages.includes('Validacion.jsx') && !pages.includes('Metodologia.jsx'))
 })
