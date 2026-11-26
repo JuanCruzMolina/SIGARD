@@ -70,7 +70,6 @@ GET   /api/v1/public/predictions/{cutoff_date}
 GET   /api/v1/public/territorial-context
 GET   /api/v1/public/experimental-spatial-history/{cutoff_date}
 GET   /api/v1/public/metadata
-GET   /api/v1/public/model-evaluation
 GET   /api/v1/public/activity          (404 salvo autorización privada; ver docs/actividad-registrada-publica.md)
 GET   /api/v1/public/prevention
 POST  /api/v1/citizen-reports
@@ -219,7 +218,8 @@ ejecuta la exportación ni se leen sus fuentes, cartografía o productos A/B.
 
 Admite `available_weeks.json`, `temporal_predictions.json`,
 `territorial_context.geojson`, `experimental_spatial_history.geojson`,
-`model_evaluation.json` y `mvp_metadata.json`. Conserva el contrato de **263
+`model_evaluation.json` y `mvp_metadata.json` (`model_evaluation.json` se sigue importando y
+guardando, pero ya no se sirve: `/model-evaluation` se retiró con la página Validación). Conserva el contrato de **263
 radios**, una predicción departamental por semana y simulaciones espaciales
 referenciadas al mismo radio/geometría y semana. No es un importador genérico
 de polígonos, no carga modelos A/B ni aplica elegibilidad epidemiológica oficial.
