@@ -32,8 +32,6 @@ En la parte superior hay un menú con estas secciones:
 | Mapa público | Mapa de contexto de la ciudad |
 | Actividad registrada | Datos históricos protegidos por zona (sólo aparece si está habilitada) |
 | Prevención y ayuda | Prevención, síntomas, centros de salud, teléfonos, reporte y seguimiento |
-| Validación | Cómo se comprobó el prototipo |
-| Cómo funciona | Explicación del método y sus límites |
 | Administración | Uso exclusivo del personal autorizado |
 
 El sitio funciona en computadora y en celular, y se puede recorrer con el teclado (tecla Tab).

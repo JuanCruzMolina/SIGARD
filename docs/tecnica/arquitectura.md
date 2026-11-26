@@ -117,8 +117,8 @@ flowchart TB
 
 ### 4.1 Frontend (`frontend/`)
 
-- SPA React 19 + Vite 8 + Leaflet. Rutas públicas: `/`, `/mapa`, `/actividad`, `/prevencion`,
-  `/validacion` y `/metodologia`. Ruta administrativa: `/admin/reportes`.
+- SPA React 19 + Vite 8 + Leaflet. Rutas públicas: `/`, `/mapa`, `/actividad` y `/prevencion`;
+  las retiradas `/validacion` y `/metodologia` redirigen a `/`. Ruta administrativa: `/admin/reportes`.
 - El **visor predictivo** existe sólo con `import.meta.env.DEV` y origen `127.0.0.1:5173`. El
   bundle público muestra el mapa de contexto en su lugar.
 - Las lecturas iniciales se reintentan **una vez** ante falla de red o 5xx

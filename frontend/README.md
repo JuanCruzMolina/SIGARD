@@ -14,7 +14,7 @@ Visión general, criterios y documentación: [README del repositorio](../README.
 | `/mapa` | Público | Mapa público agregado por radio censal. Siempre es el mapa público; un enlace viejo `/mapa?…` con estado del visor redirige a `/admin/predictivo?…` sólo con sesión de administrador |
 | `/actividad` | Público | «Actividad registrada» con supresión de valores pequeños. Oculta salvo con un paquete autorizado o la fixture ficticia (`SIGARD_PUBLIC_ACTIVITY=fixture`) |
 | `/prevencion` | Público | Prevención y ayuda: contenido publicado desde Administración, centros de salud, teléfonos, reporte ciudadano anónimo y seguimiento por código |
-| `/validacion`, `/metodologia` | Público | Validación temporal y explicación del método |
+| `/validacion`, `/metodologia` | — | Páginas retiradas (Validación y Cómo funciona): las URLs viejas redirigen a la portada `/` |
 | `/admin/*` | Administradores | Siete secciones con menú lateral y barra de sesión (ver abajo) |
 
 Las vistas epidemiológicas consultan la API pública de `VITE_API_URL` y, si no responde, usan el
