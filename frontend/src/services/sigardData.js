@@ -19,9 +19,8 @@ async function loadApiJson(path) {
 async function loadFromApi() {
   const availableWeeks = await loadApiJson('/weeks')
   if (!Array.isArray(availableWeeks.weeks) || availableWeeks.weeks.length === 0) throw new Error(DATA_ERROR_MESSAGE)
-  const [territorialContext, modelEvaluation, metadata, predictions, experimentalCollections] = await Promise.all([
+  const [territorialContext, metadata, predictions, experimentalCollections] = await Promise.all([
     loadApiJson('/territorial-context'),
-    loadApiJson('/model-evaluation'),
     loadApiJson('/metadata'),
     Promise.all(availableWeeks.weeks.map((week) => loadApiJson(`/predictions/${encodeURIComponent(week.cutoff_date)}`))),
     Promise.all(availableWeeks.weeks.map((week) => loadApiJson(`/experimental-spatial-history/${encodeURIComponent(week.cutoff_date)}`))),
@@ -35,20 +34,19 @@ async function loadFromApi() {
       features: experimentalCollections.flatMap((collection) => collection.features),
       publication: availableWeeks.publication,
     },
-    modelEvaluation,
     metadata,
     dataSource: 'api',
   }
 }
 
 async function loadFromStaticFallback() {
-  const [availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata] = await Promise.all([
+  const [availableWeeks, temporalPredictions, territorialContext, experimentalHistory, metadata] = await Promise.all([
     loadStaticJson('available_weeks.json'), loadStaticJson('temporal_predictions.json'),
     loadStaticJson('territorial_context.geojson'), loadStaticJson('experimental_spatial_history.geojson'),
-    loadStaticJson('model_evaluation.json'), loadStaticJson('mvp_metadata.json'),
+    loadStaticJson('mvp_metadata.json'),
   ])
   return {
-    availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation, metadata,
+    availableWeeks, temporalPredictions, territorialContext, experimentalHistory, metadata,
     dataSource: 'static-fallback',
   }
 }
@@ -57,14 +55,14 @@ function assertFeatureCollection(value, label) {
   if (value?.type !== 'FeatureCollection' || !Array.isArray(value.features)) throw new Error(`${DATA_ERROR_MESSAGE} ${label} no es una colección geográfica válida.`)
 }
 
-function assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation) {
+function assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory) {
   const expectedLevels = new Set(['very_low', 'low', 'medium', 'high'])
   const hasValidLevels = (features) => {
     const levels = new Set(features.map((feature) => feature.properties?.relative_level))
     return levels.size > 0 && [...levels].every((level) => expectedLevels.has(level))
   }
   if (territorialContext.features.length !== 263 || !hasValidLevels(territorialContext.features)) throw new Error(DATA_ERROR_MESSAGE)
-  if (!Array.isArray(temporalPredictions.predictions) || !Array.isArray(modelEvaluation.backtest) || modelEvaluation.backtest.length !== 6) throw new Error(DATA_ERROR_MESSAGE)
+  if (!Array.isArray(temporalPredictions.predictions)) throw new Error(DATA_ERROR_MESSAGE)
   for (const week of availableWeeks.weeks) {
     const predictions = temporalPredictions.predictions.filter((item) => item.cutoff_date === week.cutoff_date)
     const simulation = experimentalHistory.features.filter((feature) => feature.properties?.cutoff_date === week.cutoff_date)
@@ -82,12 +80,12 @@ export async function loadSigardData() {
     } catch {
       loaded = await loadFromStaticFallback()
     }
-    const { availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation } = loaded
+    const { availableWeeks, temporalPredictions, territorialContext, experimentalHistory } = loaded
     if (!Array.isArray(availableWeeks.weeks) || availableWeeks.weeks.length === 0) throw new Error(`${DATA_ERROR_MESSAGE} No hay semanas disponibles.`)
     if (!availableWeeks.weeks.some((week) => week.cutoff_date === availableWeeks.default_cutoff_date)) throw new Error(`${DATA_ERROR_MESSAGE} El corte predeterminado no está disponible.`)
     assertFeatureCollection(territorialContext, 'El contexto territorial')
     assertFeatureCollection(experimentalHistory, 'La simulación espacial')
-    assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory, modelEvaluation)
+    assertCompleteData(availableWeeks, temporalPredictions, territorialContext, experimentalHistory)
     return loaded
   } catch (error) {
     if (error.message?.startsWith(DATA_ERROR_MESSAGE)) throw error
