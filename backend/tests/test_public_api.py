@@ -101,7 +101,6 @@ def test_public_api_exposes_only_the_published_contract(client):
         "/api/v1/public/territorial-context",
         "/api/v1/public/experimental-spatial-history/2024-06-22",
         "/api/v1/public/metadata",
-        "/api/v1/public/model-evaluation",
     ]
     forbidden = {"description", "address_reference", "internal_notes", "tracking_code", "email"}
     for path in paths:
@@ -112,6 +111,8 @@ def test_public_api_exposes_only_the_published_contract(client):
         assert not any(key in response.text.lower() for key in forbidden)
 
     assert client.get("/api/v1/public/predictions/2024-06-21").status_code == 404
+    # The previous model's evaluation is no longer served (its only page was removed).
+    assert client.get("/api/v1/public/model-evaluation").status_code == 404
     assert client.get("/api/v1/public/predictions/not-a-date").status_code == 422
     territorial = client.get("/api/v1/public/territorial-context").json()
     assert territorial["features"][0]["geometry"] == GEOMETRY

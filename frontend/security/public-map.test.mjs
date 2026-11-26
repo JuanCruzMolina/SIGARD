@@ -101,3 +101,32 @@ test('OSM tile layers send only the page origin as Referer (tile usage policy)',
     for (const layer of layers) assert.match(layer, /referrerPolicy="strict-origin"/, `${name} tile Referer limited to origin`)
   }
 })
+
+test('Situación actual and Mapa load their data without requesting the removed model evaluation', async () => {
+  const { loadSigardData } = await import(replacements['../services/sigardData'])
+  // Generated fictional contract: one week, 263 fictional radios, no real data.
+  const week = { cutoff_date: '2024-06-22', target_week_start: '2024-06-23', target_week_end: '2024-06-29' }
+  const weeks = { weeks: [week], default_cutoff_date: week.cutoff_date }
+  const prediction = { ...week, predicted_cases: 1 }
+  const spatial = { ...collection(), features: collection().features.map(f => ({ ...f, properties: { ...f.properties, cutoff_date: week.cutoff_date } })) }
+  const api = { '/weeks': weeks, '/territorial-context': collection(), '/metadata': { temporal_model: { variant: 'fictional' } },
+    [`/predictions/${week.cutoff_date}`]: prediction, [`/experimental-spatial-history/${week.cutoff_date}`]: spatial }
+  const files = { 'available_weeks.json': weeks, 'temporal_predictions.json': { model: {}, predictions: [prediction] },
+    'territorial_context.geojson': collection(), 'experimental_spatial_history.geojson': spatial, 'mvp_metadata.json': {} }
+  const original = globalThis.fetch
+  try {
+    for (const apiUp of [true, false]) {
+      const requested = []
+      globalThis.fetch = async target => {
+        const href = String(target); requested.push(href)
+        const body = href.includes('/api/v1/public') ? (apiUp ? api[href.split('/api/v1/public')[1]] : undefined) : files[href.replace('/data/', '')]
+        return { ok: body !== undefined, status: body === undefined ? 404 : 200, json: async () => body }
+      }
+      const data = await loadSigardData()
+      assert.equal(data.dataSource, apiUp ? 'api' : 'static-fallback')
+      assert.equal(data.modelEvaluation, undefined)
+      assert.ok(requested.length >= 5)
+      assert.ok(!requested.some(href => /model[-_]evaluation/.test(href)), requested.join(' '))
+    }
+  } finally { globalThis.fetch = original }
+})

@@ -278,8 +278,8 @@ def test_import_persist_idempotence_and_public_queries(store, source, documents)
         metadata = client.get("/api/v1/public/metadata").json()
         assert metadata["data_type"] == "synthetic"
         assert metadata["fixture_version"] == "territorial-import-v1"
-        evaluation = client.get("/api/v1/public/model-evaluation").json()
-        assert evaluation["metrics"] == {}
+        # model_evaluation.json is still imported and stored, but no endpoint serves it.
+        assert client.get("/api/v1/public/model-evaluation").status_code == 404
         weeks = client.get("/api/v1/public/weeks").json()
         assert weeks["default_cutoff_date"] == CUTOFF
         prediction = client.get(f"/api/v1/public/predictions/{CUTOFF}").json()

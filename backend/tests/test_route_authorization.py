@@ -8,7 +8,7 @@ PUBLIC = {
     "POST /api/v1/citizen-reports", "GET /api/v1/citizen-reports/status/{tracking_code}", "POST /api/v1/geocoding/address",
     "GET /api/v1/public/weeks", "GET /api/v1/public/predictions/{cutoff_date}", "GET /api/v1/public/territorial-context",
     "GET /api/v1/public/experimental-spatial-history/{cutoff_date}", "GET /api/v1/public/metadata",
-    "GET /api/v1/public/model-evaluation", "GET /api/v1/public/activity", "GET /api/v1/public/prevention",
+    "GET /api/v1/public/activity", "GET /api/v1/public/prevention",
     "GET /", "GET /health", "GET /health/ready", "POST /api/v1/admin/session",
 }
 
