@@ -28,7 +28,7 @@ export default function Dashboard({ data, selectedCutoffDate, onCutoffChange }) 
       <StatCard label="Cobertura territorial" value={`${data.territorialContext.features.length} radios`} detail="Departamento Capital" />
       <StatCard label="Datos disponibles hasta" value={formatDate(selectedCutoffDate)} detail={data.temporalPredictions.model.variant} />
     </section>
-    <section className="provenance-strip" aria-labelledby="provenance-title"><div><h2 id="provenance-title">Qué estás viendo</h2><p>Cada resultado conserva su procedencia para evitar interpretaciones incorrectas.</p></div><ul><li><i className="source-dot observed" />Observaciones agregadas</li><li><i className="source-dot predicted" />Predicción temporal</li><li><i className="source-dot synthetic" />Simulación espacial</li></ul><Link className="text-link" to="/metodologia">Consultar metodología <span aria-hidden="true">→</span></Link></section>
+    <section className="provenance-strip" aria-labelledby="provenance-title"><div><h2 id="provenance-title">Qué estás viendo</h2><p>Cada resultado conserva su procedencia para evitar interpretaciones incorrectas.</p></div><ul><li><i className="source-dot observed" />Observaciones agregadas</li><li><i className="source-dot predicted" />Predicción temporal</li><li><i className="source-dot synthetic" />Simulación espacial</li></ul></section>
     <section className="panel ranking-panel"><div className="section-heading"><div><h2>{territorialView === 'context' ? 'Radios con mayor contexto territorial relativo' : 'Mayor señal dentro de la simulación'}</h2><p>Orden relativo de la capa seleccionada; no constituye un ranking sanitario oficial.</p></div></div><TopRadios geojson={geojson} view={territorialView} /></section>
   </div>
 }
