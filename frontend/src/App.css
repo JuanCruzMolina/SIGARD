@@ -119,21 +119,7 @@
 .map-stage .method-notice strong { color: #fff; }
 .map-stage .notice-icon { stroke: #75d1ad; }
 
-.situation-ledger { margin: 28px 0 0; display: grid; grid-template-columns: 1.15fr 1fr .8fr 1fr; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow-low); }
-.stat-card { min-width: 0; padding: 22px 24px; position: relative; }
-.stat-card:not(:last-child)::after { content: ''; width: 1px; position: absolute; top: 18px; right: 0; bottom: 18px; background: var(--line); }
-.stat-card span, .stat-card small { display: block; color: var(--muted); font-size: .68rem; line-height: 1.45; }
-.stat-card strong { display: block; margin: 8px 0 5px; color: var(--navy-deep); font-size: 1.15rem; letter-spacing: -.025em; font-variant-numeric: tabular-nums; }
 
-.provenance-strip { margin: 18px 0 0; padding: 22px 24px; display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 28px; color: #dcebe7; background: var(--navy-deep); border-radius: var(--radius); }
-.provenance-strip h2 { margin: 0 0 3px; color: #fff; font-size: 1rem; }
-.provenance-strip p { margin: 0; color: #b9d0cc; font-size: .72rem; }
-.provenance-strip ul { margin: 0; padding: 0; display: flex; gap: 16px; list-style: none; font-size: .69rem; }
-.provenance-strip li { display: flex; align-items: center; gap: 6px; white-space: nowrap; }
-.source-dot { width: 8px; height: 8px; border-radius: 50%; }
-.source-dot.observed { background: #69c7a3; }
-.source-dot.predicted { background: #72b6cf; }
-.source-dot.synthetic { background: #e6bb58; }
 
 .section-heading { margin: 0 0 18px; display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
 .section-heading h2 { margin: 0; color: var(--navy); font-size: 1.18rem; letter-spacing: -.025em; }
@@ -141,13 +127,7 @@
 .text-link { color: var(--teal-deep); font-size: .74rem; font-weight: 700; text-underline-offset: 3px; }
 .text-link:hover { color: var(--navy); }
 .panel { padding: 25px; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow-low); }
-.ranking-panel { margin-top: 18px; }
 
-.top-radios { display: flex; flex-direction: column; }
-.top-radios > div { padding: 13px 0; display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px; border-top: 1px solid var(--line); }
-.top-radios span { color: #899b9b; font: 600 .72rem 'IBM Plex Sans', sans-serif; }
-.top-radios strong { color: var(--navy); font-size: .77rem; }
-.top-radios em { color: var(--teal-deep); font: 600 .72rem 'IBM Plex Sans', sans-serif; font-style: normal; font-variant-numeric: tabular-nums; }
 
 .empty-panel { min-height: 100%; padding: 42px 26px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
 .empty-map-icon { width: 34px; margin-bottom: 15px; fill: none; stroke: #8eaaa5; stroke-width: 1.4; stroke-linejoin: round; }
@@ -184,9 +164,6 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
   .brand { min-width: 0; }
   .main-nav { order: 3; width: 100%; height: 38px; flex-basis: 100%; gap: 22px; overflow-x: auto; }
   .status-badge { margin-left: auto; }
-  .situation-ledger { grid-template-columns: repeat(2, 1fr); }
-  .stat-card:nth-child(2)::after { display: none; }
-  .provenance-strip { grid-template-columns: 1fr; gap: 14px; }
   .map-layout { grid-template-columns: 1fr; }
   .map-side-panel { min-height: 260px; border-top: 1px solid var(--line); border-left: 0; }
   .site-footer { flex-wrap: wrap; }
@@ -210,11 +187,6 @@ button:focus-visible, select:focus-visible, a:focus-visible { outline: 3px solid
   .segmented button { flex: 1; }
   .map-layout, .map-layout.compact, .leaflet-map { min-height: 440px; }
   .risk-legend { right: 10px; left: 10px; gap: 6px 10px; }
-  .situation-ledger { grid-template-columns: 1fr; }
-  .stat-card::after { top: auto !important; right: 20px !important; bottom: 0 !important; left: 20px; width: auto !important; height: 1px; }
-  .provenance-strip ul { align-items: flex-start; flex-direction: column; gap: 8px; }
-  .top-radios > div { grid-template-columns: 26px 1fr; }
-  .top-radios em { grid-column: 2; }
   .panel { padding: 19px; }
   .site-footer { flex-direction: column; }
 }

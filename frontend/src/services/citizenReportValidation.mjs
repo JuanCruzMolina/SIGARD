@@ -12,3 +12,10 @@ export const normalizeReportText = value => value.trim().replace(/\s+/g, ' ')
 
 // Short category names of the administrative inbox (Reportes ciudadanos and Inicio).
 export const REPORT_CATEGORY_LABELS = { agua_acumulada: 'Agua acumulada', neumaticos_chatarra: 'Neumáticos o chatarra', microbasural: 'Microbasural', criadero_espacio_publico: 'Criadero en espacio público', alta_presencia_mosquitos: 'Alta presencia de mosquitos', evaluacion_control_vectorial: 'Evaluación de control vectorial', otro: 'Otro' }
+
+// Privacy and scope of the citizen report: one text for the form and the public home page.
+export const REPORT_PRIVACY = {
+  lead: 'No pedimos nombre, DNI, teléfono, correo ni datos de salud.',
+  body: 'Los datos enviados en el reporte son privados, sólo los verá personal administrador y se eliminarán al vencer la retención. La búsqueda opcional de dirección tiene un consentimiento separado.',
+}
+export const REPORT_SCOPE = 'El registro es interno de SIGARD. No reemplaza una denuncia municipal ni garantiza una intervención.'

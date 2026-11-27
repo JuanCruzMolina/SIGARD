@@ -1,0 +1,93 @@
+/* Public home page (Situación actual). Mobile first (390 px), body text >= 16 px, site tokens from App.css. */
+.public-home { max-width: 980px; padding: 28px 16px 64px; font-size: 1rem; line-height: 1.6; color: var(--ink); }
+.public-home p, .public-home li { font-size: 1rem; }
+.public-home a { color: var(--teal-deep); text-underline-offset: 3px; }
+.public-home h2 { margin: 0 0 12px; color: var(--navy-deep); font-size: 1.5rem; line-height: 1.2; letter-spacing: -.02em; }
+.public-home h3 { margin: 22px 0 10px; color: var(--navy); font-size: 1.125rem; line-height: 1.3; }
+.public-home .home-icon { width: 22px; height: 22px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+.home-intro { margin: 0 0 8px; }
+.public-home .home-intro h1 { margin: 0; color: var(--navy-deep); font-size: 2rem; line-height: 1.1; letter-spacing: -.03em; }
+.public-home .home-intro > p { max-width: 60ch; margin: 12px 0 0; color: var(--ink-soft); font-size: 1.0625rem; }
+.home-actions { margin: 22px 0 0; display: grid; gap: 10px; }
+.public-home .home-actions a { min-height: 56px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; color: var(--navy-deep); background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); box-shadow: var(--shadow-low); font-size: 1.0625rem; font-weight: 700; text-decoration: none; }
+.public-home .home-actions a:first-child { color: #fff; background: var(--teal-deep); border-color: var(--teal-deep); }
+.public-home .home-actions a:hover { border-color: var(--teal); }
+.public-home .home-actions a:focus-visible, .home-years button:focus-visible, .public-home .home-button:focus-visible { outline: 3px solid var(--navy); outline-offset: 2px; }
+
+.home-section { margin: 20px 0 0; padding: 22px 18px; background: var(--paper); border-radius: var(--radius); box-shadow: var(--shadow-low); }
+.home-section > p { max-width: 68ch; margin: 0 0 12px; }
+
+.home-empty { padding: 16px; color: var(--ink-soft); background: var(--canvas); border: 1px dashed var(--line-strong); border-radius: var(--radius-sm); }
+.home-empty p { margin: 0; }
+.home-empty a { display: inline-block; margin-top: 8px; font-weight: 700; }
+
+.home-fictional { margin: 0 0 14px; padding: 12px 14px; color: #5c420a; background: #fbf0cf; border-left: 4px solid var(--gold-deep); border-radius: 6px; }
+.home-date { margin: 0 0 14px; padding: 12px 14px; color: var(--navy-deep); background: var(--mint); border-radius: 6px; }
+.home-trend { margin: 0 0 6px; }
+.home-trend strong { display: block; color: var(--navy-deep); font-size: 1.125rem; }
+.home-trend p { margin: 4px 0 0; color: var(--ink-soft); }
+.home-peaks { margin: 0 0 14px; }
+
+.home-bars { margin: 0; padding: 0; list-style: none; }
+.home-bars li { padding: 10px 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; border-top: 1px solid var(--line); }
+.home-bars .bar-label { color: var(--ink); }
+.home-bars .bar-value { color: var(--navy-deep); font-weight: 700; font-variant-numeric: tabular-nums; text-align: right; }
+.home-bars .bar-track { grid-column: 1 / -1; height: 12px; display: block; background: var(--canvas-deep); border-radius: 0 4px 4px 0; }
+.home-bars .bar-fill { height: 100%; display: block; background: var(--teal); border-radius: 0 4px 4px 0; }
+.home-bars li.protected .bar-value { color: var(--ink-soft); font-weight: 600; }
+.home-bars li.protected .bar-track { background: repeating-linear-gradient(45deg, var(--canvas-deep) 0 4px, var(--line-strong) 4px 6px); }
+
+.home-notes { margin: 14px 0 0; color: var(--ink-soft); }
+.home-notes p { margin: 6px 0 0; }
+.home-scale, .home-muted { margin: 12px 0 0; color: var(--ink-soft); }
+
+.home-years { margin: 4px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
+.home-years button { min-width: 72px; min-height: 44px; padding: 8px 14px; color: var(--navy); background: var(--paper); border: 1px solid var(--line-strong); border-radius: var(--radius-sm); cursor: pointer; font-size: 1rem; font-weight: 700; }
+.home-years button[aria-pressed="true"] { color: #fff; background: var(--navy); border-color: var(--navy); }
+
+.home-cards { display: grid; gap: 14px; }
+.home-cards article { padding: 16px; background: var(--canvas); border-radius: var(--radius-sm); }
+.home-cards article h3 { margin-top: 0; }
+.home-cards article ul { margin: 8px 0 0; padding-left: 1.2em; }
+.home-cards article li { margin: 4px 0; }
+.home-cards article p { margin: 8px 0 0; }
+.home-cards article.alarm { color: #fff; background: var(--red-deep); }
+.home-cards article.alarm h3, .home-cards article.alarm a { color: #fff; }
+.home-cards article.alarm .home-icon { margin-bottom: 6px; }
+.public-home .section-source { display: block; margin-top: 12px; color: var(--ink-soft); font-size: 1rem; }
+.public-home .alarm .section-source { color: #fff; }
+
+.home-links { margin: 16px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; }
+.public-home .home-more { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; font-weight: 700; }
+.home-links .home-more { margin-top: 0; }
+.public-home .home-call, .public-home .home-button { min-height: 48px; padding: 10px 16px; display: inline-flex; align-items: center; gap: 10px; color: #fff; background: var(--red-deep); border-radius: var(--radius-sm); font-weight: 700; text-decoration: none; }
+.public-home .home-button { background: var(--teal-deep); }
+
+.home-steps { margin: 0; padding: 0; list-style: none; counter-reset: step; }
+.home-steps li { padding: 10px 0 10px 44px; position: relative; counter-increment: step; }
+.home-steps li::before { content: counter(step); width: 30px; height: 30px; position: absolute; top: 9px; left: 0; display: grid; place-items: center; color: #fff; background: var(--teal-deep); border-radius: 50%; font-weight: 700; }
+.home-privacy { margin: 12px 0 0; padding: 14px; display: flex; gap: 12px; align-items: flex-start; background: var(--mint); border-radius: var(--radius-sm); }
+.home-privacy p { margin: 0; }
+.home-privacy .home-icon { color: var(--teal-deep); }
+
+.home-contacts { margin: 0; padding: 0; display: grid; gap: 10px; list-style: none; }
+.home-contacts li { padding: 14px; display: grid; gap: 4px; background: var(--canvas); border-radius: var(--radius-sm); }
+.home-contacts strong { color: var(--navy-deep); }
+.home-contacts span { color: var(--ink-soft); }
+.public-home .home-contacts li > a { width: fit-content; min-height: 44px; display: inline-flex; align-items: center; gap: 8px; font-size: 1.125rem; font-weight: 700; }
+.home-contacts small { color: var(--ink-soft); font-size: 1rem; }
+.home-sources { margin: 0; padding-left: 1.2em; }
+.home-sources li { margin: 6px 0; }
+
+@media (min-width: 720px) {
+  .public-home { padding: 44px 32px 80px; }
+  .public-home .home-intro h1 { font-size: 2.6rem; }
+  .home-actions { grid-template-columns: repeat(3, 1fr); }
+  .home-section { padding: 28px 32px; }
+  .home-cards { grid-template-columns: repeat(2, 1fr); }
+  .home-cards.care article.alarm { grid-column: 1 / -1; }
+  .home-contacts { grid-template-columns: repeat(2, 1fr); }
+  .home-bars li { grid-template-columns: minmax(230px, 1.2fr) 2fr minmax(120px, auto); }
+  .home-bars .bar-track { grid-column: auto; grid-row: 1; grid-column-start: 2; }
+}

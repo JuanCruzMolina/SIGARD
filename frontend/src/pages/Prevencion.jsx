@@ -18,6 +18,13 @@ export default function Prevencion() {
     loadPreventionData().then(setData).catch(() => setError(PREVENTION_DATA_ERROR))
   }, [])
 
+  // Links such as /prevencion#reportar (home page accesses) arrive before the sections exist:
+  // scroll to the anchor once the content is rendered.
+  useEffect(() => {
+    const id = data && decodeURIComponent(window.location.hash.slice(1))
+    if (id) document.getElementById(id)?.scrollIntoView()
+  }, [data])
+
   if (error) {
     return <main className="error-state" role="alert"><h1>Prevención y ayuda</h1><p>{error}</p></main>
   }

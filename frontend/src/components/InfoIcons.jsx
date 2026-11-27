@@ -25,3 +25,7 @@ export function AlertIcon({ className = '' }) {
 export function SearchIcon({ className = '' }) {
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m15.5 15.5 5 5"/></svg>
 }
+
+export function MapIcon({ className = '' }) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"/><path d="M9 4v14M15 6v14"/></svg>
+}

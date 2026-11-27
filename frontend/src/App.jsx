@@ -29,7 +29,8 @@ function AppContent() {
   const predictiveRoute = localResearch && pathname === PREDICTIVE_ROUTE
   const legacyViewerRedirect = localResearch && pathname === '/mapa' && hasViewerParams(new URLSearchParams(search)) && adminSessionActive(readSession())
   const adminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
-  const needsEpidemiologicalData = !legacyViewerRedirect && !pathname.startsWith('/prevencion') && !adminRoute && !pathname.startsWith('/actividad')
+  // Only the public map uses the MVP publication; the home page reads prevention content and the activity package.
+  const needsEpidemiologicalData = pathname === '/mapa' && !legacyViewerRedirect
   // The activity link appears only when the API serves an authorized (or fictional fixture) package.
   const [activityEnabled, setActivityEnabled] = useState(false)
   useEffect(() => { if (!demoMode) loadActivity().then(result => setActivityEnabled(result.enabled)) }, [])
@@ -54,8 +55,8 @@ function AppContent() {
       <Route path="/prevencion" element={<Prevencion />} />
       <Route path="/admin/*" element={<AdminArea onFrameChange={setAdminFrame} />} />
       <Route path="/actividad" element={<Actividad />} />
-      <Route path="/" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />
-      {localResearch && <Route path="/dashboard" element={<EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Dashboard {...shared} />}</EpidemiologicalRoute>} />}
+      <Route path="/" element={<main><Dashboard /></main>} />
+      {localResearch && <Route path="/dashboard" element={<main><Dashboard /></main>} />}
       <Route path="/mapa" element={legacyViewerRedirect ? <Navigate to={`${PREDICTIVE_ROUTE}${search}`} replace /> : <EpidemiologicalRoute data={data} error={error} selectedCutoffDate={selectedCutoffDate}>{shared && <Mapa {...shared} predictiveLink={localResearch ? `${PREDICTIVE_ROUTE}${search}` : null} />}</EpidemiologicalRoute>} />
       {/* The Validación and Cómo funciona pages were removed; their old URLs go to the home page. */}
       <Route path="/validacion" element={<Navigate to="/" replace />} />
