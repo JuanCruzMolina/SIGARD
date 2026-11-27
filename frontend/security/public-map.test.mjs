@@ -102,7 +102,7 @@ test('OSM tile layers send only the page origin as Referer (tile usage policy)',
   }
 })
 
-test('Situación actual and Mapa load their data without requesting the removed model evaluation', async () => {
+test('Mapa loads its data without requesting the removed model evaluation', async () => {
   const { loadSigardData } = await import(replacements['../services/sigardData'])
   // Generated fictional contract: one week, 263 fictional radios, no real data.
   const week = { cutoff_date: '2024-06-22', target_week_start: '2024-06-23', target_week_end: '2024-06-29' }

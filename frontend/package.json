@@ -13,6 +13,8 @@
     "test:predictive:layout:browser": "node scripts/predictive-layout.browser.mjs",
     "test:public-map": "node --test security/public-map.test.mjs",
     "test:public-activity": "node --test security/public-activity.test.mjs",
+    "test:public-home": "node --test security/public-home.test.mjs",
+    "test:public-home:browser": "node scripts/public-home.browser.mjs",
     "test:public-activity:browser": "node scripts/public-activity.browser.mjs",
     "build:predictive-viewer": "node scripts/build-predictive-viewer.mjs",
     "test:predictive-viewer": "node scripts/predictive-viewer.browser.mjs",

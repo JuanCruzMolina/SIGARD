@@ -83,6 +83,8 @@ test('root is the public home in every context (no redirect in dev); /dashboard 
     assert.doesNotMatch(html, /data-redirect|href="\/dashboard"/)
     assert.match(html, /<main>Dashboard<\/main>/)
     assert.match(html, /<a[^>]*href="\/"[^>]*>Situación actual<\/a>/)
+    // The home page no longer waits for the MVP publication (only /mapa uses it).
+    assert.match(render(App, [null, '', null]), /<main>Dashboard<\/main>/)
     if (state.enabled) {
       state.path = '/dashboard'
       assert.match(render(App, slots), /<main>Dashboard<\/main>/)
