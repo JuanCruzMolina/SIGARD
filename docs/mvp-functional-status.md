@@ -76,10 +76,18 @@ en períodos de 4 semanas; y sobre SIGARD, privacidad y canales oficiales.
   pie de `/` ya no muestra el corte epidemiológico ni la fuente técnica; `/mapa` los conserva.
   Pruebas: `test:public-home` (14) y `test:public-home:browser` (franja y botón sin scroll a
   390×844, signos completos, 3 ítems + «Ver todo», un bloque de datos, pie, contraste AA, ≥ 16 px).
-- **Pendiente (sin cambios en esta etapa):** `PreventionGuide` y `SymptomsAlert` de `/prevencion`
-  tienen frases sanitarias escritas en el código (por ejemplo «Sin agua acumulada, el mosquito no
-  puede completar su ciclo», «Revisá tu casa y los espacios cercanos cada semana…») en lugar de
-  venir del contenido publicado.
+- **Contactos destacados (tercera etapa):** sólo los marcados con `"category": "emergencia"` en
+  `prevention_content.json` (107 y 911); un número corto sin esa marca va a la lista breve.
+- **Frases sanitarias de `/prevencion` (tercera etapa):** `PreventionGuide` y `SymptomsAlert` ya
+  no escriben frases propias. Las cuatro frases que tenían en el código no existían en el contenido
+  publicado; se retiraron sin reescribirlas y sus lugares leen las secciones reservadas
+  `prevencion-resumen`, `prevencion-principio` y `sintomas-encabezado`. Mientras no se publiquen
+  desde Administración, se ve «Contenido pendiente de publicación por el equipo de salud.» (y el
+  título «Síntomas»). Una prueba (`test:prevention`) falla si vuelven a aparecer textos sanitarios
+  en esos componentes.
+- **Pendiente:** cargar esas tres secciones con su fuente; el panel de emergencia del encabezado de
+  `/prevencion` (`pages/Prevencion.jsx`: «Ante signos de alarma», «No esperes. Buscá atención
+  urgente.») sigue escrito en el código y no formó parte de esta etapa.
 
 ## Entorno integral de demostración descartable — 21/10/2026
 

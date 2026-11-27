@@ -158,8 +158,23 @@ no pisa sus cambios. Recargá la sección y volvé a aplicar tu edición.
 
 **Historial:** cada sección muestra quién creó, editó, publicó o despublicó, y cuándo.
 
+**Textos de introducción de Prevención y ayuda.** La página no escribe frases sanitarias propias:
+mientras no se publiquen, muestra «Contenido pendiente de publicación por el equipo de salud.».
+Para cargarlos, creá con **Nueva sección** una sección con alguno de estos identificadores, con su
+fuente, y publicala:
+
+| Identificador | Dónde se muestra | Qué campo se usa |
+|---|---|---|
+| `prevencion-resumen` | Bajo el título de Prevención | Contenido (párrafo) |
+| `prevencion-principio` | Recuadro destacado de Prevención | Título (frase destacada) y contenido (párrafo debajo) |
+| `sintomas-encabezado` | Encabezado de Síntomas | Título (título del bloque) y contenido (párrafo debajo) |
+
+Estas secciones no se repiten en «Más información». Sin `sintomas-encabezado`, el bloque se titula
+«Síntomas».
+
 Los teléfonos, los centros de salud y las fuentes generales no se editan acá: provienen de los
-archivos públicos revisados del sitio.
+archivos públicos revisados del sitio. En la portada sólo se destacan con botón de llamada los
+contactos marcados como emergencia en ese archivo (`"category": "emergencia"`).
 
 ## 5. Visor predictivo
 
