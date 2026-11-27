@@ -2,8 +2,11 @@
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
+import { transformWithOxc } from 'vite'
+import React from 'react'
+import { renderToStaticMarkup } from 'react-dom/server'
 import {
-  KNOWN_SLUGS, legacySections, parseRestrictedMarkdown, publicSectionsFrom,
+  CONTENT_PENDING, INTRO_SLUGS, KNOWN_SLUGS, legacySections, PAGE_SLUGS, parseRestrictedMarkdown, publicSectionsFrom,
   safeUrl, sectionsBySlug, validateSection, validateSectionField,
 } from '../src/services/preventionContent.mjs'
 
@@ -71,4 +74,83 @@ test('public loader falls back silently and production without API never probes 
   for (const file of ['frontend/src/components/RestrictedMarkdown.jsx', 'frontend/src/components/AdminPrevention.jsx', 'frontend/src/pages/Prevencion.jsx']) {
     assert.doesNotMatch(await readFile(new URL(file, root), 'utf8'), /dangerouslySetInnerHTML/, file)
   }
+})
+
+test('emergency contacts are marked in the content itself and only those', () => {
+  const marked = content.contacts.filter(contact => contact.category === 'emergencia').map(contact => contact.id)
+  assert.deepEqual(marked, ['medical-emergency', 'general-emergency'])
+  assert.ok(content.contacts.every(contact => contact.category === undefined || contact.category === 'emergencia'))
+})
+
+// --- /prevencion: PreventionGuide and SymptomsAlert carry no health sentence of their own.
+const COMPONENTS = ['frontend/src/components/PreventionGuide.jsx', 'frontend/src/components/SymptomsAlert.jsx']
+// Only labels, the SIGARD scope disclaimer and the call action; every health sentence is published content.
+const ALLOWED_TEXT = new Set(['Prevención', 'Síntomas', 'SIGARD brinda orientación general; no realiza diagnósticos.', 'Llamar al'])
+
+function writtenTexts(source) {
+  const code = source.split('\n').filter(line => !/^\s*(import|\/\/)/.test(line)).join('\n')
+  const jsxText = [...code.matchAll(/>([^<>{}]+)</g)].map(m => m[1].trim())
+  const literals = [...code.matchAll(/(['"`])((?:(?!\1)[^\n\\])*)\1/g)].map(m => m[2].trim())
+    .filter(text => /\s/.test(text) && !/^[\w-]+( [\w-]+)*$/.test(text) || /[áéíóúñ¿¡]/i.test(text))
+  return [...jsxText, ...literals].filter(text => /[A-Za-zÁÉÍÓÚáéíóúñ]/.test(text))
+}
+
+test('PreventionGuide and SymptomsAlert write no health sentences in the code', async () => {
+  for (const file of COMPONENTS) {
+    const source = await readFile(new URL(file, root), 'utf8')
+    const extra = writtenTexts(source).filter(text => !ALLOWED_TEXT.has(text))
+    assert.deepEqual(extra, [], `${file} has text written in the code; publish it from Administración`)
+    assert.doesNotMatch(source, /mosquito|criadero|agua|descacharreo|fiebre|dolor|actuá|revisá|consult|urgente|semana/i, file)
+  }
+  // The guard itself catches a sentence written in the code (regression for this check).
+  assert.deepEqual(writtenTexts('<p>Revisá tu casa cada semana.</p>'), ['Revisá tu casa cada semana.'])
+  assert.deepEqual(writtenTexts("const x = 'Sin agua acumulada, no hay ciclo.'"), ['Sin agua acumulada, no hay ciclo.'])
+})
+
+// Server render of the two components with generated fictional sections only.
+const dataUrl = code => `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`
+async function loadComponent(file) {
+  const target = new URL(file, root)
+  let source = (await transformWithOxc(await readFile(target, 'utf8'), target.pathname, { jsx: { runtime: 'automatic' } })).code
+  for (const [spec, url] of [
+    ['./InfoIcons', new URL('frontend/src/components/InfoIcons.jsx', root)],
+    ['./RestrictedMarkdown', new URL('frontend/src/components/RestrictedMarkdown.jsx', root)],
+  ]) {
+    const code = (await transformWithOxc(await readFile(url, 'utf8'), url.pathname, { jsx: { runtime: 'automatic' } })).code
+      .replace(/from\s*(['"])\.\.\/services\/preventionContent\.mjs\1/, `from ${JSON.stringify(new URL('frontend/src/services/preventionContent.mjs', root).href)}`)
+      .replace(/from\s*(['"])react\/jsx-runtime\1/, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
+    source = source.replace(new RegExp(`from\\s*(['"])${spec.replace('.', '\\.')}\\1`), `from ${JSON.stringify(dataUrl(code))}`)
+  }
+  source = source.replace(/from\s*(['"])\.\.\/services\/preventionContent\.mjs\1/, `from ${JSON.stringify(new URL('frontend/src/services/preventionContent.mjs', root).href)}`)
+    .replace(/from\s*(['"])react\/jsx-runtime\1/, `from ${JSON.stringify(import.meta.resolve('react/jsx-runtime'))}`)
+  return (await import(dataUrl(source))).default
+}
+const fictional = (slug, title = `Título ficticio ${slug}`) => ({ slug, title, body: `Texto ficticio de ${slug}.`, position: 1, source_label: 'Fuente ficticia', source_url: 'https://example.org/f', version: 1 })
+const base = Object.fromEntries(KNOWN_SLUGS.map(slug => [slug, fictional(slug)]))
+
+test('/prevencion intro texts: published sections are used; otherwise the pending state', async () => {
+  const PreventionGuide = await loadComponent('frontend/src/components/PreventionGuide.jsx')
+  const SymptomsAlert = await loadComponent('frontend/src/components/SymptomsAlert.jsx')
+  const render = (Component, props) => renderToStaticMarkup(React.createElement(Component, props))
+  const pendingGuide = render(PreventionGuide, { sections: base })
+  assert.equal(pendingGuide.split(CONTENT_PENDING).length - 1, 1)
+  assert.match(pendingGuide, /<div class="prevention-principle"><svg[^>]*>.*?<\/svg><p class="content-pending" role="status">/)
+  const pendingSymptoms = render(SymptomsAlert, { sections: base, emergencyNumber: '0000' })
+  assert.match(pendingSymptoms, /<h2 id="symptoms-title">Síntomas<\/h2>/)
+  assert.equal(pendingSymptoms.split(CONTENT_PENDING).length - 1, 1)
+
+  const sections = { ...base, ...Object.fromEntries(Object.values(INTRO_SLUGS).map(slug => [slug, fictional(slug)])) }
+  const guide = render(PreventionGuide, { sections })
+  assert.ok(!guide.includes(CONTENT_PENDING))
+  assert.match(guide, /<div class="section-intro" data-slug="prevencion-resumen"><p><span>Texto ficticio de prevencion-resumen\.<\/span><\/p><small class="section-source">/)
+  assert.match(guide, /<strong>Título ficticio prevencion-principio<\/strong><p><span>Texto ficticio de prevencion-principio\.<\/span><\/p><small class="section-source">Fuente: /)
+  const symptoms = render(SymptomsAlert, { sections, emergencyNumber: '0000' })
+  assert.ok(!symptoms.includes(CONTENT_PENDING))
+  assert.match(symptoms, /<h2 id="symptoms-title">Título ficticio sintomas-encabezado<\/h2>/)
+  assert.match(symptoms, /Texto ficticio de sintomas-encabezado\.<\/span><\/p><small class="section-source">/)
+  // Reserved intro slugs are not repeated as extra sections on the page.
+  assert.ok(Object.values(INTRO_SLUGS).every(slug => PAGE_SLUGS.includes(slug)))
+  assert.deepEqual(PAGE_SLUGS.slice(0, KNOWN_SLUGS.length), KNOWN_SLUGS)
+  const page = await readFile(new URL('frontend/src/pages/Prevencion.jsx', root), 'utf8')
+  assert.match(page, /sections\.filter\(section => !PAGE_SLUGS\.includes\(section\.slug\)\)/)
 })

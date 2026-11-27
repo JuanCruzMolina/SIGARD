@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { demoRuntime } from './dev-demo.mjs'
 import { portAvailable, startDevelopment } from './dev.mjs'
+import { CONTENT_PENDING, INTRO_SLUGS } from '../src/services/preventionContent.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -18,6 +19,7 @@ const origin = 'http://127.0.0.1:5173'
 const api = 'http://127.0.0.1:8766'
 const editedTitle = 'Prevenir en casa: revisión ficticia de demostración'
 const draftMarker = 'Paso ficticio agregado sólo para la demostración.'
+const principleTitle = 'Principio ficticio publicado sólo para la prueba'
 for (const port of [5173, 5174, 8766]) assert.ok(await portAvailable(port), `Port ${port} must be free; no existing service will be stopped`)
 
 let session, service, browser
@@ -83,6 +85,12 @@ try {
   assert.equal(await page.$eval('#prevention-title', node => node.textContent), 'Prevenir empieza por eliminar criaderos')
   assert.equal(await page.$$eval('.action-list li', nodes => nodes.length), 7)
   checkpoint('Public page renders the published API sections')
+  // Intro texts not yet published: the pending state, never a sentence written in the code.
+  assert.deepEqual(await page.$$eval('.content-pending', nodes => nodes.map(node => [node.closest('section').id, node.textContent])),
+    [['prevenir', CONTENT_PENDING], ['sintomas', CONTENT_PENDING]])
+  assert.equal(await page.$eval('#symptoms-title', node => node.textContent), 'Síntomas')
+  assert.equal(await page.$('#mas-informacion'), null)
+  checkpoint('Unpublished intro texts show the pending state')
 
   await page.goto(origin + '/admin/reportes', { waitUntil: 'networkidle0' })
   await fill('.admin-login input[type="email"]', service.credentials.email)
@@ -147,6 +155,29 @@ try {
   assert.match(await page.$eval('#prevenir .section-source', node => node.textContent), /versión 2/)
   await shoot('public-published')
   checkpoint('Public page shows the newly published version')
+
+  // A reserved intro section (fictional text) published from Administración replaces the pending state.
+  await page.goto(origin + '/admin/reportes', { waitUntil: 'networkidle0' })
+  await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()
+  await page.waitForSelector('.prevention-section-list li button')
+  await clickText('Nueva sección')
+  await fill('.prevention-form input[name="slug"]', INTRO_SLUGS.preventionPrinciple)
+  await fill('.prevention-form input[name="title"]', principleTitle)
+  await fill('.prevention-form textarea[name="body"]', 'Texto ficticio de prueba del principio.')
+  await fill('.prevention-form input[name="source_label"]', 'Fuente ficticia de prueba')
+  await fill('.prevention-form input[name="source_url"]', 'https://example.org/fuente-ficticia')
+  await clickText('Guardar borrador')
+  await page.waitForFunction(() => document.querySelector('.admin-prevention .account-notice')?.textContent.includes('Borrador guardado'))
+  await clickText('Publicar')
+  await page.waitForSelector('.prevention-confirm[role="alertdialog"]')
+  await clickText('Confirmar publicación')
+  await page.waitForFunction(() => /publicada/.test(document.querySelector('.admin-prevention .account-notice')?.textContent || ''))
+  await openPublic()
+  assert.equal(await page.$eval('.prevention-principle strong', node => node.textContent), principleTitle)
+  assert.match(await page.$eval('.prevention-principle .section-source', node => node.textContent), /Fuente ficticia de prueba/)
+  assert.deepEqual(await page.$$eval('.content-pending', nodes => nodes.map(node => node.closest('section').id)), ['sintomas'])
+  assert.equal(await page.$('#mas-informacion'), null, 'reserved sections are not repeated under Más información')
+  checkpoint('Published reserved intro section replaces the pending state')
 
   await page.goto(origin + '/admin/reportes', { waitUntil: 'networkidle0' })
   await (await page.waitForSelector('.admin-nav a[href="/admin/contenido"]')).click()

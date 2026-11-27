@@ -41,7 +41,7 @@ function fictionalActivity(valuesByYear, { fictional = true, hidden = [] } = {})
 const fictionalContent = (emergencyStatus = 'publicado') => ({
   emergency_number: '0000',
   contacts: [
-    { id: 'fict-emergency', label: 'Emergencia ficticia', number_display: '0000', number_tel: '0000', purpose: 'Contacto ficticio.', source_url: 'https://example.org/a', reviewed_at: '2030-01-01', status: emergencyStatus },
+    { id: 'fict-emergency', category: 'emergencia', label: 'Emergencia ficticia', number_display: '0000', number_tel: '0000', purpose: 'Contacto ficticio.', source_url: 'https://example.org/a', reviewed_at: '2030-01-01', status: emergencyStatus },
     { id: 'fict-office', label: 'Oficina ficticia', number_display: '(0000) 000-001', number_tel: '+00000000001', purpose: 'Consultas ficticias.', source_url: 'https://example.org/b', reviewed_at: '2030-01-02', status: 'publicado' },
     { id: 'fict-office-2', label: 'Oficina ficticia', number_display: '(0000) 000-002', number_tel: '+00000000002', purpose: 'Alternativa ficticia.', source_url: 'https://example.org/b', reviewed_at: '2030-01-02', status: 'publicado' },
     { id: 'fict-short', label: 'Línea corta ficticia', number_display: '00', number_tel: '00', purpose: 'Código corto ficticio.', source_url: 'https://example.org/d', reviewed_at: '2030-01-02', status: 'confirmado' },
@@ -116,10 +116,15 @@ test('contacts and the emergency number are shown only when published or confirm
   assert.equal(emergencyContact({}), null)
 })
 
-test('contacts: short codes highlighted, the rest grouped by name, one review line', () => {
+test('contacts: only those marked as emergency are highlighted; the rest grouped by name, one review line', () => {
   const { urgent, groups, reviewed } = contactGroups(fictionalContent())
-  assert.deepEqual(urgent.map(c => c.id), ['fict-emergency', 'fict-short'])
-  assert.deepEqual(groups.map(g => [g.label, g.contacts.map(c => c.id), g.sources]), [['Oficina ficticia', ['fict-office', 'fict-office-2'], ['https://example.org/b']]])
+  assert.deepEqual(urgent.map(c => c.id), ['fict-emergency'])
+  // A short number that is not marked as emergency stays in the compact list.
+  assert.deepEqual(groups.map(g => [g.label, g.contacts.map(c => c.id), g.sources]),
+    [['Oficina ficticia', ['fict-office', 'fict-office-2'], ['https://example.org/b']], ['Línea corta ficticia', ['fict-short'], ['https://example.org/d']]])
+  // Without the mark nothing is highlighted, even the emergency number or a short code.
+  const unmarked = { ...fictionalContent(), contacts: fictionalContent().contacts.map(({ category, ...contact }) => contact) }
+  assert.deepEqual(contactGroups(unmarked).urgent, [])
   assert.equal(reviewed, 'Revisado entre el 1 de enero de 2030 y el 2 de enero de 2030.')
   assert.equal(reviewedLabel([{ reviewed_at: '2030-01-02' }, { reviewed_at: '2030-01-02' }]), 'Revisado el 2 de enero de 2030.')
   assert.equal(reviewedLabel([]), '')
@@ -254,12 +259,14 @@ test('home emergency number follows the contacts rule', () => {
   assert.doesNotMatch(published, /Línea ficticia por confirmar|0800-000-0000/)
   // Highlighted calls, a compact grouped list (one row, two numbers), one review line, folded sources.
   const urgent = published.match(/<ul class="home-urgent".*?<\/ul>/)[0]
-  assert.equal(count(urgent, '<li>'), 2)
+  assert.equal(count(urgent, '<li>'), 1)
   assert.match(urgent, /<a class="home-call" href="tel:0000">.*Llamar al 0000<\/a>/)
-  assert.match(urgent, /<a class="home-call" href="tel:00">.*Llamar al 00<\/a>/)
+  assert.doesNotMatch(urgent, /tel:00"/)
   const list = published.match(/<ul class="home-contacts".*?<\/ul>/)[0]
-  assert.equal(count(list, '<li>'), 1)
-  assert.equal(count(list, 'href="tel:'), 2)
+  assert.equal(count(list, '<li>'), 2)
+  assert.equal(count(list, 'href="tel:'), 3)
+  assert.match(list, /Línea corta ficticia.*href="tel:00"/)
+  assert.doesNotMatch(list, /class="home-call"/)
   assert.equal(count(published, 'data-testid="contacts-reviewed"'), 1)
   assert.equal(count(published, 'Revisado '), 1)
   assert.match(published, /<details class="home-sources"><summary>Fuentes oficiales \(1\)<\/summary>/)
