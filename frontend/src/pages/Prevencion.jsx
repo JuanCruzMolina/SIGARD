@@ -7,7 +7,7 @@ import RestrictedMarkdown, { SectionSource } from '../components/RestrictedMarkd
 import ReportStatusLookup from '../components/ReportStatusLookup'
 import SymptomsAlert from '../components/SymptomsAlert'
 import { loadPreventionData, PREVENTION_DATA_ERROR } from '../services/preventionData'
-import { KNOWN_SLUGS, sectionsBySlug } from '../services/preventionContent.mjs'
+import { PAGE_SLUGS, sectionsBySlug } from '../services/preventionContent.mjs'
 import '../Prevention.css'
 
 export default function Prevencion() {
@@ -34,7 +34,7 @@ export default function Prevencion() {
 
   const { content, facilities, sections, sectionsSource } = data
   const bySlug = sectionsBySlug(sections)
-  const extraSections = sections.filter(section => !KNOWN_SLUGS.includes(section.slug))
+  const extraSections = sections.filter(section => !PAGE_SLUGS.includes(section.slug))
   const hasPrevention = bySlug.prevencion || bySlug['control-vectorial']
   const hasSymptoms = bySlug.sintomas || bySlug['consejos-medicos'] || bySlug['signos-alarma']
   return (

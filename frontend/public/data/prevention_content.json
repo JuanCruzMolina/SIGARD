@@ -39,6 +39,7 @@
   "contacts": [
     {
       "id": "medical-emergency",
+      "category": "emergencia",
       "label": "Emergencias médicas",
       "number_display": "107",
       "number_tel": "107",
@@ -49,6 +50,7 @@
     },
     {
       "id": "general-emergency",
+      "category": "emergencia",
       "label": "Emergencias generales",
       "number_display": "911",
       "number_tel": "911",

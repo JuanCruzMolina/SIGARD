@@ -2,9 +2,11 @@
 // Rules: only observed aggregates from the authorized activity package (values below 5 arrive
 // as "<5"/"oculto" and are never turned into numbers); health text, phone numbers and sources
 // come from published content, never from this module.
-import { blockItemTexts, parseRestrictedMarkdown } from './preventionContent.mjs'
+import { blockItemTexts, CONTENT_PENDING, parseRestrictedMarkdown } from './preventionContent.mjs'
 
 export const PUBLISHED_CONTACT_STATUSES = new Set(['publicado', 'confirmado'])
+// Contacts highlighted with a call button: only those marked as emergency in the content itself.
+export const EMERGENCY_CATEGORY = 'emergencia'
 export const PREVENTION_SLUGS = ['prevencion', 'control-vectorial']
 export const CARE_SLUGS = ['sintomas', 'consejos-medicos', 'signos-alarma']
 export const ALARM_SLUG = 'signos-alarma'
@@ -16,7 +18,7 @@ export const FICTIONAL_NOTICE = 'Datos ficticios de demostración'
 export const EMPTY = {
   activityDisabled: 'Los datos de registros todavía no están autorizados para publicarse. Cuando el Ministerio de Salud de La Rioja lo autorice, vas a ver acá el resumen semanal.',
   activityUnavailable: 'El resumen de registros no está disponible por el momento. Intentá nuevamente más tarde.',
-  content: 'Contenido pendiente de publicación por el equipo de salud.',
+  content: CONTENT_PENDING,
   contentError: 'No pudimos cargar el contenido preventivo. Intentá nuevamente más tarde.',
   contacts: 'Todavía no hay teléfonos confirmados para mostrar. Consultá las fuentes oficiales.',
 }
@@ -138,11 +140,11 @@ export function alarmLine(section) {
   return { title: section.title, text: items.join(' ') }
 }
 
-// Short dialing codes (and the published emergency number) are highlighted with a call button;
-// the remaining published contacts are grouped by name in a compact list. Same publication rule.
+// Contacts marked as emergency in the content are highlighted with a call button; the remaining
+// published contacts are grouped by name in a compact list. Same publication rule for both.
 export function contactGroups(content) {
   const contacts = publishedContacts(content)
-  const urgent = contact => contact.number_tel === content?.emergency_number || /^\d{2,4}$/.test(contact.number_tel)
+  const urgent = contact => contact.category === EMERGENCY_CATEGORY
   const groups = new Map()
   for (const contact of contacts.filter(contact => !urgent(contact))) {
     if (!groups.has(contact.label)) groups.set(contact.label, { label: contact.label, purpose: contact.purpose, contacts: [], sources: [] })

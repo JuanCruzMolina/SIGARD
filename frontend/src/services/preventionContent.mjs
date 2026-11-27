@@ -151,3 +151,13 @@ export function sectionsBySlug(sections) {
 }
 
 export const KNOWN_SLUGS = ['prevencion', 'control-vectorial', 'sintomas', 'consejos-medicos', 'signos-alarma']
+
+// Intro texts of /prevencion, also loaded from Administración (title, body and source). Until the
+// health team publishes them, the page shows CONTENT_PENDING instead of writing its own text.
+export const INTRO_SLUGS = {
+  preventionSummary: 'prevencion-resumen', // body: paragraph under the prevention heading
+  preventionPrinciple: 'prevencion-principio', // title: highlighted sentence; body: paragraph below it
+  symptomsHeading: 'sintomas-encabezado', // title: symptoms heading; body: paragraph under it
+}
+export const PAGE_SLUGS = [...KNOWN_SLUGS, ...Object.values(INTRO_SLUGS)]
+export const CONTENT_PENDING = 'Contenido pendiente de publicación por el equipo de salud.'
