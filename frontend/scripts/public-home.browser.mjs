@@ -12,7 +12,8 @@ import { ADMIN_API_PORTS, proxyRequest } from './browser-proxy.mjs'
 import { newRunDirectory, runLabel } from './private-output.mjs'
 import { auditAccessibility, tabReaches } from './browser-a11y.mjs'
 import { spawnOwned } from './dev.mjs'
-import { EMPTY, FICTIONAL_NOTICE } from '../src/services/publicHome.mjs'
+import { EMPTY, FICTIONAL_NOTICE, PREVIEW_ITEMS } from '../src/services/publicHome.mjs'
+import { blockItemCount, parseRestrictedMarkdown } from '../src/services/preventionContent.mjs'
 
 const require = createRequire(import.meta.url)
 const puppeteer = require(process.env.SIGARD_BROWSER_MODULE || 'puppeteer')
@@ -20,7 +21,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const outputBase = resolve(root, 'frontend/.tmp/public-home-review')
 const origin = 'http://127.0.0.1:5175'
 const delay = ms => new Promise(r => setTimeout(r, ms))
-const report = { checks: [], pageErrors: [], external: [], accessibility: [], fixture: 'generated fictional activity package + versioned public prevention guidance' }
+const report = { checks: [], pageErrors: [], external: [], accessibility: [], fold: [], fixture: 'generated fictional activity package + versioned public prevention guidance' }
 const check = async (name, run) => { await run(); report.checks.push(name) }
 
 function startApi(fixture) {
@@ -70,6 +71,48 @@ async function layout(page, context) {
 }
 
 const inViewport = (page, selector) => page.$eval(selector, e => { const r = e.getBoundingClientRect(); return r.top < innerHeight && r.bottom > 0 })
+// Entirely inside the first screen, without scrolling.
+const aboveFold = async (page, selector) => {
+  const box = await page.$eval(selector, e => { const r = e.getBoundingClientRect(); return { scrollY, top: Math.round(r.top), bottom: Math.round(r.bottom), height: innerHeight } })
+  report.fold.push({ selector, ...box })
+  return box.scrollY === 0 && box.top >= 0 && box.bottom <= box.height
+}
+const PHONE = { width: 390, height: 844 }
+const viewport = width => (width === 390 ? PHONE : { width, height: 900 })
+
+// Changes shared by both states: alarm strip above the fold on a phone, complete alarm signs,
+// 3-item previews with "Ver todo", one data block, folded sources and a footer without MVP texts.
+async function commonChecks(page, width, published, { call }) {
+  const order = await page.$$eval('.public-home > section', n => n.map(e => e.id))
+  assert.deepEqual(order, ['hoy', 'sintomas', 'reporte', 'datos', 'contactos', 'sobre'])
+  assert.equal(await page.$eval('.public-home > header + aside', e => e.dataset.testid), 'alarm-strip')
+  const strip = await page.$eval('[data-testid="alarm-strip"]', e => e.textContent)
+  const alarm = published.find(section => section.slug === 'signos-alarma')
+  assert.ok(strip.startsWith(`${alarm.title}:`), 'franja con el título publicado')
+  if (call) {
+    assert.match(await page.$eval('[data-testid="alarm-call"]', e => e.getAttribute('href')), /^tel:\d+$/)
+    if (width === 390) assert.ok(await aboveFold(page, '[data-testid="alarm-call"]'), `botón de emergencia visible sin scroll en 390 px: ${JSON.stringify(report.fold.at(-1))}`)
+  }
+  if (width === 390) assert.ok(await aboveFold(page, '[data-testid="alarm-strip"]'), 'franja de alarma visible sin scroll en 390 px')
+  assert.equal(await page.$$eval('article[data-slug="signos-alarma"] li', n => n.length), blockItemCount(parseRestrictedMarkdown(alarm.body)), 'signos de alarma completos')
+  for (const slug of ['prevencion', 'sintomas']) {
+    const total = blockItemCount(parseRestrictedMarkdown(published.find(section => section.slug === slug).body))
+    assert.ok(total > PREVIEW_ITEMS, `${slug} tiene más ítems que la vista previa`)
+    assert.equal(await page.$$eval(`article[data-slug="${slug}"] li`, n => n.length), PREVIEW_ITEMS, slug)
+  }
+  assert.deepEqual(await page.$$eval('[data-testid="see-all"]', n => n.map(e => [e.textContent, e.getAttribute('href'), e.closest('section').id])),
+    [['Ver todo', '/prevencion#prevenir', 'hoy'], ['Ver todo', '/prevencion#sintomas', 'sintomas']])
+  assert.equal(await page.$$eval('#datos', n => n.length), 1)
+  assert.match(await page.$eval('details.home-sources summary', e => e.textContent), /^Fuentes oficiales \(\d+\)$/)
+  assert.equal(await page.$eval('details.home-sources', e => e.open), false)
+  assert.equal(await page.$$eval('[data-testid="contacts-reviewed"]', n => n.length), 1)
+  assert.ok((await page.$$eval('[data-testid="urgent-contacts"] a.home-call', n => n.length)) >= 1)
+  const footer = await page.$eval('.site-footer', e => e.textContent)
+  assert.doesNotMatch(footer, /Último corte epidemiológico disponible|Fuente técnica|respaldo estático local/)
+  assert.equal(await page.$$eval('.public-home h2 .home-title-icon', n => n.length), 6)
+  const backgrounds = await page.$$eval('.public-home > section', n => n.map(e => getComputedStyle(e).backgroundColor))
+  assert.ok(backgrounds.every((color, i) => i === 0 || color !== backgrounds[i - 1]), 'fondos alternados entre secciones')
+}
 
 let browser, vite, fixtureApi, disabledApi, output
 try {
@@ -83,20 +126,24 @@ try {
   const { port } = await fixtureApi.ready
   const fixture = await (await fetch(`http://127.0.0.1:${port}/api/v1/public/activity`)).json()
   assert.equal(fixture.source.fictional, true)
+  const published = (await (await fetch(`http://127.0.0.1:${port}/api/v1/public/prevention`)).json()).sections
   output = await newRunDirectory(outputBase, runLabel())
   browser = await puppeteer.launch({ headless: true })
   let page = await openPage(browser, port)
 
   for (const width of [390, 1440]) {
     await check(`paquete ficticio a ${width} px: aviso visible, fecha del dato, tendencia y calendario`, async () => {
-      await page.setViewport({ width, height: 900 })
+      await page.setViewport(viewport(width))
       await page.goto(`${origin}/`, { waitUntil: 'networkidle0' })
       await page.waitForSelector('[data-testid="trend"]')
       await page.waitForSelector('.home-cards article')
       const notices = await page.$$eval('[data-testid="fictional-notice"]', n => n.map(e => ({ text: e.textContent, visible: e.getBoundingClientRect().height > 0, section: e.closest('section').id })))
-      assert.deepEqual(notices.map(n => n.section), ['situacion', 'calendario'])
+      assert.deepEqual(notices.map(n => n.section), ['datos'])
       assert.ok(notices.every(n => n.visible && n.text.startsWith(`${FICTIONAL_NOTICE}.`)))
-      assert.match(await page.$eval('#situacion [data-testid="data-date"]', e => e.textContent), /^Datos hasta el \d+ de [a-z]+ de 2024\. Es una reconstrucción histórica/)
+      assert.match(await page.$eval('#datos [data-testid="data-date"]', e => e.textContent), /^Datos hasta el \d+ de [a-z]+ de 2024\. Es una reconstrucción histórica/)
+      assert.match(await page.$eval('[data-testid="home-subtitle"]', e => e.textContent), /y cómo fueron los registros en años anteriores\.$/)
+      assert.ok(await page.$('#datos #situacion') && await page.$('#datos #calendario'), 'registros y calendario dentro de Datos de la ciudad')
+      await commonChecks(page, width, published, { call: true })
       assert.equal(await page.$$eval('#situacion .home-bars li', n => n.length), 8)
       const calendarText = await page.$eval('#calendario', e => e.textContent)
       assert.doesNotMatch(calendarText, /\bSE\b|[Bb]loque \d/)
@@ -113,7 +160,7 @@ try {
     assert.deepEqual(years, ['2020', '2021', '2023', '2024'])
     assert.ok(await tabReaches(page, '.home-years button'), 'botón de año alcanzable con Tab')
     await page.click('.home-years button:first-child')
-    await page.waitForFunction(() => document.querySelector('#calendario h3')?.textContent.endsWith('2020'))
+    await page.waitForFunction(() => document.querySelector('#calendario [data-testid="calendar-year"]')?.textContent.endsWith('2020'))
     assert.equal(await page.$eval('.home-years button:first-child', e => e.getAttribute('aria-pressed')), 'true')
     assert.equal(await page.$$eval('#calendario .home-bars li', n => n.length), 13)
     assert.ok((await page.$$eval('#calendario .home-bars li.protected', n => n.length)) > 0)
@@ -135,6 +182,13 @@ try {
     await page.goto(`${origin}/`, { waitUntil: 'networkidle0' })
     await page.click('nav[aria-label="Accesos principales"] a[href="/mapa"]')
     await page.waitForFunction(() => location.pathname === '/mapa' && document.querySelector('.page-intro h1')?.textContent === 'Mapa público agregado')
+    // /mapa keeps the MVP cutoff and technical source in its footer.
+    await page.waitForFunction(() => /Último corte epidemiológico disponible/.test(document.querySelector('.site-footer')?.textContent))
+    assert.match(await page.$eval('.site-footer', e => e.textContent), /Fuente técnica:/)
+    // Going back home (data already loaded) hides them again.
+    await page.click('.main-nav a[href="/"]')
+    await page.waitForSelector('[data-testid="alarm-strip"]')
+    assert.doesNotMatch(await page.$eval('.site-footer', e => e.textContent), /Último corte|Fuente técnica/)
   })
   await page.close()
   await fixtureApi.stop()
@@ -142,17 +196,20 @@ try {
   disabledApi = startApi(false)
   const off = await disabledApi.ready
   assert.equal((await fetch(`http://127.0.0.1:${off.port}/api/v1/public/activity`)).status, 404)
+  const offPublished = (await (await fetch(`http://127.0.0.1:${off.port}/api/v1/public/prevention`)).json()).sections
   page = await openPage(browser, off.port)
   for (const width of [390, 1440]) {
     await check(`estado vacío a ${width} px: sin paquete autorizado, sin aviso ficticio ni cifras`, async () => {
-      await page.setViewport({ width, height: 900 })
+      await page.setViewport(viewport(width))
       await page.goto(`${origin}/`, { waitUntil: 'networkidle0' })
-      await page.waitForSelector('#situacion .home-empty')
+      await page.waitForSelector('#datos .home-empty')
       await page.waitForSelector('.home-cards article')
-      assert.equal(await page.$eval('#situacion .home-empty', e => e.textContent), EMPTY.activityDisabled)
-      assert.equal(await page.$eval('#calendario .home-empty', e => e.textContent), EMPTY.calendarDisabled)
+      assert.deepEqual(await page.$$eval('#datos .home-empty', n => n.map(e => e.textContent)), [EMPTY.activityDisabled])
+      assert.equal(await page.$('#situacion, #calendario'), null)
       assert.equal(await page.$('[data-testid="fictional-notice"]'), null)
       assert.equal(await page.$('.home-bars'), null)
+      assert.equal(await page.$eval('[data-testid="home-subtitle"]', e => e.textContent), 'Cómo prevenirlo, qué síntomas observar y cómo avisar sobre un posible criadero.')
+      await commonChecks(page, width, offPublished, { call: true })
       await layout(page, `vacio-${width}`)
       await page.screenshot({ path: resolve(output, `portada-vacia-${width}.png`), fullPage: true })
     })
@@ -160,7 +217,7 @@ try {
   assert.deepEqual(report.pageErrors, [])
   assert.equal(disabledApi.errors(), '')
   await writeFile(resolve(output, 'browser-result.json'), JSON.stringify(report, null, 2))
-  console.log(JSON.stringify({ output, checks: report.checks, pageErrors: report.pageErrors, external: [...new Set(report.external)], accessibility: report.accessibility.map(a => ({ context: a.context, unnamed: a.unnamed, lowContrast: a.lowContrast.length })) }, null, 1))
+  console.log(JSON.stringify({ output, checks: report.checks, pageErrors: report.pageErrors, external: [...new Set(report.external)], accessibility: report.accessibility.map(a => ({ context: a.context, unnamed: a.unnamed, lowContrast: a.lowContrast.length })), fold: report.fold }, null, 1))
 } finally {
   await browser?.close()
   await fixtureApi?.stop()
