@@ -4,7 +4,7 @@ SIGARD · Vigilancia territorial del dengue · La Rioja Capital
 Versión del prototipo: `v1.0.0` (noviembre de 2026)
 
 > Las imágenes de este manual se tomaron con **datos ficticios de prueba**. No muestran casos
-> reales ni la situación sanitaria de la ciudad. Se actualizaron el 25/11/2026 con las pantallas
+> reales ni la situación sanitaria de la ciudad. Se actualizaron el 27/11/2026 con las pantallas
 > vigentes.
 
 ## 1. ¿Qué es SIGARD?
@@ -28,7 +28,7 @@ En la parte superior hay un menú con estas secciones:
 
 | Sección | Para qué sirve |
 |---|---|
-| Situación actual | Resumen general del prototipo |
+| Situación actual | Portada: accesos rápidos, registros de años anteriores, prevención, síntomas, reporte y canales oficiales |
 | Mapa público | Mapa de contexto de la ciudad |
 | Actividad registrada | Datos históricos protegidos por zona (sólo aparece si está habilitada) |
 | Prevención y ayuda | Prevención, síntomas, centros de salud, teléfonos, reporte y seguimiento |
@@ -36,7 +36,37 @@ En la parte superior hay un menú con estas secciones:
 
 El sitio funciona en computadora y en celular, y se puede recorrer con el teclado (tecla Tab).
 
-## 3. Prevención y ayuda
+## 3. Situación actual (portada)
+
+![Portada con datos ficticios de demostración, en computadora](img/ciudadano-portada.png)
+
+![La portada en el celular (datos ficticios)](img/ciudadano-portada-movil.png)
+
+La portada reúne lo más útil en una sola página:
+
+1. **Tres accesos**: **Cómo prevenir**, **Reportar un posible criadero** y **Ver el mapa**.
+2. **Registros de dengue en la ciudad**: cuántos registros hubo en cada una de las últimas 8
+   semanas con datos, con la fecha del último dato. **Es una reconstrucción histórica: no muestra
+   la situación actual.** Las semanas con menos de 5 registros aparecen como «Menos de 5». Si
+   alguna semana está protegida, el sitio no calcula si los registros subieron o bajaron, porque
+   eso permitiría deducir el valor oculto.
+3. **Qué podés hacer hoy** y **Síntomas y cuándo consultar**: el mismo contenido que publica el
+   equipo de salud en Prevención y ayuda, con la fuente de cada texto. El botón para llamar a
+   emergencias aparece sólo si ese teléfono está confirmado.
+4. **Cómo funciona el reporte ciudadano**: los pasos y qué datos se guardan.
+5. **Calendario de temporada**: los registros de cada período de 4 semanas (por ejemplo, «del 7 de
+   enero al 3 de febrero»). Elegí el año con los botones. Todas las barras usan la misma escala.
+   Los períodos con alguna semana protegida se ven con rayas y sin total.
+6. **Sobre SIGARD**: qué es, cómo se cuida la privacidad, teléfonos confirmados y fuentes
+   oficiales.
+
+Mientras el Ministerio de Salud no autorice publicar los registros, los bloques 2 y 5 muestran un
+aviso en lugar de cifras. Cuando la página usa datos de prueba, lo indica con el aviso **«Datos
+ficticios de demostración»**.
+
+![La portada en el celular, sin datos autorizados](img/ciudadano-portada-vacia-movil.png)
+
+## 4. Prevención y ayuda
 
 ![Página de prevención con centros de salud, teléfonos, reporte y seguimiento](img/ciudadano-prevencion-y-reporte.png)
 
@@ -56,7 +86,7 @@ En **Prevención y ayuda** vas a encontrar:
 El contenido lo actualiza el personal autorizado. Si el servicio no está disponible, el sitio
 muestra igual una versión guardada de la información.
 
-## 4. Enviar un reporte anónimo
+## 5. Enviar un reporte anónimo
 
 Usalo para avisar sobre **posibles criaderos o problemas en el espacio público**: agua acumulada,
 neumáticos o chatarra, microbasurales, mucha presencia de mosquitos o un pedido de control
@@ -83,7 +113,7 @@ Al terminar, el sitio te muestra un **código de seguimiento** con el formato `S
 **Guardalo**: es la única forma de consultar tu reporte, porque el sistema no te pide nombre ni
 correo.
 
-## 5. Consultar el estado de un reporte
+## 6. Consultar el estado de un reporte
 
 ![Consulta del estado con el código de seguimiento](img/ciudadano-reporte-estado.png)
 
@@ -102,7 +132,7 @@ También se muestran las fechas de recepción y de última actualización y, a v
 breve del equipo. **La consulta nunca muestra la descripción, la dirección ni las coordenadas**
 del reporte.
 
-## 6. Actividad registrada (datos históricos)
+## 7. Actividad registrada (datos históricos)
 
 ![Vista «Actividad registrada» con datos ficticios](img/ciudadano-actividad.png)
 
@@ -142,7 +172,7 @@ está disponible.
 exacto podría ayudar a identificar a una persona. Por eso los valores menores a 5 nunca se
 muestran, y se ocultan también otros valores con los que se podría deducir un número protegido.
 
-## 7. Privacidad
+## 8. Privacidad
 
 - Los reportes son **anónimos**: no se piden nombre, documento, correo ni teléfono.
 - La ubicación exacta y la descripción de tu reporte sólo las ve el personal autorizado, dentro
@@ -150,7 +180,7 @@ muestran, y se ocultan también otros valores con los que se podría deducir un 
 - Los reportes se conservan un tiempo limitado (180 días por defecto) y después se eliminan.
 - Los mapas públicos muestran **sólo datos agregados por zona**, nunca casos individuales.
 
-## 8. Limitaciones
+## 9. Limitaciones
 
 - SIGARD es un **prototipo académico en evaluación**, no un servicio oficial del Municipio ni del
   Ministerio. Enviar un reporte no garantiza una intervención.
@@ -160,7 +190,7 @@ muestran, y se ocultan también otros valores con los que se podría deducir un 
   necesariamente a un caso confirmado.
 - Horarios y teléfonos pueden cambiar; cada uno indica la fecha en que se revisó.
 
-## 9. Preguntas frecuentes
+## 10. Preguntas frecuentes
 
 **Perdí mi código de seguimiento. ¿Puedo recuperarlo?**
 No. Como el reporte es anónimo, no hay forma de asociarlo a vos. Podés enviar un reporte nuevo.

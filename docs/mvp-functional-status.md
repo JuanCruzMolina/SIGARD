@@ -44,6 +44,32 @@ Cierre funcional del 21/10/2026: rama `entrenamiento-ML`. Alcance: prototipo aca
 no sistema sanitario operativo. Esta matriz contrasta documentación con código;
 no toma los estados históricos del plan como prueba de implementación.
 
+## Portada pública ciudadana — 27/11/2026
+
+La ruta `/` («Situación actual») pasó a ser una portada para la ciudadanía, en siete bloques:
+accesos (cómo prevenir, reportar un posible criadero, ver el mapa); registros de la ciudad en las
+últimas 8 semanas con fecha del dato y tendencia; qué hacer hoy y síntomas, tomados del contenido
+preventivo publicado con su fuente; cómo funciona el reporte y su privacidad; calendario de temporada
+en períodos de 4 semanas; y sobre SIGARD, privacidad y canales oficiales.
+
+- **Datos:** sólo el paquete autorizado de actividad (`GET /api/v1/public/activity`, serie semanal
+  de la ciudad con valores menores a 5 como «<5»/«oculto»). Sin autorización institucional responde
+  404 y la portada muestra un estado vacío; nunca convierte un valor protegido en cero. La
+  tendencia y el total de un período se calculan sólo si todas sus semanas son visibles. Con el
+  paquete ficticio se muestra «Datos ficticios de demostración» en ambos bloques.
+- **Contenido sanitario:** secciones publicadas (`/api/v1/public/prevention` o respaldo estático)
+  con su fuente; la portada no escribe síntomas ni consejos propios. Los contactos y el número de
+  emergencia se muestran sólo con estado `publicado`/`confirmado`.
+- **Quitado de la vista pública:** predicción departamental, ranking de radios por percentil y
+  nombre del modelo (decisión del responsable). La simulación espacial y el contexto territorial
+  siguen en `/mapa`, sin cambios. `/` ya no carga la publicación del MVP.
+- **Pruebas:** `test:public-home` (11) y `test:public-home:browser` (390 px y 1440 px, paquete
+  ficticio y estado vacío, contraste AA, texto ≥ 16 px, accesos y teclado).
+- **Pendiente (sin cambios en esta etapa):** `PreventionGuide` y `SymptomsAlert` de `/prevencion`
+  tienen frases sanitarias escritas en el código (por ejemplo «Sin agua acumulada, el mosquito no
+  puede completar su ciclo», «Revisá tu casa y los espacios cercanos cada semana…») en lugar de
+  venir del contenido publicado.
+
 ## Entorno integral de demostración descartable — 21/10/2026
 
 `npm run dev:demo` desde `frontend` coordina Vite 5173, investigación A/B 8765
@@ -250,11 +276,11 @@ con PostGIS. Docker sigue apagado y no se utilizó PostgreSQL 5432.
 | Plan etapa 2 | Persistencia geoespacial y publicación versionada | Parcial | Etapa 17: cuatro migraciones aplicadas/revertidas/reaplicadas en PostgreSQL/PostGIS real; punto generado, polígono ficticio, SRID, FK/índices/GiST y GeoJSON | Alta | Integración descartable verificada; falta importador completo con lote territorial y operación persistente. No se utilizó 5432. |
 | Plan etapas 3 y 6; MVP datos consumidos | API pública de semanas, predicciones, capas y evaluación | Parcial | `public.py`, regresión `test_public_api.py`; etapa 17 comprueba rutas espaciales/GeoJSON en PostGIS con geometrías ficticias, también desde navegador | Alta | Conserva evidencia previa de 263 radios por HTTP/SQLite y fallback; falta importación completa de esos datos en PostGIS y lote operativo. |
 | MVP §1–5; consolidación §3 | Ingreso anónimo y navegación pública | Completa | `App.jsx`, seis rutas existentes y navegación compartida | Alta | Mantener separación de prevención/administración y datos analíticos. |
-| MVP §1 | Resumen de la semana, estimación agregada y procedencia | Completa | `pages/Dashboard.jsx`, `StatCard`, `TopRadios`, `services/sigardData.js` | Alta | Mantener distinción entre total departamental y señal territorial. |
+| MVP §1 | Resumen de la semana, estimación agregada y procedencia | Reemplazada (27/11/2026) | La portada ciudadana (`pages/Dashboard.jsx`, `services/publicHome.mjs`) ya no muestra estimación departamental, ranking ni modelo; la simulación y el contexto siguen en `/mapa` | Alta | Ver «Portada pública ciudadana — 27/11/2026». |
 | MVP §2; plan etapa 7 | Cambio temporal alineado entre predicción y simulación | Completa | Estado compartido en `App.jsx`, `TemporalControls`, `getExperimentalCollection`, `assertCompleteData` | Alta | Mantener validación exacta de corte e inicio/fin de semana. |
 | MVP §3; plan etapa 7 | Mapa público de contexto y simulación con detalle agregado | Completa | `pages/Mapa.jsx`, `TerritorialMap`, `RadioDetails`, geometrías públicas aprobadas | Alta | Conservar 263 radios y leyendas sin umbrales sanitarios. |
 | Plan etapa 7: teclado y alternativa textual; PRODUCT accesibilidad | Consultar cualquier radio público sin pulsar un polígono | Completa | `TerritorialMap` incorpora selector nativo, detalle vivo, enfoque y contorno; `security/public-map.test.mjs` y recorrido real de teclado/clic en Chromium | Alta | **Resuelta en etapa 13.** Conservar selección por código y leer siempre los valores de la capa/semana vigente. |
-| MVP §3 y §5; plan §3 y etapa 7 | Leyendas y distinción observado/sintético/predicho | Completa | `LevelLegend`, `MethodNotice`, `RadioDetails`, `Dashboard.jsx`, metadatos aprobados | Alta | No rotular percentiles o scores como riesgo epidemiológico validado. |
+| MVP §3 y §5; plan §3 y etapa 7 | Leyendas y distinción observado/sintético/predicho | Completa | `LevelLegend`, `MethodNotice`, `RadioDetails`, `Mapa.jsx`, metadatos aprobados | Alta | No rotular percentiles o scores como riesgo epidemiológico validado. |
 | MVP §4 | Validación temporal pública con métricas y tabla de seis semanas | Completa | `pages/Validacion.jsx`, `BacktestChart`, `model_evaluation.json` | Media | Conservar alcance departamental y limitaciones exploratorias. |
 | MVP §5 | Metodología y advertencias | Completa | `pages/Metodologia.jsx`, avisos junto a mapas | Media | Mantener coherencia con contratos de cada circuito. |
 | MVP §6; plan etapa 10 (RF-19–20 agrupados); módulo §4 | Prevención, síntomas, fuentes y teléfonos | Completa | `pages/Prevencion.jsx`, `PreventionGuide`, `SymptomsAlert`, `prevention_content.json`, `services/preventionData.js` | Alta | Mantener revisión editorial; no se incorpora ni modifica consejo médico aquí. |

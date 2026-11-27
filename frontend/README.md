@@ -10,14 +10,14 @@ Visión general, criterios y documentación: [README del repositorio](../README.
 
 | Ruta | Para quién | Qué es |
 |---|---|---|
-| `/` | Público | Situación actual (dashboard epidemiológico agregado, con su fuente técnica en el pie) |
+| `/` | Público | Situación actual: portada ciudadana con accesos, registros de la ciudad del paquete autorizado de actividad (estado vacío si no está autorizado), contenido preventivo publicado, reporte ciudadano y canales oficiales. No muestra predicción, ranking ni modelo |
 | `/mapa` | Público | Mapa público agregado por radio censal. Siempre es el mapa público; un enlace viejo `/mapa?…` con estado del visor redirige a `/admin/predictivo?…` sólo con sesión de administrador |
 | `/actividad` | Público | «Actividad registrada» con supresión de valores pequeños. Oculta salvo con un paquete autorizado o la fixture ficticia (`SIGARD_PUBLIC_ACTIVITY=fixture`) |
 | `/prevencion` | Público | Prevención y ayuda: contenido publicado desde Administración, centros de salud, teléfonos, reporte ciudadano anónimo y seguimiento por código |
 | `/validacion`, `/metodologia` | — | Páginas retiradas (Validación y Cómo funciona): las URLs viejas redirigen a la portada `/` |
 | `/admin/*` | Administradores | Siete secciones con menú lateral y barra de sesión (ver abajo) |
 
-Las vistas epidemiológicas consultan la API pública de `VITE_API_URL` y, si no responde, usan el
+El mapa público consulta la API pública de `VITE_API_URL` y, si no responde, usan el
 respaldo estático aprobado de `public/data/`; el pie indica cuál se usó.
 
 ## Instalación
@@ -122,12 +122,13 @@ npm.cmd --prefix frontend run test:guard
 npm.cmd --prefix frontend run test:dev
 # Suites Node (sin navegador)
 npm.cmd --prefix frontend run test:security        # y test:research, test:backtest, test:public-map,
-                                                  # test:public-activity, test:citizen, test:prevention,
+                                                  # test:public-activity, test:public-home, test:citizen, test:prevention,
                                                   # test:alerts, test:read-retry, test:admin, test:demo
 # Navegador (Puppeteer, sin ventanas; cada una levanta y cierra su propio entorno)
 npm.cmd --prefix frontend run test:predictive:browser          # visor con fixture ficticia ( -- --real: agregados locales)
 npm.cmd --prefix frontend run test:predictive:layout:browser
 npm.cmd --prefix frontend run test:admin:browser               # y test:admin:home:browser
+npm.cmd --prefix frontend run test:public-home:browser         # portada a 390/1440 px: paquete ficticio y estado vacío
 npm.cmd --prefix frontend run test:demo:browser                # demo completa con cierre
 ```
 

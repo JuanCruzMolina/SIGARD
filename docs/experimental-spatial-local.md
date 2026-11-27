@@ -50,8 +50,8 @@ ofrece Modelo A, Modelo B y Diferencia B − A. Cambiar vista conserva semana y 
 seleccionar un radio permite consultar ambos scores y su resta cuando existen.
 **MVP sintético y contexto** conserva la vista original y sigue accesible con
 el selector. **Situación actual** abre el dashboard original en `/dashboard`
-durante el desarrollo local autorizado. En producción, `/` sigue mostrando
-el dashboard y `/mapa` conserva la vista inicial del MVP, sin selector A/B.
+durante el desarrollo local autorizado. Desde el 27/11/2026, `/` (y su alias local `/dashboard`)
+es la portada ciudadana sin capas del MVP; `/mapa` conserva la vista inicial del MVP, sin selector A/B.
 Si la API experimental no está disponible, se muestra su error y se permite
 reintentar; nunca se sustituyen sus scores por la simulación sintética.
 
