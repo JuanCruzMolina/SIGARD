@@ -1,4 +1,4 @@
-import { parseRestrictedMarkdown } from '../services/preventionContent.mjs'
+import { limitBlocks, parseRestrictedMarkdown } from '../services/preventionContent.mjs'
 
 function Inline({ tokens }) {
   return tokens.map((token, index) => {
@@ -9,8 +9,9 @@ function Inline({ tokens }) {
 }
 
 // Renders the restricted Markdown subset as React elements; never as raw HTML.
-export default function RestrictedMarkdown({ text, listClassName, itemAsParagraph = false }) {
-  return parseRestrictedMarkdown(text).map((block, index) => block.type === 'list'
+// `limit` (optional) keeps only the first items; see limitBlocks.
+export default function RestrictedMarkdown({ text, listClassName, itemAsParagraph = false, limit }) {
+  return limitBlocks(parseRestrictedMarkdown(text), limit).map((block, index) => block.type === 'list'
     ? <ul key={index} className={listClassName}>{block.items.map((item, itemIndex) => <li key={itemIndex}>{itemAsParagraph ? <p><Inline tokens={item}/></p> : <Inline tokens={item}/>}</li>)}</ul>
     : <p key={index}><Inline tokens={block.inline}/></p>)
 }

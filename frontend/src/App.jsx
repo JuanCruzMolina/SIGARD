@@ -29,6 +29,8 @@ function AppContent() {
   const predictiveRoute = localResearch && pathname === PREDICTIVE_ROUTE
   const legacyViewerRedirect = localResearch && pathname === '/mapa' && hasViewerParams(new URLSearchParams(search)) && adminSessionActive(readSession())
   const adminRoute = pathname === '/admin' || pathname.startsWith('/admin/')
+  // The home page footer omits the MVP cutoff and technical source (they belong to /mapa).
+  const homeRoute = pathname === '/' || (localResearch && pathname === '/dashboard')
   // Only the public map uses the MVP publication; the home page reads prevention content and the activity package.
   const needsEpidemiologicalData = pathname === '/mapa' && !legacyViewerRedirect
   // The activity link appears only when the API serves an authorized (or fictional fixture) package.
@@ -63,7 +65,7 @@ function AppContent() {
       <Route path="/metodologia" element={<Navigate to="/" replace />} />
       <Route path="*" element={<Prevencion />} />
     </Routes>
-    {!framed && <footer className="site-footer"><span><strong>SIGARD</strong> · La Rioja Capital</span>{predictiveRoute ? <span>Fuente del módulo: PostgreSQL versionado · reconstrucción offline</span> : <>{selectedCutoffDate && <span>Último corte epidemiológico disponible: {formatDate(selectedCutoffDate)}</span>}{data && <span>Fuente técnica: {data.dataSource === 'api' ? `API ${data.availableWeeks.publication?.version || 'versionada'}` : 'respaldo estático local'}</span>}</>}<span>Información orientativa · No reemplaza indicaciones sanitarias oficiales</span></footer>}
+    {!framed && <footer className="site-footer"><span><strong>SIGARD</strong> · La Rioja Capital</span>{predictiveRoute ? <span>Fuente del módulo: PostgreSQL versionado · reconstrucción offline</span> : homeRoute ? null : <>{selectedCutoffDate && <span>Último corte epidemiológico disponible: {formatDate(selectedCutoffDate)}</span>}{data && <span>Fuente técnica: {data.dataSource === 'api' ? `API ${data.availableWeeks.publication?.version || 'versionada'}` : 'respaldo estático local'}</span>}</>}<span>Información orientativa · No reemplaza indicaciones sanitarias oficiales</span></footer>}
   </div>
 }
 

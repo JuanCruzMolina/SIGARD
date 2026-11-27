@@ -118,6 +118,34 @@ export function publicSectionsFrom(payload) {
   return [...payload.sections].sort((a, b) => a.position - b.position || a.slug.localeCompare(b.slug))
 }
 
+// Preview of parsed blocks: the first `limit` items (each list item or paragraph counts as one),
+// in their original order and wording. Used by the home page; /prevencion shows everything.
+export function limitBlocks(blocks, limit) {
+  if (!Number.isInteger(limit)) return blocks
+  const out = []
+  let left = limit
+  for (const block of blocks) {
+    if (left <= 0) break
+    if (block.type === 'list') {
+      const items = block.items.slice(0, left)
+      out.push({ ...block, items })
+      left -= items.length
+    } else {
+      out.push(block)
+      left -= 1
+    }
+  }
+  return out
+}
+
+export const blockItemCount = blocks => blocks.reduce((total, block) => total + (block.type === 'list' ? block.items.length : 1), 0)
+
+// Plain text of parsed blocks (bold and links keep only their text), one entry per item.
+export function blockItemTexts(blocks) {
+  const text = tokens => tokens.map(token => token.text).join('').trim()
+  return blocks.flatMap(block => (block.type === 'list' ? block.items.map(text) : [text(block.inline)])).filter(Boolean)
+}
+
 export function sectionsBySlug(sections) {
   return Object.fromEntries(sections.map(section => [section.slug, section]))
 }

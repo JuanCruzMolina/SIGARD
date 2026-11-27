@@ -2,17 +2,20 @@
 // Rules: only observed aggregates from the authorized activity package (values below 5 arrive
 // as "<5"/"oculto" and are never turned into numbers); health text, phone numbers and sources
 // come from published content, never from this module.
+import { blockItemTexts, parseRestrictedMarkdown } from './preventionContent.mjs'
 
 export const PUBLISHED_CONTACT_STATUSES = new Set(['publicado', 'confirmado'])
 export const PREVENTION_SLUGS = ['prevencion', 'control-vectorial']
 export const CARE_SLUGS = ['sintomas', 'consejos-medicos', 'signos-alarma']
+export const ALARM_SLUG = 'signos-alarma'
+// Home preview: the first items of each published section; the alarm signs are never shortened.
+export const PREVIEW_ITEMS = 3
 export const RECENT_WEEKS = 8
 export const FICTIONAL_NOTICE = 'Datos ficticios de demostración'
 
 export const EMPTY = {
   activityDisabled: 'Los datos de registros todavía no están autorizados para publicarse. Cuando el Ministerio de Salud de La Rioja lo autorice, vas a ver acá el resumen semanal.',
   activityUnavailable: 'El resumen de registros no está disponible por el momento. Intentá nuevamente más tarde.',
-  calendarDisabled: 'El calendario se va a mostrar cuando se autorice publicar los registros de años anteriores.',
   content: 'Contenido pendiente de publicación por el equipo de salud.',
   contentError: 'No pudimos cargar el contenido preventivo. Intentá nuevamente más tarde.',
   contacts: 'Todavía no hay teléfonos confirmados para mostrar. Consultá las fuentes oficiales.',
@@ -124,4 +127,35 @@ export function emergencyContact(content) {
 
 export function pickSections(bySlug, slugs) {
   return slugs.map(slug => bySlug?.[slug]).filter(Boolean)
+}
+
+export const previewLimit = section => (section?.slug === ALARM_SLUG ? undefined : PREVIEW_ITEMS)
+
+// One line for the alarm strip, built only from the published section: its title and every item, verbatim.
+export function alarmLine(section) {
+  const items = section ? blockItemTexts(parseRestrictedMarkdown(section.body)) : []
+  if (!items.length) return null
+  return { title: section.title, text: items.join(' ') }
+}
+
+// Short dialing codes (and the published emergency number) are highlighted with a call button;
+// the remaining published contacts are grouped by name in a compact list. Same publication rule.
+export function contactGroups(content) {
+  const contacts = publishedContacts(content)
+  const urgent = contact => contact.number_tel === content?.emergency_number || /^\d{2,4}$/.test(contact.number_tel)
+  const groups = new Map()
+  for (const contact of contacts.filter(contact => !urgent(contact))) {
+    if (!groups.has(contact.label)) groups.set(contact.label, { label: contact.label, purpose: contact.purpose, contacts: [], sources: [] })
+    const group = groups.get(contact.label)
+    group.contacts.push(contact)
+    if (contact.source_url && !group.sources.includes(contact.source_url)) group.sources.push(contact.source_url)
+  }
+  return { urgent: contacts.filter(urgent), groups: [...groups.values()], reviewed: reviewedLabel(contacts) }
+}
+
+export function reviewedLabel(contacts) {
+  const dates = [...new Set(contacts.map(contact => contact.reviewed_at).filter(Boolean))].sort()
+  if (!dates.length) return ''
+  if (dates.length === 1) return `Revisado el ${longDate(dates[0])}.`
+  return `Revisado entre el ${longDate(dates[0])} y el ${longDate(dates.at(-1))}.`
 }

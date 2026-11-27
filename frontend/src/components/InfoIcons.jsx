@@ -29,3 +29,11 @@ export function SearchIcon({ className = '' }) {
 export function MapIcon({ className = '' }) {
   return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="m3 6 6-2 6 2 6-2v14l-6 2-6-2-6 2V6Z"/><path d="M9 4v14M15 6v14"/></svg>
 }
+
+export function ChartIcon({ className = '' }) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h16"/><path d="M7 16v-5M12 16V6M17 16v-8"/></svg>
+}
+
+export function InfoIcon({ className = '' }) {
+  return <svg className={className} viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/></svg>
+}
