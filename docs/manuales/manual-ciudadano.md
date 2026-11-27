@@ -28,7 +28,7 @@ En la parte superior hay un menú con estas secciones:
 
 | Sección | Para qué sirve |
 |---|---|
-| Situación actual | Portada: accesos rápidos, registros de años anteriores, prevención, síntomas, reporte y canales oficiales |
+| Situación actual | Portada: accesos rápidos, signos de alarma, prevención, síntomas, reporte, datos de la ciudad y canales oficiales |
 | Mapa público | Mapa de contexto de la ciudad |
 | Actividad registrada | Datos históricos protegidos por zona (sólo aparece si está habilitada) |
 | Prevención y ayuda | Prevención, síntomas, centros de salud, teléfonos, reporte y seguimiento |
@@ -42,27 +42,32 @@ El sitio funciona en computadora y en celular, y se puede recorrer con el teclad
 
 ![La portada en el celular (datos ficticios)](img/ciudadano-portada-movil.png)
 
-La portada reúne lo más útil en una sola página:
+La portada reúne lo más útil en una sola página, en este orden:
 
-1. **Tres accesos**: **Cómo prevenir**, **Reportar un posible criadero** y **Ver el mapa**.
-2. **Registros de dengue en la ciudad**: cuántos registros hubo en cada una de las últimas 8
-   semanas con datos, con la fecha del último dato. **Es una reconstrucción histórica: no muestra
-   la situación actual.** Las semanas con menos de 5 registros aparecen como «Menos de 5». Si
-   alguna semana está protegida, el sitio no calcula si los registros subieron o bajaron, porque
-   eso permitiría deducir el valor oculto.
-3. **Qué podés hacer hoy** y **Síntomas y cuándo consultar**: el mismo contenido que publica el
-   equipo de salud en Prevención y ayuda, con la fuente de cada texto. El botón para llamar a
-   emergencias aparece sólo si ese teléfono está confirmado.
-4. **Cómo funciona el reporte ciudadano**: los pasos y qué datos se guardan.
-5. **Calendario de temporada**: los registros de cada período de 4 semanas (por ejemplo, «del 7 de
-   enero al 3 de febrero»). Elegí el año con los botones. Todas las barras usan la misma escala.
-   Los períodos con alguna semana protegida se ven con rayas y sin total.
-6. **Sobre SIGARD**: qué es, cómo se cuida la privacidad, teléfonos confirmados y fuentes
-   oficiales.
+1. **Título y tres accesos**: **Cómo prevenir**, **Reportar un posible criadero** y **Ver el mapa**.
+2. **Franja de signos de alarma**: justo debajo de los accesos, visible sin desplazarse en el
+   celular. Muestra los signos de alarma publicados por el equipo de salud y un botón para llamar
+   al número de emergencia, sólo si ese teléfono está confirmado; si no lo está, un enlace a
+   Síntomas.
+3. **Qué podés hacer hoy**: los 3 primeros puntos de cada tema de prevención y el enlace **Ver
+   todo**, que lleva a la guía completa en Prevención y ayuda.
+4. **Síntomas y cuándo consultar**: los 3 primeros puntos de cada tema y **Ver todo**. Los **signos
+   de alarma** se muestran siempre completos, en un recuadro rojo claro.
+5. **Cómo funciona el reporte ciudadano**: los pasos y qué datos se guardan.
+6. **Datos de la ciudad**: los registros de las últimas 8 semanas con datos y el calendario de
+   temporada, juntos, con la fecha del último dato. **Es una reconstrucción histórica: no muestra
+   la situación actual.** Las semanas con menos de 5 registros aparecen como «Menos de 5»; si
+   alguna semana está protegida, el sitio no calcula si los registros subieron o bajaron. En el
+   calendario elegí el año con los botones; todas las barras usan la misma escala y los períodos
+   con alguna semana protegida se ven con rayas y sin total.
+7. **Teléfonos y canales oficiales**: las líneas de emergencia con botón para llamar, y el
+   Ministerio y la Municipalidad en una lista breve (las líneas municipales juntas), con la fecha
+   de revisión. Las **Fuentes oficiales** se despliegan al tocar su título.
+8. **Sobre SIGARD**: qué es y cómo se cuida la privacidad.
 
-Mientras el Ministerio de Salud no autorice publicar los registros, los bloques 2 y 5 muestran un
-aviso en lugar de cifras. Cuando la página usa datos de prueba, lo indica con el aviso **«Datos
-ficticios de demostración»**.
+Mientras el Ministerio de Salud no autorice publicar los registros, **Datos de la ciudad** muestra
+un único aviso en lugar de cifras. Cuando la página usa datos de prueba, lo indica con el aviso
+**«Datos ficticios de demostración»**.
 
 ![La portada en el celular, sin datos autorizados](img/ciudadano-portada-vacia-movil.png)
 

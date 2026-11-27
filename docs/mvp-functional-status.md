@@ -65,6 +65,17 @@ en períodos de 4 semanas; y sobre SIGARD, privacidad y canales oficiales.
   siguen en `/mapa`, sin cambios. `/` ya no carga la publicación del MVP.
 - **Pruebas:** `test:public-home` (11) y `test:public-home:browser` (390 px y 1440 px, paquete
   ficticio y estado vacío, contraste AA, texto ≥ 16 px, accesos y teclado).
+- **Ajustes de presentación (27/11/2026, segunda etapa):** nuevo orden (accesos, franja de
+  alarma, qué hacer hoy, síntomas, reporte, datos de la ciudad, teléfonos, sobre SIGARD). La franja
+  arma una línea con el título y los ítems publicados de `signos-alarma` y llama al número de
+  emergencia publicado/confirmado (sin él, enlace a `#sintomas`). Prevención y síntomas muestran los
+  3 primeros ítems de cada sección con «Ver todo»; los signos de alarma, completos y en rojo claro.
+  Registros y calendario forman un solo bloque «Datos de la ciudad» (un único mensaje sin
+  autorización, y el subtítulo omite «años anteriores»). Contactos: códigos cortos destacados con
+  botón, el resto agrupado por nombre, una sola línea «Revisado…» y fuentes en un desplegable. El
+  pie de `/` ya no muestra el corte epidemiológico ni la fuente técnica; `/mapa` los conserva.
+  Pruebas: `test:public-home` (14) y `test:public-home:browser` (franja y botón sin scroll a
+  390×844, signos completos, 3 ítems + «Ver todo», un bloque de datos, pie, contraste AA, ≥ 16 px).
 - **Pendiente (sin cambios en esta etapa):** `PreventionGuide` y `SymptomsAlert` de `/prevencion`
   tienen frases sanitarias escritas en el código (por ejemplo «Sin agua acumulada, el mosquito no
   puede completar su ciclo», «Revisá tu casa y los espacios cercanos cada semana…») en lugar de

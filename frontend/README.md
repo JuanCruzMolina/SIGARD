@@ -10,7 +10,7 @@ Visión general, criterios y documentación: [README del repositorio](../README.
 
 | Ruta | Para quién | Qué es |
 |---|---|---|
-| `/` | Público | Situación actual: portada ciudadana con accesos, registros de la ciudad del paquete autorizado de actividad (estado vacío si no está autorizado), contenido preventivo publicado, reporte ciudadano y canales oficiales. No muestra predicción, ranking ni modelo |
+| `/` | Público | Situación actual: portada ciudadana con accesos, franja de signos de alarma, vista previa del contenido preventivo publicado (signos de alarma completos), reporte ciudadano, datos de la ciudad del paquete autorizado de actividad (un único aviso si no está autorizado) y canales oficiales. No muestra predicción, ranking ni modelo |
 | `/mapa` | Público | Mapa público agregado por radio censal. Siempre es el mapa público; un enlace viejo `/mapa?…` con estado del visor redirige a `/admin/predictivo?…` sólo con sesión de administrador |
 | `/actividad` | Público | «Actividad registrada» con supresión de valores pequeños. Oculta salvo con un paquete autorizado o la fixture ficticia (`SIGARD_PUBLIC_ACTIVITY=fixture`) |
 | `/prevencion` | Público | Prevención y ayuda: contenido publicado desde Administración, centros de salud, teléfonos, reporte ciudadano anónimo y seguimiento por código |
